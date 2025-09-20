@@ -4,7 +4,9 @@
       "Bash(dir:*)",
       "Bash(python:*)",
       "WebSearch",
-      "Bash(claude --version)"
+      "Bash(claude --version)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
