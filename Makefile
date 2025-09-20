@@ -28,6 +28,9 @@ bench:
 export:
 	poetry run python -c "from src.utils.safety import scrub_pii; import json; print(json.dumps({'logs': 'anonymized'}, indent=2))"
 
-ci: lint test typecheck bench
+bandit:
+	poetry run bandit -r src/ -f json -o bandit-report.json || poetry run bandit -r src/
 
-.PHONY: setup lint test typecheck format run bench ci export
+ci: lint test typecheck bench bandit
+
+.PHONY: setup lint test typecheck format run bench ci export bandit
