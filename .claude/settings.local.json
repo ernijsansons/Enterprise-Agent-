@@ -18,7 +18,15 @@
       "Bash(poetry run ruff:*)",
       "Bash(poetry run python:*)",
       "Bash(poetry run mypy:*)",
-      "Bash(poetry run pytest:*)"
+      "Bash(poetry run pytest:*)",
+      "Bash(time python -m pytest:*)",
+      "Bash(ruff check:*)",
+      "Bash(bandit:*)",
+      "Bash(find:*)",
+      "Bash(poetry lock:*)",
+      "Bash(/dev/null)",
+      "Bash(git config:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
