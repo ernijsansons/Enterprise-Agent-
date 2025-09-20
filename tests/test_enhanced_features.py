@@ -26,6 +26,23 @@ class TestEnhancedAuthManager:
         """Setup test environment."""
         self.auth_manager = ClaudeAuthManager()
 
+    def teardown_method(self):
+        """Clean up test environment."""
+        # Reset global state to prevent test pollution
+        from src.providers.auth_manager import reset_auth_manager
+        from src.utils.notifications import reset_notification_manager
+        from src.utils.usage_monitor import reset_usage_monitor
+
+        reset_auth_manager()
+        reset_notification_manager()
+        reset_usage_monitor()
+
+        # Clean up environment variables
+        import os
+        for key in ['ANTHROPIC_API_KEY', 'USE_CLAUDE_CODE']:
+            if key in os.environ:
+                del os.environ[key]
+
     @patch("subprocess.run")
     def test_verify_claude_status_json(self, mock_run):
         """Test JSON status verification."""
@@ -99,6 +116,12 @@ class TestNotificationSystem:
         self.notification_manager.handlers = (
             []
         )  # Remove default console handler for testing
+
+    def teardown_method(self):
+        """Clean up test environment."""
+        # Reset global notification state
+        from src.utils.notifications import reset_notification_manager
+        reset_notification_manager()
 
     def test_notification_creation(self):
         """Test notification creation."""
@@ -174,24 +197,28 @@ class TestNotificationSystem:
 
     def test_cli_failure_notification(self):
         """Test CLI failure notification."""
+        from src.utils.notifications import clear_notifications, get_notifications
+
+        clear_notifications()  # Clear any existing notifications
         notify_cli_failure("test_operation", "Connection failed", fallback_used=True)
 
-        notifications = self.notification_manager.get_notifications(
-            type=NotificationType.CLI_FAILURE
-        )
-        assert len(notifications) == 1
-        assert "test_operation" in notifications[0].title
-        assert "API fallback" in str(notifications[0].recommendations)
+        notifications = get_notifications()
+        cli_notifications = [n for n in notifications if n.type == NotificationType.CLI_FAILURE]
+        assert len(cli_notifications) == 1
+        assert "test_operation" in cli_notifications[0].title
+        assert "API fallback" in str(cli_notifications[0].recommendations)
 
     def test_authentication_issue_notification(self):
         """Test authentication issue notification."""
+        from src.utils.notifications import clear_notifications, get_notifications
+
+        clear_notifications()  # Clear any existing notifications
         notify_authentication_issue("not_logged_in")
 
-        notifications = self.notification_manager.get_notifications(
-            type=NotificationType.AUTHENTICATION
-        )
-        assert len(notifications) == 1
-        assert any("claude login" in rec for rec in notifications[0].recommendations)
+        notifications = get_notifications()
+        auth_notifications = [n for n in notifications if n.type == NotificationType.AUTHENTICATION]
+        assert len(auth_notifications) == 1
+        assert any("claude login" in rec for rec in auth_notifications[0].recommendations)
 
 
 class TestUsageMonitor:
@@ -208,6 +235,22 @@ class TestUsageMonitor:
         }
         self.usage_monitor = UsageMonitor(config)
         self.usage_monitor.usage_file = Path(self.temp_dir) / "test_usage.json"
+        self.usage_monitor._reset_pause_state()  # Ensure clean state for testing
+        self.usage_monitor.reset_usage()  # Clear any existing usage windows
+
+    def teardown_method(self):
+        """Clean up test environment."""
+        # Reset global usage monitor state
+        from src.utils.usage_monitor import reset_usage_monitor
+        from src.utils.notifications import reset_notification_manager
+
+        reset_usage_monitor()
+        reset_notification_manager()
+
+        # Clean up temp directory
+        import shutil
+        if hasattr(self, 'temp_dir'):
+            shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_usage_window_creation(self):
         """Test usage window creation."""
@@ -289,6 +332,28 @@ class TestConfigValidator:
         """Setup test environment."""
         self.temp_dir = tempfile.mkdtemp()
         self.config_file = Path(self.temp_dir) / "test_config.yaml"
+
+    def teardown_method(self):
+        """Clean up test environment."""
+        # Reset global state
+        from src.utils.notifications import reset_notification_manager
+        from src.utils.usage_monitor import reset_usage_monitor
+        from src.providers.auth_manager import reset_auth_manager
+
+        reset_notification_manager()
+        reset_usage_monitor()
+        reset_auth_manager()
+
+        # Clean up temp directory
+        import shutil
+        if hasattr(self, 'temp_dir'):
+            shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+        # Clean up environment variables
+        import os
+        for key in ['ANTHROPIC_API_KEY', 'USE_CLAUDE_CODE']:
+            if key in os.environ:
+                del os.environ[key]
 
     def create_test_config(self, content: str):
         """Create test configuration file."""
@@ -393,13 +458,43 @@ enterprise_coding_agent:
 class TestIntegration:
     """Test integration between components."""
 
+    def setup_method(self):
+        """Setup test environment."""
+        # Reset global state before each test
+        from src.utils.notifications import reset_notification_manager, clear_notifications
+        from src.utils.usage_monitor import reset_usage_monitor
+        from src.providers.auth_manager import reset_auth_manager
+
+        reset_notification_manager()
+        reset_usage_monitor()
+        reset_auth_manager()
+        clear_notifications()
+
+    def teardown_method(self):
+        """Clean up test environment."""
+        # Reset global state after each test
+        from src.utils.notifications import reset_notification_manager
+        from src.utils.usage_monitor import reset_usage_monitor
+        from src.providers.auth_manager import reset_auth_manager
+
+        reset_notification_manager()
+        reset_usage_monitor()
+        reset_auth_manager()
+
     @patch("subprocess.run")
     def test_auth_notification_integration(self, mock_run):
         """Test integration between auth manager and notifications."""
-        # Mock CLI failure
+        # Mock CLI failure - this happens in ClaudeCodeProvider, not AuthManager
         mock_run.side_effect = FileNotFoundError
 
-        auth_manager = ClaudeAuthManager()
+        # Try to create a ClaudeCodeProvider which should trigger the notification
+        from src.providers.claude_code_provider import ClaudeCodeProvider
+        from src.exceptions import ModelException
+
+        try:
+            ClaudeCodeProvider({})
+        except ModelException:
+            pass  # Expected to fail
 
         # Should generate notification
         from src.utils.notifications import get_notification_manager
@@ -414,8 +509,17 @@ class TestIntegration:
         config = {"max_prompts_per_window": 1, "warning_threshold": 100}
         monitor = UsageMonitor(config)
 
-        # Record request that should trigger limit
-        monitor.record_request("Test", "operation")
+        # Ensure monitor starts in unpaused state
+        monitor._reset_pause_state()
+        monitor.reset_usage()
+
+        # Record request that should trigger limit and notification
+        success = monitor.record_request("Test", "operation")
+        assert success is True  # First request should succeed
+
+        # Record second request that should hit the limit
+        success = monitor.record_request("Test", "operation2")
+        assert success is False  # Second request should fail (hit limit)
 
         # Should have paused and sent notification
         assert monitor.paused is True

@@ -232,7 +232,7 @@ class ClaudeAuthManager:
         Returns:
             Detailed validation results with recommendations
         """
-        validation = {
+        validation: Dict[str, Any] = {
             "cli_available": False,
             "cli_version": None,
             "authenticated": False,
@@ -316,24 +316,28 @@ class ClaudeAuthManager:
         Returns:
             Dictionary with plan information
         """
-        validation = self.validate_setup()
+        if not self.is_logged_in():
+            return {
+                "authenticated": False,
+                "using_api_key": False,
+                "plan_type": "Unknown",
+                "recommendations": ["Run 'claude login' to authenticate with your Max subscription"]
+            }
 
-        # Enhanced plan information based on validation
-        plan_info = {
-            "authenticated": validation["authenticated"],
-            "using_api_key": validation["api_key_conflict"],
-            "subscription_mode": validation["subscription_mode"],
-            "plan_type": "Max subscription"
-            if validation["authenticated"] and validation["subscription_mode"]
-            else "unknown",
-            "status": validation["status"],
-            "ready": validation["ready"],
-            "recommendations": validation["recommendations"],
-            "cli_version": validation.get("cli_version"),
-            "issues": validation["issues"],
-        }
-
-        return plan_info
+        if os.getenv("ANTHROPIC_API_KEY"):
+            return {
+                "authenticated": True,
+                "using_api_key": True,
+                "plan_type": "Max subscription (API mode - will incur charges)",
+                "recommendations": ["Remove ANTHROPIC_API_KEY from environment variables"]
+            }
+        else:
+            return {
+                "authenticated": True,
+                "using_api_key": False,
+                "plan_type": "Max subscription (assumed)",
+                "recommendations": []
+            }
 
     def get_config(self) -> Dict[str, Any]:
         """Get Claude Code configuration.
@@ -430,4 +434,10 @@ def get_auth_manager() -> ClaudeAuthManager:
     return _auth_manager
 
 
-__all__ = ["ClaudeAuthManager", "get_auth_manager"]
+def reset_auth_manager() -> None:
+    """Reset the global auth manager instance for testing."""
+    global _auth_manager
+    _auth_manager = None
+
+
+__all__ = ["ClaudeAuthManager", "get_auth_manager", "reset_auth_manager"]

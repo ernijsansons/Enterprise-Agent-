@@ -401,6 +401,22 @@ def notify_configuration_issue(issue: str, recommendations: List[str]) -> None:
     get_notification_manager().notify_configuration_issue(issue, recommendations)
 
 
+def get_notifications() -> List[Notification]:
+    """Get all notifications for testing."""
+    return get_notification_manager().notifications.copy()
+
+
+def clear_notifications() -> None:
+    """Clear all notifications for testing."""
+    get_notification_manager().notifications.clear()
+
+
+def reset_notification_manager() -> None:
+    """Reset the global notification manager instance for testing."""
+    global _notification_manager
+    _notification_manager = None
+
+
 __all__ = [
     "NotificationLevel",
     "NotificationType",
@@ -411,4 +427,7 @@ __all__ = [
     "notify_authentication_issue",
     "notify_usage_warning",
     "notify_configuration_issue",
+    "get_notifications",
+    "clear_notifications",
+    "reset_notification_manager",
 ]

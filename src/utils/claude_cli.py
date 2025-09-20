@@ -219,8 +219,8 @@ class ClaudeCodeCLI:
         )
 
         chunks = []
-        stdout_queue = Queue()
-        stderr_queue = Queue()
+        stdout_queue: Queue[Optional[str]] = Queue()
+        stderr_queue: Queue[Optional[str]] = Queue()
 
         # Thread to read stdout
         def read_stdout():

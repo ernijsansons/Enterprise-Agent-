@@ -535,7 +535,7 @@ class AgentOrchestrator:
                 # This helps catch configuration issues early
                 try:
                     # Test with a minimal completion to verify connectivity
-                    test_response = self.anthropic_client.messages.create(
+                    self.anthropic_client.messages.create(
                         model="claude-3-haiku-20240307",  # Use the cheapest model for testing
                         max_tokens=1,
                         messages=[{"role": "user", "content": "test"}],

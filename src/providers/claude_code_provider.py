@@ -367,7 +367,6 @@ class ClaudeCodeProvider:
         # Detect project characteristics
         tech_stack = project_context.get("tech_stack", [])
         architecture = project_context.get("architecture", "")
-        domain = project_context.get("domain", "")
 
         # Enterprise Agent specific adaptations
         if (
@@ -911,4 +910,10 @@ def get_claude_code_provider(
     return _provider_instance
 
 
-__all__ = ["ClaudeCodeProvider", "get_claude_code_provider"]
+def reset_claude_code_provider() -> None:
+    """Reset the global Claude Code provider instance for testing."""
+    global _provider_instance
+    _provider_instance = None
+
+
+__all__ = ["ClaudeCodeProvider", "get_claude_code_provider", "reset_claude_code_provider"]

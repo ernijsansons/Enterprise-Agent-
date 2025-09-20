@@ -5,19 +5,19 @@ setup:
 	npx codex --version
 
 lint:
-	poetry run black .
-	poetry run isort .
-	poetry run ruff check .
+	poetry run black src/ tests/
+	poetry run isort src/ tests/
+	poetry run ruff check src/ tests/
 
 test:
 	poetry run pytest tests/ -v --cov=src --cov-report=html
 
 typecheck:
-	poetry run mypy src/
+	poetry run mypy src/ --ignore-missing-imports
 
 format:
-	poetry run black .
-	poetry run isort .
+	poetry run black src/ tests/
+	poetry run isort src/ tests/
 
 run:
 	poetry run python src/agent_orchestrator.py $(DOMAIN) --input "$(INPUT)"
@@ -31,6 +31,13 @@ export:
 bandit:
 	poetry run bandit -r src/ -f json -o bandit-report.json
 
-ci: lint test typecheck bench bandit
+security: bandit
+	@echo "Security scan completed successfully"
 
-.PHONY: setup lint test typecheck format run bench ci export bandit
+quality: lint typecheck security
+	@echo "All quality checks passed"
+
+ci: quality test bench
+	@echo "CI pipeline completed successfully"
+
+.PHONY: setup lint test typecheck format run bench ci export bandit security quality

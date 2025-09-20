@@ -208,7 +208,10 @@ class TTLCache:
                     low_quality_patterns.append(pattern)
 
             # Sort by score (worst first) and limit to 10
-            return sorted(low_quality_patterns, key=lambda x: x["score"])[:10]
+            def get_score(x: Dict[str, Any]) -> float:
+                score = x.get("score", 0)
+                return float(score) if isinstance(score, (int, float, str)) else 0.0
+            return sorted(low_quality_patterns, key=get_score)[:10]
 
 
 class ModelResponseCache(TTLCache):
@@ -274,9 +277,9 @@ def cached(
     if cache_instance is None:
         cache_instance = TTLCache(default_ttl=ttl or 300)
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Generate cache key
             if key_func:
                 cache_key = key_func(*args, **kwargs)
@@ -301,7 +304,7 @@ def cached(
             return result
 
         # Attach cache instance to wrapper for testing/debugging
-        wrapper._cache = cache_instance
+        wrapper._cache = cache_instance  # type: ignore[attr-defined]
         return wrapper
 
     return decorator

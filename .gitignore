@@ -53,3 +53,19 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Coverage reports
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+
+# Test artifacts
+.coverage.*
+bandit-report.json
+
+# IDE settings
+.claude/settings.local.json
+
+# Build artifacts
+*.egg-info/

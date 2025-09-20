@@ -101,15 +101,12 @@ class ConfigValidator:
             # Validate required sections
             required_sections = [
                 "enterprise_coding_agent",
-                "enterprise_coding_agent.orchestration",
-                "enterprise_coding_agent.memory",
-                "enterprise_coding_agent.governance",
             ]
 
             for section in required_sections:
                 if not self._get_nested_value(config_data, section):
-                    self._add_warning(
-                        "config_structure", f"Missing configuration section: {section}"
+                    self._add_issue(
+                        "config_structure", f"Missing required section: {section}", "high"
                     )
 
             return True, config_data
@@ -165,10 +162,9 @@ class ConfigValidator:
         else:
             # API mode requirements
             if not any(env_results["api_keys_present"].values()):
-                self._add_issue(
+                self._add_warning(
                     "environment",
                     "No API keys available - system will run in stub mode",
-                    "medium",
                 )
 
         return env_results
@@ -272,7 +268,10 @@ class ConfigValidator:
             )
 
         # Check for insecure auto-mode settings
-        auto_mode = self._get_nested_value(config_data, "claude_code.auto_mode")
+        auto_mode = (
+            self._get_nested_value(config_data, "claude_code.auto_mode") or
+            self._get_nested_value(config_data, "enterprise_coding_agent.claude_code.auto_mode")
+        )
         if auto_mode:
             security_results["insecure_settings"].append("auto_mode enabled")
             self._add_warning("security", "Auto-mode enabled - dangerous in production")

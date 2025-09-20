@@ -164,7 +164,7 @@ class SecurityAuditor:
 
         def scrub_dict(data: Dict[str, Any]) -> Dict[str, Any]:
             """Recursively scrub dictionary."""
-            scrubbed = {}
+            scrubbed: Dict[str, Any] = {}
             for key, value in data.items():
                 key_lower = key.lower()
                 if any(sensitive in key_lower for sensitive in sensitive_keys):
@@ -293,7 +293,7 @@ class SecurityAuditor:
         Returns:
             List of audit events
         """
-        events = []
+        events: List[Dict[str, Any]] = []
 
         try:
             if not self.log_file.exists():
@@ -331,7 +331,7 @@ class SecurityAuditor:
         Returns:
             Security summary statistics
         """
-        summary = {
+        summary: Dict[str, Any] = {
             "total_events": 0,
             "events_by_type": {},
             "events_by_severity": {},

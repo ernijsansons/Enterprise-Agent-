@@ -312,6 +312,11 @@ class UsageMonitor:
         self._save_usage_history()
         logger.info("Usage monitoring manually unpaused")
 
+    def _reset_pause_state(self) -> None:
+        """Reset pause state for testing."""
+        self.paused = False
+        self.pause_until = 0.0
+
 
 # Global usage monitor instance
 _usage_monitor: Optional[UsageMonitor] = None
@@ -358,6 +363,12 @@ def get_claude_usage_stats() -> Dict[str, Any]:
     return get_usage_monitor().get_usage_stats()
 
 
+def reset_usage_monitor() -> None:
+    """Reset the global usage monitor instance for testing."""
+    global _usage_monitor
+    _usage_monitor = None
+
+
 __all__ = [
     "UsageWindow",
     "UsageMonitor",
@@ -365,4 +376,5 @@ __all__ = [
     "record_claude_usage",
     "can_make_claude_request",
     "get_claude_usage_stats",
+    "reset_usage_monitor",
 ]
