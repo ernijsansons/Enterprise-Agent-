@@ -1,0 +1,19 @@
+# Content Domain Pack
+prompt_adapter: content creation workflows
+generation_guidelines:
+  - Target FK score >= 8 with SEO keywords woven naturally.
+  - Provide factual, cited statements only.
+readability:
+  metric: fk_score
+  target: ">=8"
+validators:
+  - name: seo_checklist
+    attributes:
+      keywords_present: true
+  - name: originality
+    attributes:
+      duplication: "<5%"
+reflectors:
+  - name: style_fix
+    provider: grammar
+# Example: "Write blog on AI trends"

@@ -1,0 +1,5 @@
+[
+  {"domain": "coding", "success": 1.0, "duration": 120.0},
+  {"domain": "social_media", "success": 1.0, "duration": 90.0},
+  {"domain": "trading", "success": 1.0, "duration": 150.0}
+]

@@ -1,0 +1,16 @@
+# Trading Domain Pack
+prompt_adapter: quantitative trading strategies
+generation_guidelines:
+  - Include risk metrics (Sharpe, drawdown) and assumptions.
+  - Avoid unverified market data.
+risk_limit:
+  metric: max_drawdown
+  target: "<=10%"
+validators:
+  - name: backtest
+    attributes:
+      sharpe: ">1.0"
+reflectors:
+  - name: signal_refine
+    provider: pnl_optimize
+# Example: "Backtest MA crossover strategy"

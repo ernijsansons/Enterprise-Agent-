@@ -1,0 +1,168 @@
+# Cursor Workflow for Enterprise Agent
+# Place this file in your project's .cursor/workflows/ directory
+
+name: Enterprise Agent
+description: Run Enterprise Agent commands directly from Cursor
+
+# Agent initialization
+commands:
+  # Initialize agent in current project
+  - name: "Initialize Enterprise Agent"
+    key: "ea-init"
+    command: "enterprise-agent init"
+    description: "Set up Enterprise Agent in this project"
+    icon: "🚀"
+
+  # Quick run commands
+  - name: "Agent: Code Review"
+    key: "ea-review"
+    command: "enterprise-agent run --domain coding --input 'Review the current file for best practices, security, and performance'"
+    description: "Review current code"
+    icon: "🔍"
+    context: "file"
+
+  - name: "Agent: Generate Tests"
+    key: "ea-test"
+    command: "enterprise-agent run --domain coding --input 'Generate comprehensive tests for the current file'"
+    description: "Generate tests for current file"
+    icon: "🧪"
+    context: "file"
+
+  - name: "Agent: Refactor Code"
+    key: "ea-refactor"
+    command: "enterprise-agent run --domain coding --input 'Refactor the current file to improve readability and maintainability'"
+    description: "Refactor current file"
+    icon: "♻️"
+    context: "file"
+
+  - name: "Agent: Add Documentation"
+    key: "ea-docs"
+    command: "enterprise-agent run --domain coding --input 'Add comprehensive documentation to the current file'"
+    description: "Document current file"
+    icon: "📚"
+    context: "file"
+
+  # Domain-specific commands
+  - name: "Agent: UI Component"
+    key: "ea-ui"
+    command: "enterprise-agent run --domain ui --input '${input:component}'"
+    description: "Generate UI component"
+    icon: "🎨"
+    inputs:
+      - name: "component"
+        description: "Describe the UI component to create"
+        default: "Create a responsive dashboard component"
+
+  - name: "Agent: API Endpoint"
+    key: "ea-api"
+    command: "enterprise-agent run --domain coding --input 'Create REST API endpoint for ${input:endpoint}'"
+    description: "Generate API endpoint"
+    icon: "🌐"
+    inputs:
+      - name: "endpoint"
+        description: "Describe the API endpoint"
+        default: "user authentication"
+
+  - name: "Agent: Database Schema"
+    key: "ea-db"
+    command: "enterprise-agent run --domain coding --input 'Design database schema for ${input:feature}'"
+    description: "Design database schema"
+    icon: "🗄️"
+    inputs:
+      - name: "feature"
+        description: "Describe the feature"
+        default: "user management system"
+
+  # Analysis commands
+  - name: "Agent: Analyze Project"
+    key: "ea-analyze"
+    command: "enterprise-agent analyze"
+    description: "Analyze current project structure"
+    icon: "📊"
+
+  - name: "Agent: Security Audit"
+    key: "ea-security"
+    command: "enterprise-agent run --domain coding --input 'Perform security audit of the project, focusing on common vulnerabilities'"
+    description: "Security audit"
+    icon: "🔒"
+
+  - name: "Agent: Performance Review"
+    key: "ea-perf"
+    command: "enterprise-agent run --domain coding --input 'Analyze project for performance bottlenecks and optimization opportunities'"
+    description: "Performance analysis"
+    icon: "⚡"
+
+  # Interactive mode
+  - name: "Agent: Interactive Mode"
+    key: "ea-interactive"
+    command: "enterprise-agent interactive"
+    description: "Start interactive agent session"
+    icon: "💬"
+    terminal: true
+
+  # Custom prompt
+  - name: "Agent: Custom Prompt"
+    key: "ea-custom"
+    command: "enterprise-agent run --domain ${input:domain} --input '${input:prompt}'"
+    description: "Run custom agent prompt"
+    icon: "✨"
+    inputs:
+      - name: "domain"
+        description: "Select domain"
+        type: "select"
+        options:
+          - "coding"
+          - "ui"
+          - "social"
+          - "content"
+          - "trading"
+          - "real_estate"
+        default: "coding"
+      - name: "prompt"
+        description: "Enter your prompt"
+        type: "text"
+        multiline: true
+        default: "Help me with..."
+
+# Keyboard shortcuts
+shortcuts:
+  - key: "cmd+shift+a"
+    command: "ea-custom"
+    description: "Quick agent prompt"
+  - key: "cmd+shift+r"
+    command: "ea-review"
+    description: "Review current file"
+  - key: "cmd+shift+t"
+    command: "ea-test"
+    description: "Generate tests"
+  - key: "cmd+shift+i"
+    command: "ea-interactive"
+    description: "Interactive mode"
+
+# Context menu integration
+context_menu:
+  - name: "Enterprise Agent"
+    commands:
+      - "ea-review"
+      - "ea-test"
+      - "ea-refactor"
+      - "ea-docs"
+      - "separator"
+      - "ea-custom"
+
+# File associations
+file_associations:
+  - pattern: "*.py"
+    commands: ["ea-review", "ea-test", "ea-refactor"]
+  - pattern: "*.js|*.ts|*.jsx|*.tsx"
+    commands: ["ea-review", "ea-test", "ea-ui"]
+  - pattern: "*.go|*.rs|*.java"
+    commands: ["ea-review", "ea-test", "ea-refactor"]
+  - pattern: "*.md"
+    commands: ["ea-docs"]
+
+# Settings
+settings:
+  auto_save: true
+  show_output: true
+  terminal_integration: true

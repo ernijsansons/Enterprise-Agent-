@@ -1,0 +1,16 @@
+# Real Estate Domain Pack
+prompt_adapter: real estate investment analysis
+generation_guidelines:
+  - Provide cap rate, DSCR, and comparable summaries.
+  - Highlight assumptions and data sources.
+yield_threshold:
+  metric: cap_rate
+  target: ">8%"
+validators:
+  - name: cash_flow
+    attributes:
+      dscr: ">1.25"
+reflectors:
+  - name: valuation_adjust
+    provider: comps_update
+# Example: "Value property at 123 Main St"

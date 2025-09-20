@@ -1,0 +1,129 @@
+{
+  "name": "Enterprise Agent Settings",
+  "description": "Cursor settings for Enterprise Agent integration",
+
+  "commands": [
+    {
+      "name": "enterprise-agent.init",
+      "title": "Initialize Enterprise Agent",
+      "command": "enterprise-agent init",
+      "category": "Enterprise Agent"
+    },
+    {
+      "name": "enterprise-agent.run",
+      "title": "Run Enterprise Agent",
+      "command": "enterprise-agent run --input \"${input}\"",
+      "category": "Enterprise Agent"
+    },
+    {
+      "name": "enterprise-agent.interactive",
+      "title": "Interactive Mode",
+      "command": "enterprise-agent interactive",
+      "category": "Enterprise Agent"
+    }
+  ],
+
+  "keybindings": [
+    {
+      "key": "ctrl+shift+a",
+      "mac": "cmd+shift+a",
+      "command": "enterprise-agent.run",
+      "when": "editorTextFocus"
+    },
+    {
+      "key": "ctrl+shift+i",
+      "mac": "cmd+shift+i",
+      "command": "enterprise-agent.interactive"
+    }
+  ],
+
+  "terminal": {
+    "profiles": {
+      "Enterprise Agent": {
+        "command": "enterprise-agent",
+        "args": ["interactive"],
+        "icon": "🤖",
+        "color": "terminal.ansiBlue"
+      }
+    }
+  },
+
+  "tasks": [
+    {
+      "label": "Enterprise Agent: Review Code",
+      "type": "shell",
+      "command": "enterprise-agent",
+      "args": [
+        "run",
+        "--domain", "coding",
+        "--input", "Review the current file for best practices and improvements"
+      ],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Enterprise Agent: Generate Tests",
+      "type": "shell",
+      "command": "enterprise-agent",
+      "args": [
+        "run",
+        "--domain", "coding",
+        "--input", "Generate comprehensive tests for the current file"
+      ],
+      "group": "test"
+    },
+    {
+      "label": "Enterprise Agent: Analyze Project",
+      "type": "shell",
+      "command": "enterprise-agent",
+      "args": ["analyze"],
+      "group": "build"
+    }
+  ],
+
+  "snippets": {
+    "enterprise-agent-init": {
+      "prefix": "ea-init",
+      "body": [
+        "# Initialize Enterprise Agent",
+        "enterprise-agent init",
+        "",
+        "# Configure for this project",
+        "# Edit .enterprise-agent/config.yml"
+      ],
+      "description": "Initialize Enterprise Agent"
+    },
+    "enterprise-agent-run": {
+      "prefix": "ea-run",
+      "body": [
+        "enterprise-agent run --domain ${1:coding} --input \"${2:your prompt here}\""
+      ],
+      "description": "Run Enterprise Agent command"
+    }
+  },
+
+  "workspace": {
+    "folders": [
+      {
+        "name": "Enterprise Agent Config",
+        "path": "./.enterprise-agent"
+      }
+    ]
+  },
+
+  "files": {
+    "associations": {
+      ".enterprise-agent/config.yml": "yaml",
+      ".enterprise-agent/templates/*.md": "markdown"
+    }
+  },
+
+  "editor": {
+    "rulers": [88],
+    "tabSize": 2,
+    "insertSpaces": true
+  }
+}

@@ -1,0 +1,17 @@
+# Social Media Domain Pack
+prompt_adapter: social media campaigns
+generation_guidelines:
+  - Maintain positive brand tone and include CTA when appropriate.
+  - Respect platform length and hashtag rules.
+engagement_kpi:
+  metric: min_likes
+  target: 10
+validators:
+  - name: brand_tone
+    attributes:
+      sentiment: positive
+      max_length: 280
+reflectors:
+  - name: engagement_proxy
+    provider: ctr_estimate
+# Example: "Draft Q4 campaign posts for Twitter"

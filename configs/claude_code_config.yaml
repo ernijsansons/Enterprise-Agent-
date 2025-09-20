@@ -1,0 +1,186 @@
+# Claude Code CLI Provider Configuration
+# This configuration enables using Claude Code (included in Max subscription)
+# instead of the Claude API (which costs extra)
+
+# Provider Selection
+provider:
+  # Set to true to use Claude Code CLI instead of API
+  use_claude_code: true
+
+  # Automatically remove ANTHROPIC_API_KEY to force subscription mode
+  auto_remove_api_key: true
+
+  # Enable fallback to API if CLI fails
+  enable_api_fallback: false  # Set to false to ensure no API charges
+
+# Claude Code CLI Settings
+claude_code:
+  # Default model to use (sonnet, opus, haiku)
+  default_model: sonnet
+
+  # Fallback model for overload handling
+  fallback_model: haiku
+
+  # Timeout for CLI commands (seconds)
+  timeout: 60
+
+  # Output format for responses
+  output_format: json  # json, text, or stream-json
+
+  # Permission mode for automation
+  permission_mode: default  # default, acceptEdits, bypassPermissions, plan
+
+  # Auto-accept mode (dangerous in production!)
+  auto_mode: false
+
+  # Enable verbose output for debugging
+  verbose: false
+
+  # Debug categories (e.g., "api,hooks" or "!statsig,!file")
+  debug: null
+
+# Session Management
+sessions:
+  # Enable session management for context retention
+  enabled: true
+
+  # Fork sessions for parallel processing
+  fork_on_parallel: true
+
+  # Session retention time (minutes)
+  retention: 300  # 5 hours
+
+# Tool Permissions
+tools:
+  # Tools that Claude Code can use without prompting
+  allowed:
+    - "Bash(git:*)"  # Git operations
+    - "Edit"          # File editing
+    - "Read"          # File reading
+    - "Write"         # File writing
+    - "Search"        # Code search
+
+  # Tools that are explicitly disallowed
+  disallowed:
+    - "Bash(rm:*)"    # No deletion commands
+    - "Bash(sudo:*)"  # No sudo commands
+
+# Cache Settings (for CLI responses)
+cache:
+  # Enable caching of CLI responses
+  enabled: true
+
+  # TTL for different role types (seconds)
+  ttl:
+    planner: 1800      # 30 minutes
+    coder: 900         # 15 minutes
+    validator: 600     # 10 minutes
+    reviewer: 900      # 15 minutes
+    reflector: 600     # 10 minutes
+
+# Usage Monitoring
+monitoring:
+  # Track usage to avoid hitting Max plan limits
+  track_usage: true
+
+  # Max prompts per 5-hour window (Max 20x plan)
+  max_prompts_per_window: 800
+
+  # Warning threshold (percentage)
+  warning_threshold: 80
+
+  # Auto-pause when limit reached
+  auto_pause_at_limit: true
+
+# Authentication
+auth:
+  # Ensure subscription authentication (not API key)
+  require_subscription: true
+
+  # Setup long-lived token for uninterrupted usage
+  setup_token: true
+
+  # Check login status on startup
+  verify_on_startup: true
+
+# Error Handling
+error_handling:
+  # Retry failed commands
+  retry_enabled: true
+
+  # Max retry attempts
+  max_retries: 3
+
+  # Retry delay (seconds)
+  retry_delay: 2
+
+  # Exponential backoff
+  exponential_backoff: true
+
+# Performance
+performance:
+  # Use streaming for long responses
+  enable_streaming: false
+
+  # Parallel execution for independent tasks
+  parallel_execution: true
+
+  # Max parallel workers
+  max_workers: 2
+
+# Directories
+directories:
+  # Additional directories Claude Code can access
+  additional_access:
+    - "./src"
+    - "./tests"
+    - "./configs"
+
+  # Working directory for Claude Code execution
+  working_directory: "."
+
+# MCP (Model Context Protocol) Servers
+mcp:
+  # Enable MCP server connections
+  enabled: false
+
+  # MCP server configurations
+  servers: []
+    # Example:
+    # - name: github
+    #   config: ./mcp/github.json
+    # - name: jira
+    #   config: ./mcp/jira.json
+
+# Migration Settings
+migration:
+  # Gradually migrate from API to CLI
+  gradual_rollout: true
+
+  # Percentage of requests to use CLI (0-100)
+  cli_percentage: 100  # Start with 100% for immediate savings
+
+  # Track migration metrics
+  track_metrics: true
+
+# Environment-Specific Overrides
+environments:
+  development:
+    claude_code:
+      verbose: true
+      debug: "api,hooks"
+    monitoring:
+      track_usage: false
+
+  production:
+    claude_code:
+      auto_mode: false
+      permission_mode: default
+    error_handling:
+      max_retries: 5
+
+  testing:
+    provider:
+      use_claude_code: false  # Use mocks for testing
+    cache:
+      enabled: false

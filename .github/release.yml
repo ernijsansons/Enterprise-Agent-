@@ -1,0 +1,15 @@
+changelog:
+  categories:
+    - title: ?? Features
+      labels:
+        - feat
+        - enhancement
+    - title: ?? Fixes
+      labels:
+        - fix
+        - bug
+    - title: ?? Maintenance
+      labels:
+        - chore
+        - docs
+        - ci

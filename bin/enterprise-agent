@@ -1,0 +1,80 @@
+#!/usr/bin/env node
+/**
+ * Enterprise Agent CLI - Node.js wrapper
+ * This wraps the Python CLI for NPM distribution
+ */
+
+const { spawn } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
+// Check if Python is available
+function checkPython() {
+    return new Promise((resolve) => {
+        const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+        const check = spawn(pythonCmd, ['--version']);
+
+        check.on('close', (code) => {
+            resolve(code === 0 ? pythonCmd : null);
+        });
+
+        check.on('error', () => {
+            resolve(null);
+        });
+    });
+}
+
+// Main execution
+async function main() {
+    // Check Python installation
+    const pythonCmd = await checkPython();
+    if (!pythonCmd) {
+        console.error('❌ Python 3.10+ is required but not found');
+        console.error('   Please install Python from https://python.org');
+        process.exit(1);
+    }
+
+    // Find the CLI script
+    const scriptPath = path.join(__dirname, '..', 'enterprise_agent_cli.py');
+
+    if (!fs.existsSync(scriptPath)) {
+        console.error('❌ Enterprise Agent CLI script not found');
+        console.error(`   Expected at: ${scriptPath}`);
+        process.exit(1);
+    }
+
+    // Pass through all arguments
+    const args = [scriptPath, ...process.argv.slice(2)];
+
+    // Spawn Python process
+    const agent = spawn(pythonCmd, args, {
+        stdio: 'inherit',
+        env: {
+            ...process.env,
+            PYTHONPATH: path.join(__dirname, '..')
+        }
+    });
+
+    // Handle exit
+    agent.on('close', (code) => {
+        process.exit(code || 0);
+    });
+
+    // Handle errors
+    agent.on('error', (err) => {
+        console.error('❌ Failed to start Enterprise Agent:', err.message);
+        process.exit(1);
+    });
+}
+
+// Handle unhandled rejections
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    process.exit(1);
+});
+
+// Run
+main().catch((err) => {
+    console.error('❌ Error:', err.message);
+    process.exit(1);
+});

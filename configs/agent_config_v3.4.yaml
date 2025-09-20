@@ -1,0 +1,175 @@
+# Enterprise Coding Agent v3.4 Configuration
+# Modular, DRY design for multi-domain workflows. GPT-5-Codex primary for agentic tasks.
+# Generated September 15, 2025. Load with ruamel.yaml for advanced features.
+
+default_model_config: &default_config
+  timeout: 2100  # Max for adaptive thinking
+  retry: 3  # Backoff retries
+  temperature: 0.2  # Low for determinism
+
+components:
+  models:
+    planner: claude_sonnet_4  # Claude for decomposition (maximize Anthropic Max value)
+    coder_primary: claude_sonnet_4  # Claude primary for generation/reflection
+    coder_backup: openai_gpt_5  # OpenAI as backup only (using gpt-3.5-turbo)
+    reviewer_a: claude_sonnet_4  # Claude for primary review
+    reviewer_b: claude_opus_4  # Claude Opus for complex/critical reviews
+    reflector_primary: claude_sonnet_4  # Claude for fixes and improvements
+    reflector_secondary: openai_gpt_5  # OpenAI backup for library awareness
+    validator: claude_sonnet_4  # Claude for validation
+    emerging:
+      - google_gemini_2_5  # Optional multimodal
+      # TODO: Add more as available
+  tools:
+    code_generator:
+      cursor: cursor_ai_composer  # IDE integration
+      swarm: baidu_genflow_2_0_coding_agent  # Parallelism
+    ui_automation: openai_computer_use  # Multimodal UI
+    semantic_search: sourcegraph_cody  # Code retrieval
+    embeddings: codet5_plus  # Vector similarity
+    refactoring: pattern_trained  # Automated refactors
+    emerging:
+      - name: github_copilot_workspace  # Collaboration
+      - name: replit_agent  # Execution
+      - name: advanced_rag
+        provider: pinecone_weaviate_multimodal  # Retrieval
+      - name: security_agents
+        provider: snyk_security_cli  # Vulns
+        config:
+          project_id: "39fe3efb-d65a-4f29-a662-7659fffc4476"  # Snyk project ID
+      - name: genflow_2_0_swarm
+        provider: baidu_multi_agent_parallel  # Swarms
+      - name: gpt_5_codex_cli
+        provider: openai_agentic_coding  # Primary CLI for auto-edit
+      - name: claude_code_cli
+        provider: anthropic_agentic_coding  # Backup CLI
+    optimization:
+      core: [search, test_runner, graph_query]
+      eval: quarterly_transcripts  # Benchmarking
+
+enterprise_coding_agent:
+  planning:
+    model: components.models.planner
+    reasoning: persistent_chain  # Maintain context
+    prompt_adapter: "Think step-by-step"  # Domain adapters can override
+    <<: *default_config
+  coding:
+    primary: components.models.coder_primary
+    backup: components.models.coder_backup
+    specialists:
+      - components.tools.code_generator.cursor
+      - components.tools.ui_automation
+      - components.tools.code_generator.swarm
+      - {name: bug_finder, value: ensemble_validator_reflector}
+      - {name: gpt_5_codex_integration, value: openai_agentic_coding}
+      - {name: claude_code_integration, value: anthropic_agentic_coding}
+    <<: *default_config
+  reviewing:
+    ensemble:
+      - components.models.reviewer_a
+      - components.models.reviewer_b
+    confidence_threshold: 0.8  # Halt/fix below
+  reflecting:
+    models:
+      - name: components.models.reflector_primary
+        adapter: multimodal_stack_trace  # Traces
+      - name: components.models.reflector_secondary
+        adapter: real_time_library_awareness  # Libs
+    ensemble: correction_plan  # Combine fixes
+    prompt: debugger_mode  # Focused debugging
+    trigger: test_failure_threshold > 0.5
+    max_iterations: 5  # Self-healing limit
+    halt_on_find: true  # Stop if confidence >=0.8
+    gpt_5_codex_enhance: true  # Primary CLI
+    claude_code_enhance: conditional  # Vuln only
+    <<: *default_config
+  validating:
+    model: components.models.validator
+    prompt: test_plan_generation
+    trigger: post_planning
+    coverage_threshold: 0.97  # Strict for quality
+    tools:
+      - unit
+      - integration
+      - fuzz
+  orchestration:
+    framework: "langgraph + genflow_multi_agent_parallel"  # Graph + swarms
+    routing: dynamic_cost_complexity  # Codex if <0.05, Claude on vuln
+    parallel_execution: enabled  # 60-80% faster
+    self_healing: true  # Retries
+    human_in_loop: genflow_swarm_refinements  # HITL
+    modes:
+      - build_from_docs: greenfield_from_scratch  # Coding default
+      - scan_fix_existing: end_to_end_scan_with_decisions  # Social scan
+    runtime_optimizer:
+      cost_aware: true
+      dynamic_benchmarks: swe_bench_microtasks_periodic  # Eval
+    parallelism_guardrails:
+      agent_governor: throttle_on_cost_spike_or_drift  # Caps
+    decision_layer:
+      triggers:
+        bug_rate: "> 0.25"
+        complexity: "> 18"
+        maintainability: "< 85"
+      actions:
+        - fix_targeted
+        - delete_refactor_parts
+        - rebuild_from_scratch
+  memory:
+    types:
+      - immediate  # Task-local
+      - session  # Run
+      - project  # Persistent
+      - organizational  # Shared
+    storage: hybrid(vector+graph+relational)  # Pinecone + NetworkX
+    knowledge_graph: gitlab_rust_based  # Deps
+    decay_layer: relevance_based_pruning_agent  # Prune 40%
+  intelligence:
+    semantic_search: components.tools.semantic_search
+    dependency_analysis: enabled
+    embeddings: components.tools.embeddings
+    automated_refactoring: components.tools.refactoring
+  execution:
+    environment: "nix_flakes + wasm_sandbox"  # Secure
+  security:
+    features:
+      - zero_trust_execution
+      - ml_vulnerability_detection
+      - supply_chain_scanning
+      - behavioral_monitoring
+      - cycode_red_teaming
+      - genflow_anomaly
+    gates:
+      cycode_red_teaming: pre_merge_gate
+      genflow_anomaly: swarm_level_checks
+    retention_days: 30  # Compliance default
+  observability:
+    features:
+      - quality_metrics
+      - decision_traces
+      - developer_benchmarking
+      - agentops_tracing  # LLM calls
+      - genflow_telemetry
+    telemetry:
+      genflow_telemetry: sub_agent_logs
+  governance:
+    metrics:
+      - code_quality: "sonarqube (complexity, duplication, maintainability >85)"
+      - performance: locust_benchmarking
+      - success_rate: "pr_merge_velocity (auto vs approved)"
+      - swarm_efficiency: genflow_completion_rates
+      - business_impact: velocity_lead_time_spec_to_deploy
+      - bug_severity: sonarqube_scoring
+    rebuild_thresholds:
+      bug_rate: 0.25
+      complexity: 18
+      maintainability: 85
+    alerting: grafana_dashboards
+  tools:
+    emerging: components.tools.emerging
+    optimization: components.tools.optimization
+  models_emerging: components.models.emerging
+
+# Schema Notes: Extend with &default_config for shared timeouts/retries. Validate with ruamel.yaml.
+
+

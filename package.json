@@ -1,0 +1,64 @@
+{
+  "name": "enterprise-agent-cli",
+  "version": "3.4.0",
+  "description": "Multi-domain AI agent for software development with Claude Code integration",
+  "main": "index.js",
+  "bin": {
+    "enterprise-agent": "./bin/enterprise-agent",
+    "ea": "./bin/enterprise-agent"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js",
+    "setup": "python setup_claude_code.py",
+    "test": "python -m pytest tests/",
+    "lint": "python -m ruff check src/",
+    "format": "python -m black src/"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "claude",
+    "gpt",
+    "coding",
+    "automation",
+    "cli",
+    "enterprise",
+    "development",
+    "claude-code"
+  ],
+  "author": "Enterprise Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourorg/enterprise-agent.git"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "scripts/",
+    "configs/",
+    "templates/",
+    "enterprise_agent_cli.py",
+    "setup_claude_code.py",
+    "pyproject.toml",
+    "requirements.txt",
+    "README.md",
+    "CLAUDE_CODE_SETUP.md",
+    ".env.example"
+  ],
+  "engines": {
+    "node": ">=14.0.0",
+    "python": ">=3.10.0"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@anthropic-ai/claude-code": "*"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/claude-code": "*"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  }
+}

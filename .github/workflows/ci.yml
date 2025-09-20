@@ -1,0 +1,27 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install deps
+        run: |
+          pip install poetry
+          poetry install
+      - name: Lint
+        run: make lint
+      - name: Test
+        run: make test
+      - name: Typecheck
+        run: make typecheck
+      - name: Format
+        run: make format
+      - name: Security Scan
+        run: make bandit  # Assuming bandit in make

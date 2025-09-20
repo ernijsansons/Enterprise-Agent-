@@ -1,0 +1,18 @@
+# UI Domain Pack
+prompt_adapter: ui design and front-end experiences
+generation_guidelines:
+  - Center on emotion-driven wow moments with premium aesthetics.
+  - Use Tailwind + ShadCN components, integrate Mantine charts and React-Three-Fiber depth when helpful.
+  - Ensure accessibility (WCAG AA), responsiveness, and 60fps micro-interactions.
+validators:
+  - name: accessibility
+    attributes:
+      target: wcag_aa
+  - name: lighthouse
+    attributes:
+      performance: 1.0
+      accessibility: 1.0
+reflectors:
+  - name: ui_polish
+    provider: design_iteration
+# Example: "Design SaaS dashboard UI for AI analytics"

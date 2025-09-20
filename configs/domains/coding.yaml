@@ -1,0 +1,13 @@
+# Coding Domain Pack
+prompt_adapter: software development tasks
+generation_guidelines:
+  - Focus on clean, tested code with clear function boundaries.
+  - Use domain context from specifications only.
+coverage_threshold: 0.97
+validators:
+  - name: pytest_coverage
+    condition: ">=0.97"
+reflectors:
+  - name: code_smells
+    provider: sonarqube
+# Example prompt: "Generate Python REST API from spec"
