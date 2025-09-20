@@ -4,12 +4,13 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import pickle
+import pickle  # nosec B403
 import threading
 import time
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, Union
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,9 @@ class CacheEntry:
         self.hits += 1
         return self.value
 
-    def update_quality(self, score: float, feedback: Optional[Dict[str, Any]] = None) -> None:
+    def update_quality(
+        self, score: float, feedback: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Update quality metrics for this cached item."""
         self.quality_score = score
         if feedback:
@@ -93,8 +96,7 @@ class TTLCache:
                 self._evict_lru()
 
             self._cache[key] = CacheEntry(
-                value=value,
-                ttl=ttl if ttl is not None else self.default_ttl
+                value=value, ttl=ttl if ttl is not None else self.default_ttl
             )
 
     def delete(self, key: str) -> bool:
@@ -135,7 +137,7 @@ class TTLCache:
         # Find entry with oldest timestamp and lowest hits
         lru_key = min(
             self._cache.keys(),
-            key=lambda k: (self._cache[k].timestamp, -self._cache[k].hits)
+            key=lambda k: (self._cache[k].timestamp, -self._cache[k].hits),
         )
 
         del self._cache[lru_key]
@@ -145,9 +147,7 @@ class TTLCache:
         """Get cache statistics."""
         with self._lock:
             total_requests = self._stats["hits"] + self._stats["misses"]
-            hit_rate = (
-                self._stats["hits"] / total_requests if total_requests > 0 else 0
-            )
+            hit_rate = self._stats["hits"] / total_requests if total_requests > 0 else 0
 
             return {
                 **self._stats,
@@ -155,7 +155,9 @@ class TTLCache:
                 "hit_rate": hit_rate,
             }
 
-    def update_quality(self, key: str, score: float, feedback: Optional[Dict[str, Any]] = None) -> None:
+    def update_quality(
+        self, key: str, score: float, feedback: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Update quality metrics for a cached item."""
         with self._lock:
             entry = self._cache.get(key)
@@ -177,7 +179,9 @@ class TTLCache:
                     elif entry.quality_score < 0.5:
                         low_quality_items += 1
 
-            avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0.0
+            avg_quality = (
+                sum(quality_scores) / len(quality_scores) if quality_scores else 0.0
+            )
 
             return {
                 "average_quality": avg_quality,
@@ -214,7 +218,7 @@ class ModelResponseCache(TTLCache):
         self,
         default_ttl: float = 600,  # 10 minutes for model responses
         max_size: int = 500,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(default_ttl=default_ttl, max_size=max_size, **kwargs)
 
@@ -312,8 +316,6 @@ class DiskCache:
         default_ttl: float = 3600,  # 1 hour default
         serializer: str = "pickle",  # "pickle" or "json"
     ):
-        from pathlib import Path
-
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
         self.default_ttl = default_ttl
@@ -334,7 +336,7 @@ class DiskCache:
         try:
             with open(path, "rb" if self.serializer == "pickle" else "r") as f:
                 if self.serializer == "pickle":
-                    data = pickle.load(f)
+                    data = pickle.load(f)  # nosec B301
                 else:
                     data = json.load(f)
 

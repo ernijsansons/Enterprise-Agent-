@@ -11,7 +11,14 @@
       "Bash(poetry --version)",
       "Bash(poetry run bandit:*)",
       "Bash(poetry check:*)",
-      "Bash(make:*)"
+      "Bash(make:*)",
+      "Bash(poetry install:*)",
+      "Bash(poetry run black:*)",
+      "Bash(poetry run isort:*)",
+      "Bash(poetry run ruff:*)",
+      "Bash(poetry run python:*)",
+      "Bash(poetry run mypy:*)",
+      "Bash(poetry run pytest:*)"
     ],
     "deny": [],
     "ask": []

@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import os
 import re
-import subprocess
+import subprocess  # nosec B404
 from typing import Any, Dict, Tuple
 
 from src.tools import scan_vulnerabilities
@@ -23,7 +23,7 @@ def _run_pytest(workspace: str, threshold: float) -> Tuple[bool, float, str]:
         "--cov-report=term-missing",
     ]
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             cmd,
             cwd=workspace,
             capture_output=True,

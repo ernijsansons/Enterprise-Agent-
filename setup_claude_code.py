@@ -9,20 +9,20 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 
 class Colors:
     """Terminal colors for output."""
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKCYAN = "\033[96m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
 
 
 def print_header(text: str) -> None:
@@ -56,10 +56,7 @@ def check_claude_cli_installed() -> bool:
     """Check if Claude Code CLI is installed."""
     try:
         result = subprocess.run(
-            ["claude", "--version"],
-            capture_output=True,
-            text=True,
-            timeout=5
+            ["claude", "--version"], capture_output=True, text=True, timeout=5
         )
         if result.returncode == 0:
             print_success(f"Claude Code CLI is installed: {result.stdout.strip()}")
@@ -79,7 +76,9 @@ def install_claude_cli() -> bool:
     try:
         subprocess.run(["npm", "--version"], capture_output=True, check=True)
     except (FileNotFoundError, subprocess.CalledProcessError):
-        print_error("npm is not installed. Please install Node.js first: https://nodejs.org/")
+        print_error(
+            "npm is not installed. Please install Node.js first: https://nodejs.org/"
+        )
         return False
 
     # Install Claude Code CLI
@@ -88,7 +87,7 @@ def install_claude_cli() -> bool:
         result = subprocess.run(
             ["npm", "install", "-g", "@anthropic-ai/claude-code"],
             capture_output=False,
-            text=True
+            text=True,
         )
         if result.returncode == 0:
             print_success("Claude Code CLI installed successfully")
@@ -108,7 +107,7 @@ def check_claude_login() -> bool:
             ["claude", "--print", "--model", "haiku", "echo test"],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
         )
 
         if "please run `claude login`" in result.stderr.lower():
@@ -156,10 +155,7 @@ def setup_token() -> bool:
 
     try:
         result = subprocess.run(
-            ["claude", "setup-token"],
-            capture_output=True,
-            text=True,
-            timeout=30
+            ["claude", "setup-token"], capture_output=True, text=True, timeout=30
         )
         if result.returncode == 0:
             print_success("Authentication token set up successfully")
@@ -178,7 +174,9 @@ def check_api_key() -> bool:
 
     if api_key:
         print_warning("ANTHROPIC_API_KEY is set in environment!")
-        print_warning("This will cause Claude Code to use API billing instead of your subscription")
+        print_warning(
+            "This will cause Claude Code to use API billing instead of your subscription"
+        )
         print_info("To use your Max subscription, remove the API key from:")
         print_info("  - Environment variables")
         print_info("  - .env file")
@@ -189,7 +187,9 @@ def check_api_key() -> bool:
     env_file = Path(".env")
     if env_file.exists():
         content = env_file.read_text()
-        if "ANTHROPIC_API_KEY" in content and not content.split("ANTHROPIC_API_KEY")[0].endswith("#"):
+        if "ANTHROPIC_API_KEY" in content and not content.split("ANTHROPIC_API_KEY")[
+            0
+        ].endswith("#"):
             print_warning("ANTHROPIC_API_KEY found in .env file!")
             print_info("Comment it out or remove it to use your subscription")
             return False
@@ -206,7 +206,7 @@ def create_env_file() -> bool:
     if env_file.exists():
         print_info(".env file already exists")
         response = input("Do you want to update it for Claude Code? (y/n): ").lower()
-        if response != 'y':
+        if response != "y":
             return True
 
     if not env_example.exists():
@@ -228,7 +228,9 @@ def create_env_file() -> bool:
     lines = content.split("\n")
     new_lines = []
     for line in lines:
-        if line.strip().startswith("ANTHROPIC_API_KEY=") and not line.strip().startswith("#"):
+        if line.strip().startswith(
+            "ANTHROPIC_API_KEY="
+        ) and not line.strip().startswith("#"):
             new_lines.append(f"# {line}  # Commented out for Claude Code subscription")
         else:
             new_lines.append(line)
@@ -288,7 +290,7 @@ def main():
     # Step 1: Check/Install CLI
     if not check_claude_cli_installed():
         response = input("\nDo you want to install Claude Code CLI? (y/n): ").lower()
-        if response == 'y':
+        if response == "y":
             if not install_claude_cli():
                 print_error("Setup failed: Could not install Claude Code CLI")
                 return 1
@@ -300,7 +302,7 @@ def main():
     # Step 2: Check/Perform login
     if not check_claude_login():
         response = input("\nDo you want to log in to Claude Code? (y/n): ").lower()
-        if response == 'y':
+        if response == "y":
             if not login_to_claude():
                 print_error("Setup failed: Could not log in")
                 return 1
@@ -310,7 +312,7 @@ def main():
 
     # Step 3: Set up token (optional)
     response = input("\nDo you want to set up a long-lived token? (y/n): ").lower()
-    if response == 'y':
+    if response == "y":
         setup_token()
 
     # Step 4: Check API key situation
@@ -318,7 +320,7 @@ def main():
 
     # Step 5: Create/Update .env file
     response = input("\nDo you want to create/update .env file? (y/n): ").lower()
-    if response == 'y':
+    if response == "y":
         create_env_file()
 
     # Final verification
@@ -328,7 +330,9 @@ def main():
         print_success("\nEverything is set up correctly!")
         print_info("\nYou can now run the Enterprise Agent with:")
         print("python src/agent_orchestrator.py")
-        print_info("\nYour agent will use Claude Code (covered by your Max subscription)")
+        print_info(
+            "\nYour agent will use Claude Code (covered by your Max subscription)"
+        )
         print_info("instead of the API (which would cost extra).")
     else:
         print_warning("\nSetup is incomplete. Please address the issues above.")

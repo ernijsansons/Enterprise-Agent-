@@ -7,28 +7,28 @@ default_model_config: &default_config
   retry: 3  # Backoff retries
   temperature: 0.2  # Low for determinism
 
-components:
-  models:
-    planner: claude_sonnet_4  # Claude for decomposition (maximize Anthropic Max value)
-    coder_primary: claude_sonnet_4  # Claude primary for generation/reflection
-    coder_backup: openai_gpt_5  # OpenAI as backup only (using gpt-3.5-turbo)
-    reviewer_a: claude_sonnet_4  # Claude for primary review
-    reviewer_b: claude_opus_4  # Claude Opus for complex/critical reviews
-    reflector_primary: claude_sonnet_4  # Claude for fixes and improvements
-    reflector_secondary: openai_gpt_5  # OpenAI backup for library awareness
-    validator: claude_sonnet_4  # Claude for validation
-    emerging:
+components: &components
+  models: &models
+    planner: &planner_model claude_sonnet_4  # Claude for decomposition (maximize Anthropic Max value)
+    coder_primary: &coder_primary_model claude_sonnet_4  # Claude primary for generation/reflection
+    coder_backup: &coder_backup_model openai_gpt_5  # OpenAI as backup only (using gpt-3.5-turbo)
+    reviewer_a: &reviewer_a_model claude_sonnet_4  # Claude for primary review
+    reviewer_b: &reviewer_b_model claude_opus_4  # Claude Opus for complex/critical reviews
+    reflector_primary: &reflector_primary_model claude_sonnet_4  # Claude for fixes and improvements
+    reflector_secondary: &reflector_secondary_model openai_gpt_5  # OpenAI backup for library awareness
+    validator: &validator_model claude_sonnet_4  # Claude for validation
+    emerging: &emerging_models
       - google_gemini_2_5  # Optional multimodal
       # TODO: Add more as available
-  tools:
-    code_generator:
-      cursor: cursor_ai_composer  # IDE integration
-      swarm: baidu_genflow_2_0_coding_agent  # Parallelism
-    ui_automation: openai_computer_use  # Multimodal UI
-    semantic_search: sourcegraph_cody  # Code retrieval
-    embeddings: codet5_plus  # Vector similarity
-    refactoring: pattern_trained  # Automated refactors
-    emerging:
+  tools: &tools
+    code_generator: &code_generator_tools
+      cursor: &cursor_tool cursor_ai_composer  # IDE integration
+      swarm: &swarm_tool baidu_genflow_2_0_coding_agent  # Parallelism
+    ui_automation: &ui_automation_tool openai_computer_use  # Multimodal UI
+    semantic_search: &semantic_search_tool sourcegraph_cody  # Code retrieval
+    embeddings: &embeddings_tool codet5_plus  # Vector similarity
+    refactoring: &refactoring_tool pattern_trained  # Automated refactors
+    emerging: &emerging_tools
       - name: github_copilot_workspace  # Collaboration
       - name: replit_agent  # Execution
       - name: advanced_rag
@@ -43,37 +43,37 @@ components:
         provider: openai_agentic_coding  # Primary CLI for auto-edit
       - name: claude_code_cli
         provider: anthropic_agentic_coding  # Backup CLI
-    optimization:
+    optimization: &optimization_tools
       core: [search, test_runner, graph_query]
       eval: quarterly_transcripts  # Benchmarking
 
 enterprise_coding_agent:
   planning:
-    model: components.models.planner
+    model: *planner_model
     reasoning: persistent_chain  # Maintain context
     prompt_adapter: "Think step-by-step"  # Domain adapters can override
     <<: *default_config
   coding:
-    primary: components.models.coder_primary
-    backup: components.models.coder_backup
+    primary: *coder_primary_model
+    backup: *coder_backup_model
     specialists:
-      - components.tools.code_generator.cursor
-      - components.tools.ui_automation
-      - components.tools.code_generator.swarm
+      - *cursor_tool
+      - *ui_automation_tool
+      - *swarm_tool
       - {name: bug_finder, value: ensemble_validator_reflector}
       - {name: gpt_5_codex_integration, value: openai_agentic_coding}
       - {name: claude_code_integration, value: anthropic_agentic_coding}
     <<: *default_config
   reviewing:
     ensemble:
-      - components.models.reviewer_a
-      - components.models.reviewer_b
+      - *reviewer_a_model
+      - *reviewer_b_model
     confidence_threshold: 0.8  # Halt/fix below
   reflecting:
     models:
-      - name: components.models.reflector_primary
+      - name: *reflector_primary_model
         adapter: multimodal_stack_trace  # Traces
-      - name: components.models.reflector_secondary
+      - name: *reflector_secondary_model
         adapter: real_time_library_awareness  # Libs
     ensemble: correction_plan  # Combine fixes
     prompt: debugger_mode  # Focused debugging
@@ -84,7 +84,7 @@ enterprise_coding_agent:
     claude_code_enhance: conditional  # Vuln only
     <<: *default_config
   validating:
-    model: components.models.validator
+    model: *validator_model
     prompt: test_plan_generation
     trigger: post_planning
     coverage_threshold: 0.97  # Strict for quality
@@ -125,10 +125,10 @@ enterprise_coding_agent:
     knowledge_graph: gitlab_rust_based  # Deps
     decay_layer: relevance_based_pruning_agent  # Prune 40%
   intelligence:
-    semantic_search: components.tools.semantic_search
+    semantic_search: *semantic_search_tool
     dependency_analysis: enabled
-    embeddings: components.tools.embeddings
-    automated_refactoring: components.tools.refactoring
+    embeddings: *embeddings_tool
+    automated_refactoring: *refactoring_tool
   execution:
     environment: "nix_flakes + wasm_sandbox"  # Secure
   security:
@@ -166,9 +166,9 @@ enterprise_coding_agent:
       maintainability: 85
     alerting: grafana_dashboards
   tools:
-    emerging: components.tools.emerging
-    optimization: components.tools.optimization
-  models_emerging: components.models.emerging
+    emerging: *emerging_tools
+    optimization: *optimization_tools
+  models_emerging: *emerging_models
 
 # Schema Notes: Extend with &default_config for shared timeouts/retries. Validate with ruamel.yaml.
 

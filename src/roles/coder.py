@@ -24,30 +24,34 @@ class Coder(BaseRole):
         ]
 
         if guidelines:
-            prompt_parts.extend([
-                "",
-                "## Guidelines",
-                "\n".join(f"- {item}" for item in guidelines),
-            ])
+            prompt_parts.extend(
+                [
+                    "",
+                    "## Guidelines",
+                    "\n".join(f"- {item}" for item in guidelines),
+                ]
+            )
 
-        prompt_parts.extend([
-            "",
-            "## Implementation Plan",
-            plan_text,
-            "",
-            "## Requirements",
-            "- Write clean, readable, and maintainable code",
-            "- Include appropriate error handling",
-            "- Add meaningful comments for complex logic",
-            "- Follow security best practices",
-            "- Ensure code is production-ready",
-            "",
-            "## Output Format",
-            "Provide your implementation with:",
-            "1. Brief explanation of your approach",
-            "2. The complete, working code",
-            "3. Any important usage notes or considerations",
-        ])
+        prompt_parts.extend(
+            [
+                "",
+                "## Implementation Plan",
+                plan_text,
+                "",
+                "## Requirements",
+                "- Write clean, readable, and maintainable code",
+                "- Include appropriate error handling",
+                "- Add meaningful comments for complex logic",
+                "- Follow security best practices",
+                "- Ensure code is production-ready",
+                "",
+                "## Output Format",
+                "Provide your implementation with:",
+                "1. Brief explanation of your approach",
+                "2. The complete, working code",
+                "3. Any important usage notes or considerations",
+            ]
+        )
 
         return "\n".join(prompt_parts)
 

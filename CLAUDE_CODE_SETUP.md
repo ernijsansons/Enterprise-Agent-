@@ -4,6 +4,8 @@
 
 If you have an Anthropic Max subscription ($200/month), you're already paying for Claude Code CLI access. This guide shows you how to use Claude Code instead of the API, **eliminating all API charges** while keeping the same functionality.
 
+> **Note**: This guide assumes you have an active Anthropic Max subscription. If you don't have one, you can sign up at [console.anthropic.com](https://console.anthropic.com).
+
 ## The Problem
 
 With Anthropic Max subscription:
@@ -24,37 +26,50 @@ Use Claude Code CLI (included in your Max subscription):
 ### Automated Setup (Recommended)
 
 ```bash
+# Run the automated setup script
 python setup_claude_code.py
 ```
 
 This script will:
-1. Install Claude Code CLI
-2. Help you log in with your Max subscription
-3. Configure your environment
-4. Create/update .env file
-5. Verify everything is working
+1. ✅ Install Claude Code CLI via npm
+2. ✅ Help you log in with your Max subscription
+3. ✅ Configure your environment variables
+4. ✅ Create/update .env file with proper settings
+5. ✅ Verify everything is working correctly
+
+> **Prerequisites**: Make sure you have Node.js and npm installed. If not, install from [nodejs.org](https://nodejs.org/).
 
 ### Manual Setup
 
 #### 1. Install Claude Code CLI
 
 ```bash
+# Install globally via npm
 npm install -g @anthropic-ai/claude-code
+
+# Verify installation
+claude --version
 ```
 
 #### 2. Log in with your Max subscription
 
 ```bash
+# Start authentication process
 claude login
 ```
 
 This opens a browser for authentication. Log in with the account that has your Max subscription.
 
+> **Important**: Use the same account that has your Anthropic Max subscription.
+
 #### 3. Set up long-lived token (optional but recommended)
 
 ```bash
+# Create a persistent token to avoid frequent re-authentication
 claude setup-token
 ```
+
+> **Note**: This step is optional but recommended for automated workflows.
 
 #### 4. Configure Environment
 

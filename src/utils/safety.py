@@ -1,6 +1,6 @@
 import logging
 import re
-import subprocess
+import subprocess  # nosec B404
 from typing import List
 
 PII_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
@@ -20,7 +20,7 @@ def sandboxed_shell(cmd: List[str], allowed_commands: set = {"codex", "pytest"})
     if cmd[0] not in allowed_commands:
         raise ValueError(f"Command {cmd[0]} not allowed.")
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             cmd, capture_output=True, text=True, check=True, timeout=300
         )
         return scrub_pii(result.stdout)

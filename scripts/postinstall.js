@@ -10,22 +10,25 @@ const fs = require('fs');
 
 console.log('\n🚀 Setting up Enterprise Agent...\n');
 
-function runCommand(command, args = []) {
+function runCommand(command, args = [], options = {}) {
     return new Promise((resolve, reject) => {
         const proc = spawn(command, args, {
             stdio: 'inherit',
-            shell: true
+            shell: true,
+            ...options
         });
 
         proc.on('close', (code) => {
             if (code === 0) {
                 resolve();
             } else {
-                reject(new Error(`Command failed: ${command} ${args.join(' ')}`));
+                reject(new Error(`Command failed with code ${code}: ${command} ${args.join(' ')}`));
             }
         });
 
-        proc.on('error', reject);
+        proc.on('error', (err) => {
+            reject(new Error(`Command error: ${err.message}`));
+        });
     });
 }
 
@@ -47,6 +50,7 @@ async function installPythonDeps(pythonCmd) {
 
     // Create requirements.txt if it doesn't exist
     if (!fs.existsSync(requirementsPath)) {
+        console.log('📝 Creating requirements.txt...');
         const requirements = `# Enterprise Agent Requirements
 pyyaml>=6.0.1
 python-dotenv>=1.0.1
@@ -59,15 +63,28 @@ langgraph>=0.0.28
 networkx>=3.3
 pinecone-client>=3.2.2
 `;
-        fs.writeFileSync(requirementsPath, requirements);
+        try {
+            fs.writeFileSync(requirementsPath, requirements);
+            console.log('✅ Created requirements.txt');
+        } catch (err) {
+            console.error('❌ Failed to create requirements.txt:', err.message);
+            throw err;
+        }
     }
 
     try {
+        // Upgrade pip first
+        console.log('⬆️  Upgrading pip...');
+        await runCommand(pythonCmd, ['-m', 'pip', 'install', '--upgrade', 'pip']);
+        
+        // Install requirements
+        console.log('📦 Installing packages...');
         await runCommand(pythonCmd, ['-m', 'pip', 'install', '-r', requirementsPath]);
         console.log('✅ Python dependencies installed\n');
     } catch (err) {
-        console.warn('⚠️  Could not install Python dependencies');
+        console.warn('⚠️  Could not install Python dependencies:', err.message);
         console.warn('   Run manually: pip install -r requirements.txt\n');
+        // Don't throw error, just warn
     }
 }
 
@@ -88,15 +105,22 @@ async function checkClaudeCode() {
 
 async function createGlobalConfig() {
     const homeDir = process.env.HOME || process.env.USERPROFILE;
+    if (!homeDir) {
+        console.warn('⚠️  Could not determine home directory, skipping config creation');
+        return;
+    }
+
     const configDir = path.join(homeDir, '.enterprise-agent');
     const configFile = path.join(configDir, 'config.yml');
 
-    if (!fs.existsSync(configDir)) {
-        fs.mkdirSync(configDir, { recursive: true });
-    }
+    try {
+        if (!fs.existsSync(configDir)) {
+            fs.mkdirSync(configDir, { recursive: true });
+            console.log('📁 Created config directory');
+        }
 
-    if (!fs.existsSync(configFile)) {
-        const defaultConfig = `# Enterprise Agent Global Configuration
+        if (!fs.existsSync(configFile)) {
+            const defaultConfig = `# Enterprise Agent Global Configuration
 # Created by postinstall script
 
 # Use Claude Code CLI for zero API costs (requires Max subscription)
@@ -116,8 +140,14 @@ cache:
   ttl: 3600
 `;
 
-        fs.writeFileSync(configFile, defaultConfig);
-        console.log(`✅ Created global config: ${configFile}\n`);
+            fs.writeFileSync(configFile, defaultConfig);
+            console.log(`✅ Created global config: ${configFile}\n`);
+        } else {
+            console.log('ℹ️  Global config already exists\n');
+        }
+    } catch (err) {
+        console.warn('⚠️  Could not create global config:', err.message);
+        console.warn('   You can create it manually later\n');
     }
 }
 

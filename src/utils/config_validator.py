@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-import subprocess
+import subprocess  # nosec B404
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -37,7 +37,7 @@ class ConfigValidator:
             "recommendations": [],
             "environment": {},
             "dependencies": {},
-            "security": {}
+            "security": {},
         }
 
         # Validate configuration file
@@ -85,18 +85,16 @@ class ConfigValidator:
                 self._add_issue(
                     "config_file",
                     f"Configuration file not found: {config_path}",
-                    "critical"
+                    "critical",
                 )
                 return False, {}
 
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(config_path, "r", encoding="utf-8") as f:
                 config_data = yaml.safe_load(f)
 
             if not config_data:
                 self._add_issue(
-                    "config_file",
-                    "Configuration file is empty or invalid",
-                    "critical"
+                    "config_file", "Configuration file is empty or invalid", "critical"
                 )
                 return False, {}
 
@@ -105,30 +103,23 @@ class ConfigValidator:
                 "enterprise_coding_agent",
                 "enterprise_coding_agent.orchestration",
                 "enterprise_coding_agent.memory",
-                "enterprise_coding_agent.governance"
+                "enterprise_coding_agent.governance",
             ]
 
             for section in required_sections:
                 if not self._get_nested_value(config_data, section):
                     self._add_warning(
-                        "config_structure",
-                        f"Missing configuration section: {section}"
+                        "config_structure", f"Missing configuration section: {section}"
                     )
 
             return True, config_data
 
         except yaml.YAMLError as e:
-            self._add_issue(
-                "config_file",
-                f"Invalid YAML syntax: {e}",
-                "critical"
-            )
+            self._add_issue("config_file", f"Invalid YAML syntax: {e}", "critical")
             return False, {}
         except Exception as e:
             self._add_issue(
-                "config_file",
-                f"Error reading configuration: {e}",
-                "critical"
+                "config_file", f"Error reading configuration: {e}", "critical"
             )
             return False, {}
 
@@ -142,7 +133,7 @@ class ConfigValidator:
             "claude_code_enabled": False,
             "api_keys_present": {},
             "conflicts": [],
-            "missing_required": []
+            "missing_required": [],
         }
 
         # Check Claude Code setting
@@ -153,21 +144,19 @@ class ConfigValidator:
         api_keys = {
             "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY"),
             "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-            "GOOGLE_API_KEY": os.getenv("GOOGLE_API_KEY")
+            "GOOGLE_API_KEY": os.getenv("GOOGLE_API_KEY"),
         }
 
         for key, value in api_keys.items():
-            env_results["api_keys_present"][key] = bool(value and value != "STUBBED_FALLBACK")
+            env_results["api_keys_present"][key] = bool(
+                value and value != "STUBBED_FALLBACK"
+            )
 
         # Check for conflicts
         if use_claude_code and env_results["api_keys_present"]["ANTHROPIC_API_KEY"]:
             conflict = "ANTHROPIC_API_KEY present with Claude Code enabled - will cause API billing"
             env_results["conflicts"].append(conflict)
-            self._add_issue(
-                "environment",
-                conflict,
-                "high"
-            )
+            self._add_issue("environment", conflict, "high")
 
         # Check required environment for different modes
         if use_claude_code:
@@ -179,7 +168,7 @@ class ConfigValidator:
                 self._add_issue(
                     "environment",
                     "No API keys available - system will run in stub mode",
-                    "medium"
+                    "medium",
                 )
 
         return env_results
@@ -192,33 +181,29 @@ class ConfigValidator:
         """
         dep_results = {
             "python_version": None,
-            "claude_cli": {
-                "installed": False,
-                "version": None,
-                "working": False
-            },
+            "claude_cli": {"installed": False, "version": None, "working": False},
             "required_packages": {},
-            "missing_dependencies": []
+            "missing_dependencies": [],
         }
 
         # Check Python version
         import sys
-        dep_results["python_version"] = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+
+        dep_results[
+            "python_version"
+        ] = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
         if sys.version_info < (3, 8):
             self._add_issue(
                 "dependencies",
                 f"Python {dep_results['python_version']} is too old. Requires Python 3.8+",
-                "critical"
+                "critical",
             )
 
         # Check Claude CLI
         try:
-            result = subprocess.run(
-                ["claude", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5
+            result = subprocess.run(  # nosec B603, B607
+                ["claude", "--version"], capture_output=True, text=True, timeout=5
             )
             if result.returncode == 0:
                 dep_results["claude_cli"]["installed"] = True
@@ -228,26 +213,22 @@ class ConfigValidator:
                 dep_results["claude_cli"]["installed"] = True
                 dep_results["claude_cli"]["working"] = False
                 self._add_warning(
-                    "dependencies",
-                    "Claude CLI installed but not responding correctly"
+                    "dependencies", "Claude CLI installed but not responding correctly"
                 )
         except FileNotFoundError:
             self._add_warning(
                 "dependencies",
-                "Claude Code CLI not installed - required for subscription mode"
+                "Claude Code CLI not installed - required for subscription mode",
             )
         except subprocess.TimeoutExpired:
             dep_results["claude_cli"]["installed"] = True
             dep_results["claude_cli"]["working"] = False
             self._add_warning(
-                "dependencies",
-                "Claude CLI timeout - may be network issue"
+                "dependencies", "Claude CLI timeout - may be network issue"
             )
 
         # Check required Python packages
-        required_packages = [
-            "yaml", "anthropic", "openai", "requests"
-        ]
+        required_packages = ["yaml", "anthropic", "openai", "requests"]
 
         for package in required_packages:
             try:
@@ -261,7 +242,7 @@ class ConfigValidator:
             self._add_issue(
                 "dependencies",
                 f"Missing required packages: {', '.join(dep_results['missing_dependencies'])}",
-                "high"
+                "high",
             )
 
         return dep_results
@@ -277,9 +258,9 @@ class ConfigValidator:
         """
         security_results = {
             "pii_scrubbing_enabled": True,  # Default enabled
-            "secret_handling": True,        # Default enabled
+            "secret_handling": True,  # Default enabled
             "api_key_exposure": False,
-            "insecure_settings": []
+            "insecure_settings": [],
         }
 
         # Check for API keys in config files (security risk)
@@ -287,19 +268,14 @@ class ConfigValidator:
         if "sk-" in config_str or "api_key" in config_str.lower():
             security_results["api_key_exposure"] = True
             self._add_issue(
-                "security",
-                "Potential API key found in configuration file",
-                "critical"
+                "security", "Potential API key found in configuration file", "critical"
             )
 
         # Check for insecure auto-mode settings
         auto_mode = self._get_nested_value(config_data, "claude_code.auto_mode")
         if auto_mode:
             security_results["insecure_settings"].append("auto_mode enabled")
-            self._add_warning(
-                "security",
-                "Auto-mode enabled - dangerous in production"
-            )
+            self._add_warning("security", "Auto-mode enabled - dangerous in production")
 
         return security_results
 
@@ -316,7 +292,7 @@ class ConfigValidator:
             "cli_available": False,
             "authenticated": False,
             "subscription_mode": False,
-            "ready": False
+            "ready": False,
         }
 
         # Check if enabled
@@ -328,12 +304,14 @@ class ConfigValidator:
                 auth_manager = get_auth_manager()
                 validation = auth_manager.validate_setup()
 
-                claude_results.update({
-                    "cli_available": validation["cli_available"],
-                    "authenticated": validation["authenticated"],
-                    "subscription_mode": validation["subscription_mode"],
-                    "ready": validation["ready"]
-                })
+                claude_results.update(
+                    {
+                        "cli_available": validation["cli_available"],
+                        "authenticated": validation["authenticated"],
+                        "subscription_mode": validation["subscription_mode"],
+                        "ready": validation["ready"],
+                    }
+                )
 
                 # Add issues from auth validation
                 for issue in validation["issues"]:
@@ -341,9 +319,7 @@ class ConfigValidator:
 
             except Exception as e:
                 self._add_issue(
-                    "claude_code",
-                    f"Error validating Claude Code setup: {e}",
-                    "high"
+                    "claude_code", f"Error validating Claude Code setup: {e}", "high"
                 )
 
         return claude_results
@@ -358,7 +334,7 @@ class ConfigValidator:
         Returns:
             Value at path or None if not found
         """
-        keys = path.split('.')
+        keys = path.split(".")
         current = data
 
         for key in keys:
@@ -377,11 +353,7 @@ class ConfigValidator:
             message: Issue description
             severity: Severity level (critical, high, medium, low)
         """
-        issue = {
-            "category": category,
-            "message": message,
-            "severity": severity
-        }
+        issue = {"category": category, "message": message, "severity": severity}
         self.issues.append(issue)
 
     def _add_warning(self, category: str, message: str) -> None:
@@ -391,10 +363,7 @@ class ConfigValidator:
             category: Warning category
             message: Warning description
         """
-        warning = {
-            "category": category,
-            "message": message
-        }
+        warning = {"category": category, "message": message}
         self.warnings.append(warning)
 
     def _generate_recommendations(self) -> List[str]:
@@ -422,8 +391,12 @@ class ConfigValidator:
             recommendations.append("Remove ANTHROPIC_API_KEY when using Claude Code")
 
         if "dependencies" in issues_by_category:
-            recommendations.append("Install missing dependencies: pip install -r requirements.txt")
-            recommendations.append("Install Claude Code CLI: npm install -g @anthropic-ai/claude-code")
+            recommendations.append(
+                "Install missing dependencies: pip install -r requirements.txt"
+            )
+            recommendations.append(
+                "Install Claude Code CLI: npm install -g @anthropic-ai/claude-code"
+            )
 
         if "security" in issues_by_category:
             recommendations.append("Address security issues immediately")
@@ -457,7 +430,7 @@ class ConfigValidator:
             if issue["severity"] in ["critical", "high"]:
                 notify_configuration_issue(
                     f"{issue['category']}: {issue['message']}",
-                    results["recommendations"]
+                    results["recommendations"],
                 )
 
         return results["valid"]
@@ -493,11 +466,7 @@ def quick_health_check() -> bool:
         # Check Claude Code if enabled
         if os.getenv("USE_CLAUDE_CODE", "false").lower() == "true":
             try:
-                subprocess.run(
-                    ["claude", "--version"],
-                    capture_output=True,
-                    timeout=3
-                )
+                subprocess.run(["claude", "--version"], capture_output=True, timeout=3)  # nosec B603, B607
             except (FileNotFoundError, subprocess.TimeoutExpired):
                 return False
 
@@ -507,8 +476,4 @@ def quick_health_check() -> bool:
         return False
 
 
-__all__ = [
-    "ConfigValidator",
-    "validate_enterprise_config",
-    "quick_health_check"
-]
+__all__ = ["ConfigValidator", "validate_enterprise_config", "quick_health_check"]

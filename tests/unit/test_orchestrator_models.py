@@ -26,7 +26,7 @@ class DummyOrchestrator:
         # Add mock for new cache attribute
         self._model_cache = SimpleNamespace(
             get_response=lambda **kwargs: None,  # Return None to simulate cache miss
-            cache_response=lambda **kwargs: None
+            cache_response=lambda **kwargs: None,
         )
         # Add Claude Code attributes
         self._use_claude_code = False

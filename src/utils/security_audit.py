@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 class AuditEventType(Enum):
     """Types of security audit events."""
+
     AUTHENTICATION = "authentication"
     API_ACCESS = "api_access"
     CLI_USAGE = "cli_usage"
@@ -27,6 +28,7 @@ class AuditEventType(Enum):
 
 class AuditSeverity(Enum):
     """Severity levels for audit events."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -57,7 +59,7 @@ class AuditEvent:
             "session_id": self.session_id,
             "user_id": self.user_id,
             "source_ip": self.source_ip,
-            "event_hash": self._generate_hash()
+            "event_hash": self._generate_hash(),
         }
 
     def _generate_hash(self) -> str:
@@ -77,8 +79,14 @@ class SecurityAuditor:
         """
         self.config = config or {}
         self.enabled = self.config.get("enabled", True)
-        self.log_file = Path(self.config.get("log_file", Path.home() / ".claude" / "security_audit.jsonl"))
-        self.max_log_size = self.config.get("max_log_size_mb", 10) * 1024 * 1024  # Convert to bytes
+        self.log_file = Path(
+            self.config.get(
+                "log_file", Path.home() / ".claude" / "security_audit.jsonl"
+            )
+        )
+        self.max_log_size = (
+            self.config.get("max_log_size_mb", 10) * 1024 * 1024
+        )  # Convert to bytes
         self.retention_days = self.config.get("retention_days", 30)
 
         # Ensure log directory exists
@@ -94,7 +102,7 @@ class SecurityAuditor:
         description: str,
         details: Optional[Dict[str, Any]] = None,
         session_id: Optional[str] = None,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
     ) -> None:
         """Log a security audit event.
 
@@ -116,7 +124,7 @@ class SecurityAuditor:
                 description=description,
                 details=details or {},
                 session_id=session_id,
-                user_id=user_id
+                user_id=user_id,
             )
 
             # Scrub sensitive data
@@ -143,8 +151,15 @@ class SecurityAuditor:
         """
         # List of sensitive keys to scrub
         sensitive_keys = {
-            "api_key", "password", "token", "secret", "credential",
-            "authorization", "auth", "key", "session_token"
+            "api_key",
+            "password",
+            "token",
+            "secret",
+            "credential",
+            "authorization",
+            "auth",
+            "key",
+            "session_token",
         }
 
         def scrub_dict(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -158,7 +173,10 @@ class SecurityAuditor:
                     scrubbed[key] = scrub_dict(value)
                 elif isinstance(value, str) and len(value) > 20:
                     # Check if string looks like an API key or token
-                    if any(prefix in value for prefix in ["sk-", "xoxb-", "ghp_", "bearer "]):
+                    if any(
+                        prefix in value
+                        for prefix in ["sk-", "xoxb-", "ghp_", "bearer "]
+                    ):
                         scrubbed[key] = "[REDACTED]"
                     else:
                         scrubbed[key] = value
@@ -176,8 +194,7 @@ class SecurityAuditor:
                 # Replace the sensitive part
                 words = description.split()
                 description = " ".join(
-                    "[REDACTED]" if pattern in word.lower() else word
-                    for word in words
+                    "[REDACTED]" if pattern in word.lower() else word for word in words
                 )
         event.description = description
 
@@ -190,8 +207,8 @@ class SecurityAuditor:
             event: Audit event to write
         """
         try:
-            with open(self.log_file, 'a', encoding='utf-8') as f:
-                f.write(json.dumps(event.to_dict()) + '\n')
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps(event.to_dict()) + "\n")
 
             # Rotate log if needed
             self._rotate_log_if_needed()
@@ -202,10 +219,13 @@ class SecurityAuditor:
     def _rotate_log_if_needed(self) -> None:
         """Rotate log file if it exceeds maximum size."""
         try:
-            if self.log_file.exists() and self.log_file.stat().st_size > self.max_log_size:
+            if (
+                self.log_file.exists()
+                and self.log_file.stat().st_size > self.max_log_size
+            ):
                 # Create backup with timestamp
                 timestamp = int(time.time())
-                backup_file = self.log_file.with_suffix(f'.{timestamp}.jsonl')
+                backup_file = self.log_file.with_suffix(f".{timestamp}.jsonl")
                 self.log_file.rename(backup_file)
 
                 logger.info(f"Rotated audit log to {backup_file}")
@@ -225,7 +245,7 @@ class SecurityAuditor:
             for log_file in log_dir.glob(f"{self.log_file.stem}.*.jsonl"):
                 try:
                     # Extract timestamp from filename
-                    timestamp_str = log_file.stem.split('.')[-1]
+                    timestamp_str = log_file.stem.split(".")[-1]
                     timestamp = int(timestamp_str)
 
                     if timestamp < cutoff_time:
@@ -251,7 +271,7 @@ class SecurityAuditor:
             AuditSeverity.LOW: logging.INFO,
             AuditSeverity.MEDIUM: logging.WARNING,
             AuditSeverity.HIGH: logging.ERROR,
-            AuditSeverity.CRITICAL: logging.CRITICAL
+            AuditSeverity.CRITICAL: logging.CRITICAL,
         }
         return level_map.get(severity, logging.INFO)
 
@@ -260,7 +280,7 @@ class SecurityAuditor:
         event_type: Optional[AuditEventType] = None,
         severity: Optional[AuditSeverity] = None,
         since: Optional[float] = None,
-        limit: int = 1000
+        limit: int = 1000,
     ) -> List[Dict[str, Any]]:
         """Get audit events with filtering.
 
@@ -279,7 +299,7 @@ class SecurityAuditor:
             if not self.log_file.exists():
                 return events
 
-            with open(self.log_file, 'r', encoding='utf-8') as f:
+            with open(self.log_file, "r", encoding="utf-8") as f:
                 for line in f:
                     try:
                         event = json.loads(line.strip())
@@ -316,7 +336,7 @@ class SecurityAuditor:
             "events_by_type": {},
             "events_by_severity": {},
             "recent_critical_events": [],
-            "audit_health": "healthy"
+            "audit_health": "healthy",
         }
 
         try:
@@ -382,46 +402,47 @@ def get_security_auditor(config: Optional[Dict[str, Any]] = None) -> SecurityAud
 
 
 # Convenience functions for common audit events
-def audit_authentication(action: str, success: bool, details: Optional[Dict[str, Any]] = None) -> None:
+def audit_authentication(
+    action: str, success: bool, details: Optional[Dict[str, Any]] = None
+) -> None:
     """Audit authentication event."""
     severity = AuditSeverity.MEDIUM if success else AuditSeverity.HIGH
     description = f"Authentication {action}: {'success' if success else 'failure'}"
 
     get_security_auditor().audit(
-        AuditEventType.AUTHENTICATION,
-        severity,
-        description,
-        details or {}
+        AuditEventType.AUTHENTICATION, severity, description, details or {}
     )
 
 
-def audit_api_access(endpoint: str, method: str, success: bool, details: Optional[Dict[str, Any]] = None) -> None:
+def audit_api_access(
+    endpoint: str, method: str, success: bool, details: Optional[Dict[str, Any]] = None
+) -> None:
     """Audit API access event."""
     severity = AuditSeverity.LOW if success else AuditSeverity.MEDIUM
-    description = f"API access: {method} {endpoint} ({'success' if success else 'failure'})"
+    description = (
+        f"API access: {method} {endpoint} ({'success' if success else 'failure'})"
+    )
 
     get_security_auditor().audit(
-        AuditEventType.API_ACCESS,
-        severity,
-        description,
-        details or {}
+        AuditEventType.API_ACCESS, severity, description, details or {}
     )
 
 
-def audit_cli_usage(command: str, success: bool, details: Optional[Dict[str, Any]] = None) -> None:
+def audit_cli_usage(
+    command: str, success: bool, details: Optional[Dict[str, Any]] = None
+) -> None:
     """Audit CLI usage event."""
     severity = AuditSeverity.LOW if success else AuditSeverity.MEDIUM
     description = f"CLI command: {command} ({'success' if success else 'failure'})"
 
     get_security_auditor().audit(
-        AuditEventType.CLI_USAGE,
-        severity,
-        description,
-        details or {}
+        AuditEventType.CLI_USAGE, severity, description, details or {}
     )
 
 
-def audit_security_violation(violation_type: str, details: Optional[Dict[str, Any]] = None) -> None:
+def audit_security_violation(
+    violation_type: str, details: Optional[Dict[str, Any]] = None
+) -> None:
     """Audit security violation."""
     description = f"Security violation detected: {violation_type}"
 
@@ -429,19 +450,18 @@ def audit_security_violation(violation_type: str, details: Optional[Dict[str, An
         AuditEventType.SECURITY_VIOLATION,
         AuditSeverity.CRITICAL,
         description,
-        details or {}
+        details or {},
     )
 
 
-def audit_credential_access(action: str, resource: str, details: Optional[Dict[str, Any]] = None) -> None:
+def audit_credential_access(
+    action: str, resource: str, details: Optional[Dict[str, Any]] = None
+) -> None:
     """Audit credential access."""
     description = f"Credential access: {action} for {resource}"
 
     get_security_auditor().audit(
-        AuditEventType.CREDENTIAL_ACCESS,
-        AuditSeverity.HIGH,
-        description,
-        details or {}
+        AuditEventType.CREDENTIAL_ACCESS, AuditSeverity.HIGH, description, details or {}
     )
 
 
@@ -455,5 +475,5 @@ __all__ = [
     "audit_api_access",
     "audit_cli_usage",
     "audit_security_violation",
-    "audit_credential_access"
+    "audit_credential_access",
 ]

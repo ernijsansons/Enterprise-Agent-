@@ -29,12 +29,14 @@ class UsageWindow:
     def add_request(self, role: str, operation: str, tokens: int = 0) -> None:
         """Add a request to this window."""
         self.prompt_count += 1
-        self.requests.append({
-            "timestamp": time.time(),
-            "role": role,
-            "operation": operation,
-            "tokens": tokens
-        })
+        self.requests.append(
+            {
+                "timestamp": time.time(),
+                "role": role,
+                "operation": operation,
+                "tokens": tokens,
+            }
+        )
 
     def time_remaining(self, current_time: float) -> float:
         """Get hours remaining in this window."""
@@ -72,7 +74,7 @@ class UsageMonitor:
         """Load usage history from disk."""
         try:
             if self.usage_file.exists():
-                with open(self.usage_file, 'r') as f:
+                with open(self.usage_file, "r") as f:
                     data = json.load(f)
 
                 # Reconstruct windows from saved data
@@ -81,7 +83,7 @@ class UsageMonitor:
                         start_time=window_data["start_time"],
                         end_time=window_data["end_time"],
                         prompt_count=window_data.get("prompt_count", 0),
-                        requests=window_data.get("requests", [])
+                        requests=window_data.get("requests", []),
                     )
                     self.windows.append(window)
 
@@ -110,16 +112,16 @@ class UsageMonitor:
                         "start_time": window.start_time,
                         "end_time": window.end_time,
                         "prompt_count": window.prompt_count,
-                        "requests": window.requests
+                        "requests": window.requests,
                     }
                     for window in self.windows
                 ],
                 "paused": self.paused,
                 "pause_until": self.pause_until,
-                "last_updated": time.time()
+                "last_updated": time.time(),
             }
 
-            with open(self.usage_file, 'w') as f:
+            with open(self.usage_file, "w") as f:
                 json.dump(data, f, indent=2)
 
             logger.debug("Saved usage history to disk")
@@ -136,7 +138,9 @@ class UsageMonitor:
         self.windows = [w for w in self.windows if w.end_time > cutoff_time]
 
         if len(self.windows) < original_count:
-            logger.debug(f"Cleaned up {original_count - len(self.windows)} old usage windows")
+            logger.debug(
+                f"Cleaned up {original_count - len(self.windows)} old usage windows"
+            )
 
     def _get_current_window(self) -> UsageWindow:
         """Get or create the current usage window."""
@@ -150,12 +154,13 @@ class UsageMonitor:
         # Create new window
         window_duration = self.window_hours * 3600
         new_window = UsageWindow(
-            start_time=current_time,
-            end_time=current_time + window_duration
+            start_time=current_time, end_time=current_time + window_duration
         )
 
         self.windows.append(new_window)
-        logger.debug(f"Created new usage window: {new_window.start_time} - {new_window.end_time}")
+        logger.debug(
+            f"Created new usage window: {new_window.start_time} - {new_window.end_time}"
+        )
 
         return new_window
 
@@ -210,7 +215,7 @@ class UsageMonitor:
                 notify_usage_warning(
                     current_window.prompt_count,
                     self.max_prompts_per_window,
-                    window_remaining
+                    window_remaining,
                 )
 
                 logger.warning(f"Usage limit reached. Paused until {self.pause_until}")
@@ -224,20 +229,24 @@ class UsageMonitor:
         current_window.add_request(role, operation, tokens)
 
         # Check warning threshold
-        usage_percentage = (current_window.prompt_count / self.max_prompts_per_window) * 100
+        usage_percentage = (
+            current_window.prompt_count / self.max_prompts_per_window
+        ) * 100
 
         if usage_percentage >= self.warning_threshold:
             window_remaining = current_window.time_remaining(time.time())
             notify_usage_warning(
                 current_window.prompt_count,
                 self.max_prompts_per_window,
-                window_remaining
+                window_remaining,
             )
 
         # Save updated usage
         self._save_usage_history()
 
-        logger.debug(f"Recorded request: {role}/{operation} ({current_window.prompt_count}/{self.max_prompts_per_window})")
+        logger.debug(
+            f"Recorded request: {role}/{operation} ({current_window.prompt_count}/{self.max_prompts_per_window})"
+        )
 
         return True
 
@@ -246,7 +255,9 @@ class UsageMonitor:
         current_time = time.time()
         current_window = self._get_current_window()
 
-        usage_percentage = (current_window.prompt_count / self.max_prompts_per_window) * 100
+        usage_percentage = (
+            current_window.prompt_count / self.max_prompts_per_window
+        ) * 100
         window_remaining = current_window.time_remaining(current_time)
 
         stats = {
@@ -257,7 +268,7 @@ class UsageMonitor:
             "paused": self.paused,
             "can_make_request": self.can_make_request(),
             "window_start": current_window.start_time,
-            "window_end": current_window.end_time
+            "window_end": current_window.end_time,
         }
 
         # Recent usage patterns
@@ -268,7 +279,7 @@ class UsageMonitor:
                     "start": w.start_time,
                     "end": w.end_time,
                     "prompts": w.prompt_count,
-                    "utilization": (w.prompt_count / self.max_prompts_per_window) * 100
+                    "utilization": (w.prompt_count / self.max_prompts_per_window) * 100,
                 }
                 for w in recent_windows
             ]
@@ -353,5 +364,5 @@ __all__ = [
     "get_usage_monitor",
     "record_claude_usage",
     "can_make_claude_request",
-    "get_claude_usage_stats"
+    "get_claude_usage_stats",
 ]

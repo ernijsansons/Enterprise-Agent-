@@ -1,7 +1,7 @@
 """Planner role for decomposing tasks."""
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from .base import BaseRole
 
@@ -22,7 +22,9 @@ class Planner(BaseRole):
         self.store_memory("session", "plan", plan_text)
         return {"text": plan_text, "epics": epics, "model": model}
 
-    def _build_decomposition_prompt(self, task: str, domain: str, adapter: str, guidelines: str) -> str:
+    def _build_decomposition_prompt(
+        self, task: str, domain: str, adapter: str, guidelines: str
+    ) -> str:
         """Build Claude-optimized decomposition prompt."""
         prompt_parts = [
             "You are an expert project planner with deep experience in software development.",
@@ -42,27 +44,31 @@ class Planner(BaseRole):
         ]
 
         if guidelines:
-            prompt_parts.extend([
-                "",
-                "Domain-Specific Guidelines:",
-                guidelines,
-            ])
+            prompt_parts.extend(
+                [
+                    "",
+                    "Domain-Specific Guidelines:",
+                    guidelines,
+                ]
+            )
 
-        prompt_parts.extend([
-            "",
-            "Please provide your decomposition in this format:",
-            "",
-            "## Analysis",
-            "[Brief analysis of the task and key considerations]",
-            "",
-            "## Steps",
-            "1. [First actionable step]",
-            "2. [Second actionable step]",
-            "3. [Continue with additional steps...]",
-            "",
-            "## Dependencies & Considerations",
-            "[Any important dependencies or risk factors to consider]",
-        ])
+        prompt_parts.extend(
+            [
+                "",
+                "Please provide your decomposition in this format:",
+                "",
+                "## Analysis",
+                "[Brief analysis of the task and key considerations]",
+                "",
+                "## Steps",
+                "1. [First actionable step]",
+                "2. [Second actionable step]",
+                "3. [Continue with additional steps...]",
+                "",
+                "## Dependencies & Considerations",
+                "[Any important dependencies or risk factors to consider]",
+            ]
+        )
 
         return "\n".join(prompt_parts)
 
@@ -80,9 +86,15 @@ class Planner(BaseRole):
             elif line.startswith("## ") and in_steps_section:
                 in_steps_section = False
                 continue
-            elif in_steps_section and line and (line[0].isdigit() or line.startswith("-")):
+            elif (
+                in_steps_section
+                and line
+                and (line[0].isdigit() or line.startswith("-"))
+            ):
                 # Extract just the step text, removing numbering
-                epic = line.split(".", 1)[-1].strip() if "." in line else line.strip("- ")
+                epic = (
+                    line.split(".", 1)[-1].strip() if "." in line else line.strip("- ")
+                )
                 if epic:
                     epics.append(epic)
 

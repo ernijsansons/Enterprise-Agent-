@@ -1,21 +1,23 @@
 #!/usr/bin/env python
 """Test existing functionality in Enterprise Agent."""
+import io
 import os
 import sys
-import io
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 # Fix Windows encoding
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 sys.path.insert(0, str(Path(__file__).parent))
 
-print("\n" + "="*60)
+print("\n" + "=" * 60)
 print("TESTING EXISTING ENTERPRISE AGENT FUNCTIONALITY")
-print("="*60 + "\n")
+print("=" * 60 + "\n")
+
 
 def test_with_status(name):
     """Decorator for test functions."""
+
     def decorator(func):
         def wrapper():
             try:
@@ -26,19 +28,15 @@ def test_with_status(name):
             except Exception as e:
                 print(f"❌ FAIL: {e}")
                 return False
+
         return wrapper
+
     return decorator
 
 
 @test_with_status("Core imports")
 def test_imports():
     """Test core imports."""
-    from src.agent_orchestrator import AgentOrchestrator
-    from src.utils.costs import CostEstimator
-    from src.memory import MemoryStore
-    from src.utils.cache import TTLCache
-    from src.utils.hitl import HITLOrchestrator
-    from src.roles import Planner, Coder, Validator, Reviewer, Reflector
 
 
 @test_with_status("Agent Orchestrator")
@@ -46,6 +44,7 @@ def test_orchestrator():
     """Test orchestrator initialization."""
     os.environ["USE_CLAUDE_CODE"] = "false"
     from src.agent_orchestrator import AgentOrchestrator
+
     orchestrator = AgentOrchestrator()
     assert orchestrator.cost_estimator is not None
 
@@ -54,8 +53,11 @@ def test_orchestrator():
 def test_claude_provider():
     """Test Claude Code provider."""
     with patch("subprocess.run") as mock_run:
-        mock_run.return_value = Mock(returncode=0, stdout="claude version 1.0.0", stderr="")
+        mock_run.return_value = Mock(
+            returncode=0, stdout="claude version 1.0.0", stderr=""
+        )
         from src.providers.claude_code_provider import ClaudeCodeProvider
+
         provider = ClaudeCodeProvider({"timeout": 30})
         assert provider._map_model_to_cli("claude_sonnet_4") == "sonnet"
 
@@ -64,6 +66,7 @@ def test_claude_provider():
 def test_auth_manager():
     """Test auth manager."""
     from src.providers.auth_manager import ClaudeAuthManager
+
     auth = ClaudeAuthManager()
     config = auth.get_config()
     assert isinstance(config, dict)
@@ -73,6 +76,7 @@ def test_auth_manager():
 def test_cost_estimator():
     """Test cost tracking."""
     from src.utils.costs import CostEstimator
+
     estimator = CostEstimator({})
     estimator.track(100, "Planner", "test", model="gpt-4")
     estimator.track(0, "Coder", "test", model="claude_code")
@@ -84,6 +88,7 @@ def test_cost_estimator():
 def test_memory():
     """Test memory store."""
     from src.memory import MemoryStore
+
     memory = MemoryStore({})  # Pass empty config
     memory.store("key", "value", "project")
     memories = memory.retrieve("project", top_k=5)
@@ -94,6 +99,7 @@ def test_memory():
 def test_cache():
     """Test caching."""
     from src.utils.cache import TTLCache
+
     cache = TTLCache()
     cache.set("key", "value")
     assert cache.get("key") == "value"
@@ -102,8 +108,10 @@ def test_cache():
 @test_with_status("Agent Roles")
 def test_roles():
     """Test all roles."""
-    from src.roles import Planner, Coder, Validator, Reviewer, Reflector
     from unittest.mock import MagicMock
+
+    from src.roles import Coder, Planner, Reflector, Reviewer, Validator
+
     mock_orch = MagicMock()
 
     roles = [
@@ -111,7 +119,7 @@ def test_roles():
         Coder(mock_orch),
         Validator(mock_orch),
         Reviewer(mock_orch),
-        Reflector(mock_orch)
+        Reflector(mock_orch),
     ]
 
     for role in roles:
@@ -123,6 +131,7 @@ def test_env_vars():
     """Test environment configuration."""
     os.environ["USE_CLAUDE_CODE"] = "true"
     from src.agent_orchestrator import AgentOrchestrator
+
     orch = AgentOrchestrator()
     assert orch._use_claude_code == True
 
@@ -136,11 +145,7 @@ def test_cli_wrapper():
     """Test CLI wrapper utilities."""
     from src.utils.claude_cli import ClaudeCommand, OutputFormat
 
-    cmd = ClaudeCommand(
-        prompt="test",
-        model="sonnet",
-        output_format=OutputFormat.JSON
-    )
+    cmd = ClaudeCommand(prompt="test", model="sonnet", output_format=OutputFormat.JSON)
 
     command_list = cmd.build_command()
     assert "claude" in command_list
@@ -188,9 +193,7 @@ def test_validation():
     from src.utils.validation import ValidationResult
 
     result = ValidationResult(
-        is_valid=True,
-        message="Valid input",
-        sanitized_value="test"
+        is_valid=True, message="Valid input", sanitized_value="test"
     )
     assert result.is_valid == True
 
@@ -200,10 +203,7 @@ def test_hitl():
     """Test HITL functionality."""
     from src.utils.hitl import HITLOrchestrator
 
-    hitl = HITLOrchestrator({
-        "threshold": 0.8,
-        "auto_approve_low_risk": True
-    })
+    hitl = HITLOrchestrator({"threshold": 0.8, "auto_approve_low_risk": True})
 
     decision = hitl.check("test_task", confidence=0.9)
     assert decision is not None
@@ -226,7 +226,7 @@ if __name__ == "__main__":
         test_concurrency,
         test_retry,
         test_validation,
-        test_hitl
+        test_hitl,
     ]
 
     passed = 0
@@ -238,9 +238,9 @@ if __name__ == "__main__":
         else:
             failed += 1
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST SUMMARY")
-    print("="*60)
+    print("=" * 60)
     print(f"✅ Passed: {passed}")
     print(f"❌ Failed: {failed}")
 

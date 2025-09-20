@@ -89,7 +89,7 @@ def patched_agent(monkeypatch):
         lambda self, *args, **kwargs: "generated via codex",
     )
 
-    def fake_call(self, model, prompt, role, op, max_tokens=8192):
+    def fake_call(self, model, prompt, role, op, max_tokens=8192, project_context=None):
         if role == "Validator":
             return '{"passes": true, "coverage": 0.99}'
         if role == "Reflector":

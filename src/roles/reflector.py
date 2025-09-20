@@ -9,7 +9,11 @@ from .base import BaseRole
 
 class Reflector(BaseRole):
     def _build_reflection_prompt(
-        self, validation: Dict[str, Any], current_output: str, domain: str, iterations: int
+        self,
+        validation: Dict[str, Any],
+        current_output: str,
+        domain: str,
+        iterations: int,
     ) -> str:
         """Build Claude-optimized reflection prompt."""
         prompt_parts = [
@@ -78,7 +82,9 @@ class Reflector(BaseRole):
             }
 
         model = self.route_to_model(json.dumps(validation), domain, vuln_flag)
-        prompt = self._build_reflection_prompt(validation, current_output, domain, iterations)
+        prompt = self._build_reflection_prompt(
+            validation, current_output, domain, iterations
+        )
         response = self.call_model(model, prompt, "Reflector", "reflect")
         try:
             parsed = self.parse_json(response)

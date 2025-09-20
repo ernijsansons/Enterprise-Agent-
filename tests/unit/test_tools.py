@@ -2,11 +2,11 @@ import json
 
 from src.tools import (
     embed_code,
+    integrations as integrations_module,
     invoke_codex_cli,
     scan_vulnerabilities,
     semantic_search,
 )
-from src.tools import integrations as integrations_module
 
 
 def test_invoke_codex_cli_appends_domain(monkeypatch):
@@ -17,7 +17,9 @@ def test_invoke_codex_cli_appends_domain(monkeypatch):
         return "ok"
 
     monkeypatch.setattr("src.tools.integrations.sandboxed_shell", fake_shell)
-    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/codex" if name == "codex" else None)
+    monkeypatch.setattr(
+        "shutil.which", lambda name: "/usr/bin/codex" if name == "codex" else None
+    )
     result = invoke_codex_cli("auto-edit", ["--prompt", "hi"], "coding")
     assert result == "ok"
     assert captured["cmd"][-1] == "--domain=coding"

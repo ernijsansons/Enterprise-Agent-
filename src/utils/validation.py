@@ -35,7 +35,10 @@ class StringValidator(Validator):
     ):
         self.min_length = min_length
         self.max_length = max_length
-        self.pattern = re.compile(pattern) if pattern else None
+        try:
+            self.pattern = re.compile(pattern) if pattern else None
+        except re.error as e:
+            raise ValueError(f"Invalid regex pattern: {pattern} - {e}")
         self.allowed_chars = set(allowed_chars) if allowed_chars else None
         self.strip_whitespace = strip_whitespace
         self.lowercase = lowercase
@@ -71,7 +74,7 @@ class StringValidator(Validator):
 
         if self.pattern and not self.pattern.match(value):
             raise ValidationException(
-                f"String does not match required pattern",
+                f"String does not match required pattern: {self.pattern.pattern}",
                 validation_type="pattern",
             )
 

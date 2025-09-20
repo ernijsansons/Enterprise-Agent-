@@ -2,40 +2,80 @@
 
 ## Quick Start: Activating Your Anthropic Max Subscription
 
+This guide will help you set up Claude for the Enterprise Agent with optimal cost savings and performance.
+
+### Prerequisites
+- Active Anthropic Max subscription ($200/month)
+- Node.js and npm installed
+- Python 3.9+ installed
+
 ### 1. Get Your Anthropic API Key
-1. Go to [console.anthropic.com](https://console.anthropic.com)
-2. Navigate to API Keys section
-3. Create a new API key
-4. Copy the key (starts with `sk-ant-api03-...`)
+
+**Step 1**: Go to [console.anthropic.com](https://console.anthropic.com)
+
+**Step 2**: Navigate to API Keys section
+
+**Step 3**: Create a new API key
+
+**Step 4**: Copy the key (starts with `sk-ant-api03-...`)
+
+> **Security Note**: Keep your API key secure and never commit it to version control.
 
 ### 2. Set Environment Variable
 
+Choose your operating system:
+
 #### Windows (PowerShell):
 ```powershell
+# Set for current session
 $env:ANTHROPIC_API_KEY = "sk-ant-api03-your-key-here"
+
+# Set permanently (restart required)
+[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "sk-ant-api03-your-key-here", "User")
 ```
 
 #### Windows (Command Prompt):
 ```cmd
+# Set for current session
 set ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
+
+# Set permanently (restart required)
+setx ANTHROPIC_API_KEY "sk-ant-api03-your-key-here"
 ```
 
 #### Linux/Mac:
 ```bash
+# Set for current session
 export ANTHROPIC_API_KEY="sk-ant-api03-your-key-here"
+
+# Set permanently (add to ~/.bashrc or ~/.zshrc)
+echo 'export ANTHROPIC_API_KEY="sk-ant-api03-your-key-here"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ### 3. Create .env File (Recommended)
+
 Create a `.env` file in the Enterprise Agent directory:
-```
+
+```env
+# Anthropic API Key (from your Max subscription)
 ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
+
+# OpenAI API Key (for fallback and embeddings)
 OPENAI_API_KEY=sk-your-openai-key-here
+
+# Optional: Enable Claude Code CLI for zero API costs
+USE_CLAUDE_CODE=true
 ```
 
 ### 4. Verify Setup
-Run the test:
+
+Run the verification test:
 ```bash
+# Test Claude integration
 python test_claude_optimization.py
+
+# Expected output: "Claude integration working correctly"
 ```
 
 ## What Has Been Optimized

@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-import subprocess
+import subprocess  # nosec B404
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -63,7 +63,9 @@ class ClaudeAuthManager:
             for line in lines:
                 if line.strip().startswith("ANTHROPIC_API_KEY"):
                     # Comment out the line
-                    new_lines.append(f"# {line} # Disabled for Claude Code subscription mode")
+                    new_lines.append(
+                        f"# {line} # Disabled for Claude Code subscription mode"
+                    )
                     logger.info("Commented out ANTHROPIC_API_KEY in .env file")
                 else:
                     new_lines.append(line)
@@ -85,11 +87,11 @@ class ClaudeAuthManager:
                 return False
 
             # Try a minimal command to verify auth
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603, B607
                 ["claude", "--print", "--model", "haiku", "echo test"],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
 
             # Check for login prompt in output
@@ -126,10 +128,10 @@ class ClaudeAuthManager:
                 )
 
                 # Run interactive login
-                result = subprocess.run(
+                result = subprocess.run(  # nosec B603, B607
                     ["claude", "login"],
                     capture_output=False,  # Allow user interaction
-                    text=True
+                    text=True,
                 )
 
                 if result.returncode == 0:
@@ -159,11 +161,8 @@ class ClaudeAuthManager:
         try:
             logger.info("Setting up long-lived authentication token...")
 
-            result = subprocess.run(
-                ["claude", "setup-token"],
-                capture_output=True,
-                text=True,
-                timeout=30
+            result = subprocess.run(  # nosec B603, B607
+                ["claude", "setup-token"], capture_output=True, text=True, timeout=30
             )
 
             if result.returncode == 0:
@@ -184,11 +183,11 @@ class ClaudeAuthManager:
             Detailed status information
         """
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603, B607
                 ["claude", "auth", "status", "--json"],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
 
             if result.returncode == 0 and result.stdout.strip():
@@ -207,12 +206,14 @@ class ClaudeAuthManager:
 
     def _parse_auth_status_text(self, output: str) -> Dict[str, Any]:
         """Parse text-based auth status output."""
-        authenticated = "logged in" in output.lower() or "authenticated" in output.lower()
+        authenticated = (
+            "logged in" in output.lower() or "authenticated" in output.lower()
+        )
         return {
             "authenticated": authenticated,
             "plan_type": "subscription" if authenticated else "unknown",
             "status": "active" if authenticated else "not_logged_in",
-            "raw_output": output
+            "raw_output": output,
         }
 
     def _fallback_auth_check(self) -> Dict[str, Any]:
@@ -222,7 +223,7 @@ class ClaudeAuthManager:
             "authenticated": authenticated,
             "plan_type": "subscription" if authenticated else "unknown",
             "status": "active" if authenticated else "not_logged_in",
-            "method": "fallback"
+            "method": "fallback",
         }
 
     def validate_setup(self) -> Dict[str, Any]:
@@ -240,16 +241,13 @@ class ClaudeAuthManager:
             "status": "unknown",
             "issues": [],
             "recommendations": [],
-            "ready": False
+            "ready": False,
         }
 
         # Check CLI availability
         try:
-            result = subprocess.run(
-                ["claude", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5
+            result = subprocess.run(  # nosec B603, B607
+                ["claude", "--version"], capture_output=True, text=True, timeout=5
             )
             if result.returncode == 0:
                 validation["cli_available"] = True
@@ -283,7 +281,9 @@ class ClaudeAuthManager:
         if api_key and api_key != "STUBBED_FALLBACK":
             validation["api_key_conflict"] = True
             validation["subscription_mode"] = False
-            validation["issues"].append("ANTHROPIC_API_KEY will cause API billing instead of subscription")
+            validation["issues"].append(
+                "ANTHROPIC_API_KEY will cause API billing instead of subscription"
+            )
             validation["recommendations"].append(
                 "Remove ANTHROPIC_API_KEY from environment: unset ANTHROPIC_API_KEY"
             )
@@ -294,7 +294,11 @@ class ClaudeAuthManager:
             validation["subscription_mode"] = True
 
         # Overall status
-        if validation["cli_available"] and validation["authenticated"] and validation["subscription_mode"]:
+        if (
+            validation["cli_available"]
+            and validation["authenticated"]
+            and validation["subscription_mode"]
+        ):
             validation["status"] = "ready"
             validation["ready"] = True
         elif validation["cli_available"] and not validation["authenticated"]:
@@ -319,12 +323,14 @@ class ClaudeAuthManager:
             "authenticated": validation["authenticated"],
             "using_api_key": validation["api_key_conflict"],
             "subscription_mode": validation["subscription_mode"],
-            "plan_type": "Max subscription" if validation["authenticated"] and validation["subscription_mode"] else "unknown",
+            "plan_type": "Max subscription"
+            if validation["authenticated"] and validation["subscription_mode"]
+            else "unknown",
             "status": validation["status"],
             "ready": validation["ready"],
             "recommendations": validation["recommendations"],
             "cli_version": validation.get("cli_version"),
-            "issues": validation["issues"]
+            "issues": validation["issues"],
         }
 
         return plan_info

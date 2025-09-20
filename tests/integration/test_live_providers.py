@@ -51,7 +51,12 @@ def test_anthropic_live_call():
     response = client.messages.create(
         model=os.getenv("LIVE_ANTHROPIC_MODEL", "claude-3-5-sonnet-20240620"),
         max_tokens=32,
-        messages=[{"role": "user", "content": [{"type": "text", "text": "Reply with the single word ok."}]}],
+        messages=[
+            {
+                "role": "user",
+                "content": [{"type": "text", "text": "Reply with the single word ok."}],
+            }
+        ],
         temperature=0,
     )
     blocks = getattr(response, "content", []) or []

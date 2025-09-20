@@ -49,20 +49,30 @@ class Validator(BaseRole):
 
         return result
 
-    def _perform_llm_validation(self, output: str, domain: str, pack: Dict[str, Any]) -> Dict[str, Any]:
+    def _perform_llm_validation(
+        self, output: str, domain: str, pack: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Perform LLM-based validation for quality insights."""
         try:
             validation_prompt = self._build_validation_prompt(output, domain, pack)
             model = self.route_to_model(output, domain)
 
-            validation_result = self.call_model(model, validation_prompt, "Validator", "validate")
+            validation_result = self.call_model(
+                model, validation_prompt, "Validator", "validate"
+            )
             parsed_result = self.parse_json(validation_result)
 
-            return parsed_result if isinstance(parsed_result, dict) else {"insights": validation_result}
+            return (
+                parsed_result
+                if isinstance(parsed_result, dict)
+                else {"insights": validation_result}
+            )
         except Exception as e:
             return {"error": f"LLM validation failed: {str(e)}"}
 
-    def _build_validation_prompt(self, output: str, domain: str, pack: Dict[str, Any]) -> str:
+    def _build_validation_prompt(
+        self, output: str, domain: str, pack: Dict[str, Any]
+    ) -> str:
         """Build Claude-optimized validation prompt."""
         criteria = pack.get("validation_criteria", "correctness, completeness, quality")
 

@@ -6,7 +6,7 @@ import logging
 import random
 import time
 from functools import wraps
-from typing import Any, Callable, Optional, Tuple, Type, Union
+from typing import Any, Callable, Optional, Tuple, Type
 
 from src.exceptions import (
     ModelRateLimitException,
@@ -37,9 +37,7 @@ class RetryStrategy:
         raise NotImplementedError
 
     def should_retry(
-        self,
-        exception: Exception,
-        attempt: int
+        self, exception: Exception, attempt: int
     ) -> Tuple[bool, Optional[float]]:
         """Determine if we should retry and the delay."""
         if attempt >= self.max_retries:
@@ -69,11 +67,11 @@ class ExponentialBackoff(RetryStrategy):
 
     def calculate_delay(self, attempt: int) -> float:
         """Calculate exponential backoff delay."""
-        delay = self.base_delay * (self.exponential_base ** attempt)
+        delay = self.base_delay * (self.exponential_base**attempt)
 
         if self.jitter:
             # Add random jitter (0.5x to 1.5x the delay)
-            jitter_factor = 0.5 + random.random()
+            jitter_factor = 0.5 + random.random()  # nosec B311
             delay *= jitter_factor
 
         return min(delay, self.max_delay)
@@ -88,7 +86,7 @@ class LinearBackoff(RetryStrategy):
 
         if self.jitter:
             # Add small random jitter
-            delay += random.uniform(0, self.base_delay * 0.5)
+            delay += random.uniform(0, self.base_delay * 0.5)  # nosec B311
 
         return min(delay, self.max_delay)
 
@@ -102,7 +100,7 @@ class ConstantBackoff(RetryStrategy):
 
         if self.jitter:
             # Add small random jitter
-            delay += random.uniform(-0.1 * delay, 0.1 * delay)
+            delay += random.uniform(-0.1 * delay, 0.1 * delay)  # nosec B311
 
         return delay
 
@@ -289,7 +287,7 @@ def create_retry_decorator(
     retry_type: str = "exponential",
     max_retries: int = 3,
     base_delay: float = 1.0,
-    **kwargs
+    **kwargs,
 ) -> Callable:
     """Factory function to create retry decorators."""
     strategies = {
@@ -299,11 +297,7 @@ def create_retry_decorator(
     }
 
     strategy_class = strategies.get(retry_type, ExponentialBackoff)
-    strategy = strategy_class(
-        max_retries=max_retries,
-        base_delay=base_delay,
-        **kwargs
-    )
+    strategy = strategy_class(max_retries=max_retries, base_delay=base_delay, **kwargs)
 
     return lambda func: retry_with_backoff(strategy=strategy)(func)
 
@@ -315,12 +309,12 @@ retry_on_failure = retry_with_backoff(
 
 retry_on_timeout = retry_with_backoff(
     strategy=ExponentialBackoff(max_retries=3, base_delay=2.0),
-    exceptions=(TimeoutError, ModelTimeoutException)
+    exceptions=(TimeoutError, ModelTimeoutException),
 )
 
 retry_on_rate_limit = retry_with_backoff(
     strategy=ExponentialBackoff(max_retries=5, base_delay=5.0),
-    exceptions=(ModelRateLimitException,)
+    exceptions=(ModelRateLimitException,),
 )
 
 

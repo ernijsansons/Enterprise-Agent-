@@ -2,7 +2,7 @@
 # Enterprise Agent Installation Script
 # One-line install: curl -sSL https://yoursite.com/install.sh | bash
 
-set -e
+set -euo pipefail
 
 # Colors for output
 RED='\033[0;31m'
@@ -85,12 +85,29 @@ check_dependencies() {
 install_agent() {
     if [ -d "$INSTALL_DIR" ]; then
         print_info "Updating existing installation..."
-        cd "$INSTALL_DIR"
-        git pull origin main || print_warning "Could not update from git"
+        cd "$INSTALL_DIR" || {
+            print_error "Failed to change to $INSTALL_DIR"
+            exit 1
+        }
+        
+        if git pull origin main; then
+            print_success "Updated from git"
+        else
+            print_warning "Could not update from git, continuing with existing code"
+        fi
     else
         print_info "Cloning Enterprise Agent..."
-        git clone "$REPO_URL" "$INSTALL_DIR"
-        cd "$INSTALL_DIR"
+        if git clone "$REPO_URL" "$INSTALL_DIR"; then
+            print_success "Cloned repository"
+        else
+            print_error "Failed to clone repository from $REPO_URL"
+            exit 1
+        fi
+        
+        cd "$INSTALL_DIR" || {
+            print_error "Failed to change to $INSTALL_DIR"
+            exit 1
+        }
     fi
 
     print_success "Agent code installed to $INSTALL_DIR"
@@ -100,25 +117,47 @@ install_agent() {
 install_python_deps() {
     print_info "Installing Python dependencies..."
 
-    cd "$INSTALL_DIR"
+    cd "$INSTALL_DIR" || {
+        print_error "Failed to change to $INSTALL_DIR"
+        exit 1
+    }
 
     # Create virtual environment
     if [ ! -d "venv" ]; then
-        python3 -m venv venv
+        if python3 -m venv venv; then
+            print_success "Created virtual environment"
+        else
+            print_error "Failed to create virtual environment"
+            exit 1
+        fi
     fi
 
     # Activate virtual environment
-    source venv/bin/activate
+    if source venv/bin/activate; then
+        print_success "Activated virtual environment"
+    else
+        print_error "Failed to activate virtual environment"
+        exit 1
+    fi
 
     # Upgrade pip
-    pip install --upgrade pip
+    if pip install --upgrade pip; then
+        print_success "Upgraded pip"
+    else
+        print_warning "Failed to upgrade pip, continuing..."
+    fi
 
     # Install requirements
     if [ -f "requirements.txt" ]; then
-        pip install -r requirements.txt
-        print_success "Python dependencies installed"
+        if pip install -r requirements.txt; then
+            print_success "Python dependencies installed from requirements.txt"
+        else
+            print_error "Failed to install dependencies from requirements.txt"
+            exit 1
+        fi
     else
         # Create minimal requirements
+        print_info "Creating minimal requirements.txt..."
         cat > requirements.txt <<EOF
 pyyaml>=6.0.1
 python-dotenv>=1.0.1
@@ -126,8 +165,12 @@ requests>=2.31.0
 anthropic>=0.20.0
 openai>=1.2.0
 EOF
-        pip install -r requirements.txt
-        print_success "Python dependencies installed"
+        if pip install -r requirements.txt; then
+            print_success "Python dependencies installed from minimal requirements"
+        else
+            print_error "Failed to install minimal dependencies"
+            exit 1
+        fi
     fi
 
     deactivate

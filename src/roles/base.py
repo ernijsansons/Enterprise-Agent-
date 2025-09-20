@@ -14,27 +14,37 @@ class BaseRole:
         self.orchestrator = orchestrator
 
     # ------------------------------------------------------------------ helpers
-    def call_model(self, model: str, prompt: str, role: str, operation: str, **kwargs) -> str:
+    def call_model(
+        self, model: str, prompt: str, role: str, operation: str, **kwargs
+    ) -> str:
         # Pass project context if available
-        project_context = kwargs.get('project_context') or getattr(self.orchestrator, 'project_context', None)
+        project_context = kwargs.get("project_context") or getattr(
+            self.orchestrator, "project_context", None
+        )
 
         # Access role transition context if available (for Claude Code coordination)
-        if hasattr(self.orchestrator, '_use_claude_code') and self.orchestrator._use_claude_code:
+        if (
+            hasattr(self.orchestrator, "_use_claude_code")
+            and self.orchestrator._use_claude_code
+        ):
             # Get state from orchestrator if available
-            current_state = getattr(self.orchestrator, '_current_state', {})
+            current_state = getattr(self.orchestrator, "_current_state", {})
             role_context = current_state.get(f"{role.lower()}_context")
 
             if role_context:
                 # Enhance prompt with role transition context for better coordination
-                enhanced_prompt = self._enhance_prompt_with_role_context(prompt, role_context)
+                enhanced_prompt = self._enhance_prompt_with_role_context(
+                    prompt, role_context
+                )
                 prompt = enhanced_prompt
 
         return self.orchestrator._call_model(
-            model, prompt, role, operation,
-            project_context=project_context, **kwargs
+            model, prompt, role, operation, project_context=project_context, **kwargs
         )
 
-    def _enhance_prompt_with_role_context(self, prompt: str, role_context: Dict[str, Any]) -> str:
+    def _enhance_prompt_with_role_context(
+        self, prompt: str, role_context: Dict[str, Any]
+    ) -> str:
         """Enhance prompt with role transition context for better Claude coordination."""
         if not role_context:
             return prompt
@@ -44,16 +54,20 @@ class BaseRole:
         previous_outputs = role_context.get("previous_outputs", {})
 
         if from_role and previous_outputs:
-            context_parts.append(f"<previous_role_context>")
+            context_parts.append("<previous_role_context>")
             context_parts.append(f"Previous role: {from_role}")
 
             # Add relevant previous outputs
             for output_type, output_value in previous_outputs.items():
                 if output_value:  # Only add non-empty outputs
                     if isinstance(output_value, (list, dict)):
-                        context_parts.append(f"{output_type}: {str(output_value)[:200]}...")
+                        context_parts.append(
+                            f"{output_type}: {str(output_value)[:200]}..."
+                        )
                     else:
-                        context_parts.append(f"{output_type}: {str(output_value)[:200]}...")
+                        context_parts.append(
+                            f"{output_type}: {str(output_value)[:200]}..."
+                        )
 
             context_parts.append("</previous_role_context>")
             context_parts.append("")

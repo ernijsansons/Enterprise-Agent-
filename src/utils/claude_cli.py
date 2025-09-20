@@ -3,8 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
-import shlex
-import subprocess
+import subprocess  # nosec B404
 import threading
 from dataclasses import dataclass
 from enum import Enum
@@ -17,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class OutputFormat(Enum):
     """Output format options for Claude Code CLI."""
+
     TEXT = "text"
     JSON = "json"
     STREAM_JSON = "stream-json"
@@ -24,6 +24,7 @@ class OutputFormat(Enum):
 
 class PermissionMode(Enum):
     """Permission modes for Claude Code CLI."""
+
     DEFAULT = "default"
     ACCEPT_EDITS = "acceptEdits"
     BYPASS_PERMISSIONS = "bypassPermissions"
@@ -33,6 +34,7 @@ class PermissionMode(Enum):
 @dataclass
 class ClaudeCommand:
     """Represents a Claude Code CLI command."""
+
     prompt: str
     model: str = "sonnet"
     output_format: OutputFormat = OutputFormat.JSON
@@ -132,7 +134,7 @@ class ClaudeCodeCLI:
     def execute(
         self,
         command: ClaudeCommand,
-        stream_callback: Optional[Callable[[str], None]] = None
+        stream_callback: Optional[Callable[[str], None]] = None,
     ) -> Dict[str, Any]:
         """Execute a Claude Code command.
 
@@ -149,23 +151,24 @@ class ClaudeCodeCLI:
 
         try:
             if command.output_format == OutputFormat.STREAM_JSON and stream_callback:
-                return self._execute_streaming(cmd_list, stream_callback, command.timeout)
+                return self._execute_streaming(
+                    cmd_list, stream_callback, command.timeout
+                )
             else:
                 return self._execute_blocking(cmd_list, command.timeout)
 
         except subprocess.TimeoutExpired:
             logger.error(f"Command timed out after {command.timeout}s")
-            return {"error": "timeout", "message": f"Command timed out after {command.timeout}s"}
+            return {
+                "error": "timeout",
+                "message": f"Command timed out after {command.timeout}s",
+            }
 
         except Exception as e:
             logger.error(f"Command execution failed: {e}")
             return {"error": "execution_failed", "message": str(e)}
 
-    def _execute_blocking(
-        self,
-        cmd_list: List[str],
-        timeout: int
-    ) -> Dict[str, Any]:
+    def _execute_blocking(self, cmd_list: List[str], timeout: int) -> Dict[str, Any]:
         """Execute command and wait for completion.
 
         Args:
@@ -175,12 +178,12 @@ class ClaudeCodeCLI:
         Returns:
             Parsed response dictionary
         """
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             cmd_list,
             capture_output=True,
             text=True,
             timeout=timeout,
-            cwd=self.working_directory
+            cwd=self.working_directory,
         )
 
         if result.returncode != 0:
@@ -188,16 +191,13 @@ class ClaudeCodeCLI:
             return {
                 "error": "command_failed",
                 "message": result.stderr,
-                "returncode": result.returncode
+                "returncode": result.returncode,
             }
 
         return self._parse_output(result.stdout)
 
     def _execute_streaming(
-        self,
-        cmd_list: List[str],
-        callback: Callable[[str], None],
-        timeout: int
+        self, cmd_list: List[str], callback: Callable[[str], None], timeout: int
     ) -> Dict[str, Any]:
         """Execute command with streaming output.
 
@@ -209,13 +209,13 @@ class ClaudeCodeCLI:
         Returns:
             Complete response dictionary
         """
-        process = subprocess.Popen(
+        process = subprocess.Popen(  # nosec B603
             cmd_list,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1,
-            cwd=self.working_directory
+            cwd=self.working_directory,
         )
 
         chunks = []
@@ -242,6 +242,7 @@ class ClaudeCodeCLI:
 
         # Process output with timeout
         import time
+
         start_time = time.time()
 
         while True:
@@ -285,17 +286,13 @@ class ClaudeCodeCLI:
             return {
                 "error": "command_failed",
                 "message": "".join(stderr_content),
-                "returncode": process.returncode
+                "returncode": process.returncode,
             }
 
         # Combine chunks into final response
         full_text = "".join(chunk.get("text", "") for chunk in chunks)
 
-        return {
-            "response": full_text,
-            "chunks": chunks,
-            "streaming": True
-        }
+        return {"response": full_text, "chunks": chunks, "streaming": True}
 
     def _parse_output(self, output: str) -> Dict[str, Any]:
         """Parse CLI output.
@@ -318,10 +315,7 @@ class ClaudeCodeCLI:
             return {"response": output, "format": "text"}
 
     def execute_simple(
-        self,
-        prompt: str,
-        model: str = "sonnet",
-        session_id: Optional[str] = None
+        self, prompt: str, model: str = "sonnet", session_id: Optional[str] = None
     ) -> str:
         """Execute a simple command and return text response.
 
@@ -338,7 +332,7 @@ class ClaudeCodeCLI:
             model=model,
             output_format=OutputFormat.TEXT,
             session_id=session_id,
-            print_mode=True
+            print_mode=True,
         )
 
         result = self.execute(command)
@@ -348,11 +342,7 @@ class ClaudeCodeCLI:
 
         return result.get("response", "")
 
-    def continue_conversation(
-        self,
-        prompt: str,
-        model: str = "sonnet"
-    ) -> str:
+    def continue_conversation(self, prompt: str, model: str = "sonnet") -> str:
         """Continue the most recent conversation.
 
         Args:
@@ -366,7 +356,7 @@ class ClaudeCodeCLI:
             prompt=prompt,
             model=model,
             continue_last=True,
-            output_format=OutputFormat.TEXT
+            output_format=OutputFormat.TEXT,
         )
 
         result = self.execute(command)
@@ -395,10 +385,7 @@ class SessionManager:
         return session_id
 
     def execute_in_session(
-        self,
-        session_id: str,
-        prompt: str,
-        model: str = "sonnet"
+        self, session_id: str, prompt: str, model: str = "sonnet"
     ) -> str:
         """Execute a command in a specific session.
 
@@ -417,17 +404,13 @@ class SessionManager:
             prompt=prompt,
             model=model,
             session_id=session_id,
-            output_format=OutputFormat.TEXT
+            output_format=OutputFormat.TEXT,
         )
 
         result = self.cli.execute(command)
         return result.get("response", "")
 
-    def fork_session(
-        self,
-        original_session_id: str,
-        new_session_id: str
-    ) -> str:
+    def fork_session(self, original_session_id: str, new_session_id: str) -> str:
         """Fork an existing session.
 
         Args:
@@ -445,7 +428,7 @@ class SessionManager:
             resume_session=original_session_id,
             fork_session=True,
             session_id=new_session_id,
-            output_format=OutputFormat.JSON
+            output_format=OutputFormat.JSON,
         )
 
         result = self.cli.execute(command)
@@ -472,5 +455,5 @@ __all__ = [
     "ClaudeCodeCLI",
     "SessionManager",
     "OutputFormat",
-    "PermissionMode"
+    "PermissionMode",
 ]

@@ -6,8 +6,8 @@ import sys
 from pathlib import Path
 
 # Set UTF-8 encoding for Windows
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -26,7 +26,12 @@ def test_routing_logic():
         ("short task", "coding", False, "Should route to Claude Sonnet"),
         ("x" * 6000, "coding", False, "Long task should route to Claude Opus"),
         ("security task", "coding", True, "Security task should route to Claude Opus"),
-        ("trading analysis", "trading", False, "Trading domain should route to Claude Opus"),
+        (
+            "trading analysis",
+            "trading",
+            False,
+            "Trading domain should route to Claude Opus",
+        ),
     ]
 
     for text, domain, vuln_flag, description in test_cases:
@@ -42,7 +47,7 @@ def test_model_aliases():
     """Test that model aliases are correctly configured."""
     print("\n=== Testing Model Aliases ===")
 
-    from src.agent_orchestrator import MODEL_ALIASES, _resolve_model_alias
+    from src.agent_orchestrator import MODEL_ALIASES
 
     # Check Claude aliases
     assert MODEL_ALIASES["claude_sonnet_4"] == "claude-3-5-sonnet-20241022"
@@ -107,12 +112,11 @@ def test_full_pipeline():
 
     # Run a simple task
     result = agent.run_mode(
-        domain="coding",
-        task="Write a function to calculate the area of a circle"
+        domain="coding", task="Write a function to calculate the area of a circle"
     )
 
-    print(f"Pipeline completed successfully")
-    print(f"Models used:")
+    print("Pipeline completed successfully")
+    print("Models used:")
 
     # Check which models were used
     if result.get("plan_model"):
@@ -160,6 +164,7 @@ def main():
     except Exception as e:
         print(f"\n✗ Unexpected error: {e}")
         import traceback
+
         traceback.print_exc()
 
 

@@ -1,37 +1,36 @@
 #!/usr/bin/env python
 """Comprehensive test suite for Enterprise Agent with Claude Code integration."""
-import json
 import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, Mock, patch
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.agent_orchestrator import AgentOrchestrator
-from src.providers.claude_code_provider import ClaudeCodeProvider
-from src.providers.auth_manager import ClaudeAuthManager
-from src.utils.costs import CostEstimator
+from src.exceptions import ModelException, ValidationException
 from src.memory import MemoryStore  # Memory is in src.memory
+from src.providers.auth_manager import ClaudeAuthManager
+from src.providers.claude_code_provider import ClaudeCodeProvider
 from src.utils.cache import ResponseCache
 from src.utils.concurrency import thread_safe_operation
+from src.utils.costs import CostEstimator
 from src.utils.retry import retry_with_exponential_backoff
 from src.utils.validation import validate_input
-from src.exceptions import ModelException, ValidationException
 
 
 class TestColors:
     """Terminal colors for test output."""
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
+
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
 
 
 def print_test_header(test_name: str):
@@ -62,7 +61,11 @@ def test_basic_imports():
 
     modules_to_test = [
         ("Agent Orchestrator", "src.agent_orchestrator", "AgentOrchestrator"),
-        ("Claude Code Provider", "src.providers.claude_code_provider", "ClaudeCodeProvider"),
+        (
+            "Claude Code Provider",
+            "src.providers.claude_code_provider",
+            "ClaudeCodeProvider",
+        ),
         ("Auth Manager", "src.providers.auth_manager", "ClaudeAuthManager"),
         ("Cost Estimator", "src.utils.costs", "CostEstimator"),
         ("Memory Store", "src.memory", "MemoryStore"),
@@ -87,9 +90,7 @@ def test_claude_code_provider():
 
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = Mock(
-            returncode=0,
-            stdout="claude version 1.0.0",
-            stderr=""
+            returncode=0, stdout="claude version 1.0.0", stderr=""
         )
 
         try:
@@ -305,6 +306,7 @@ def test_concurrency():
 
         # Run concurrent operations
         import threading
+
         threads = []
         for _ in range(10):
             t = threading.Thread(target=increment)
@@ -413,7 +415,7 @@ def test_all_roles():
     print_test_header("Agent Roles")
 
     try:
-        from src.roles import Planner, Coder, Validator, Reviewer, Reflector
+        from src.roles import Coder, Planner, Reflector, Reviewer, Validator
 
         # Test each role initialization
         roles = [
@@ -469,7 +471,9 @@ def test_error_handling():
 def run_all_tests():
     """Run all comprehensive tests."""
     print(f"\n{TestColors.HEADER}{TestColors.BOLD}{'='*60}{TestColors.ENDC}")
-    print(f"{TestColors.HEADER}{TestColors.BOLD}COMPREHENSIVE ENTERPRISE AGENT TEST SUITE{TestColors.ENDC}")
+    print(
+        f"{TestColors.HEADER}{TestColors.BOLD}COMPREHENSIVE ENTERPRISE AGENT TEST SUITE{TestColors.ENDC}"
+    )
     print(f"{TestColors.HEADER}{TestColors.BOLD}{'='*60}{TestColors.ENDC}")
 
     tests = [
@@ -506,13 +510,19 @@ def run_all_tests():
     total = len(results)
 
     for test_name, result in results:
-        status = f"{TestColors.OKGREEN}PASS{TestColors.ENDC}" if result else f"{TestColors.FAIL}FAIL{TestColors.ENDC}"
+        status = (
+            f"{TestColors.OKGREEN}PASS{TestColors.ENDC}"
+            if result
+            else f"{TestColors.FAIL}FAIL{TestColors.ENDC}"
+        )
         print(f"{test_name:.<40} {status}")
 
     print(f"\n{TestColors.BOLD}Results: {passed}/{total} tests passed{TestColors.ENDC}")
 
     if passed == total:
-        print(f"{TestColors.OKGREEN}{TestColors.BOLD}✓ ALL TESTS PASSED!{TestColors.ENDC}")
+        print(
+            f"{TestColors.OKGREEN}{TestColors.BOLD}✓ ALL TESTS PASSED!{TestColors.ENDC}"
+        )
         return 0
     else:
         print(f"{TestColors.FAIL}{TestColors.BOLD}✗ Some tests failed{TestColors.ENDC}")

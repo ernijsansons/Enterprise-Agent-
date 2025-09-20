@@ -36,7 +36,8 @@ def compare_to_baseline(results: List[Dict[str, float]]) -> Dict[str, Dict[str, 
             continue
         deltas[result["domain"]] = {
             "success_delta": result["success"] - base.get("success", 0),
-            "duration_delta": result["duration"] - base.get("duration", result["duration"]),
+            "duration_delta": result["duration"]
+            - base.get("duration", result["duration"]),
         }
     return deltas
 

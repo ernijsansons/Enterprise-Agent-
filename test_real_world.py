@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """Real-world test of the Enterprise Agent with actual tasks."""
 
-import json
+import io
 import sys
 import time
 from pathlib import Path
-import io
 
 # Set UTF-8 encoding for Windows
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -51,7 +50,7 @@ def test_coding_task():
             print(f"\nPlan Generated ({result['plan'].get('model', 'unknown')}):")
         else:
             plan_text = result["plan"]
-            print(f"\nPlan Generated:")
+            print("\nPlan Generated:")
 
         if plan_text:
             for line in plan_text.splitlines()[:5]:  # Show first 5 lines
@@ -73,7 +72,7 @@ def test_coding_task():
 
     if result.get("cost_summary"):
         cost = result["cost_summary"]
-        print(f"\nCost Summary:")
+        print("\nCost Summary:")
         print(f"  Total Tokens: {cost.get('tokens', 0)}")
         print(f"  Total Cost: ${cost.get('total_cost', 0):.6f}")
         print(f"  Events: {len(cost.get('events', []))}")
@@ -121,13 +120,13 @@ def test_validation_and_reflection():
     result = agent.run_mode("coding", task)
 
     if result.get("validation"):
-        print(f"\nValidation Result:")
+        print("\nValidation Result:")
         validation = result["validation"]
         print(f"  Passes: {validation.get('passes', False)}")
         print(f"  Coverage: {validation.get('coverage', 0)}")
 
     if result.get("reflection_analysis"):
-        print(f"\nReflection Analysis:")
+        print("\nReflection Analysis:")
         analysis = result["reflection_analysis"]
         if isinstance(analysis, dict):
             print(f"  Analysis: {analysis.get('analysis', 'N/A')[:100]}...")
@@ -155,7 +154,7 @@ def test_different_domains():
         tasks = {
             "coding": "Write a function to calculate fibonacci numbers",
             "content": "Write a brief article about AI",
-            "social_media": "Create a tweet about productivity"
+            "social_media": "Create a tweet about productivity",
         }
 
         task = tasks.get(domain, "Perform a simple task")
@@ -218,11 +217,12 @@ def main():
         except Exception as e:
             print(f"\n✗ Test {test_func.__name__} failed: {e}")
             import traceback
+
             traceback.print_exc()
             failed += 1
 
     print("\n" + "=" * 60)
-    print(f"REAL-WORLD TEST SUMMARY")
+    print("REAL-WORLD TEST SUMMARY")
     print(f"Tests Passed: {passed}/{len(tests)}")
     print("=" * 60)
 

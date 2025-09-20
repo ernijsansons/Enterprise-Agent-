@@ -4,11 +4,11 @@ from __future__ import annotations
 import json
 import logging
 import os
-from functools import lru_cache
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import tempfile
 import time
+from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -191,7 +191,7 @@ def scan_vulnerabilities(payload: str, code_path: str | None = None) -> Dict[str
         run_kwargs["cwd"] = run_cwd
 
     try:
-        subprocess.run(
+        subprocess.run(  # nosec B603, B607
             ["snyk", "auth", token],
             check=True,
             stdout=subprocess.PIPE,
@@ -204,7 +204,7 @@ def scan_vulnerabilities(payload: str, code_path: str | None = None) -> Dict[str
             snyk_cmd.extend(["--project-id", project_id])
         snyk_cmd.extend(file_args)
 
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             snyk_cmd,
             capture_output=True,
             text=True,

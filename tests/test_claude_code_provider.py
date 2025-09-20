@@ -6,7 +6,10 @@ import unittest
 from unittest.mock import MagicMock, Mock, patch
 
 from src.exceptions import ModelException, ModelTimeoutException
-from src.providers.claude_code_provider import ClaudeCodeProvider, get_claude_code_provider
+from src.providers.claude_code_provider import (
+    ClaudeCodeProvider,
+    get_claude_code_provider,
+)
 
 
 class TestClaudeCodeProvider(unittest.TestCase):
@@ -35,9 +38,7 @@ class TestClaudeCodeProvider(unittest.TestCase):
     def test_verify_cli_available_success(self, mock_run):
         """Test successful CLI verification."""
         mock_run.return_value = Mock(
-            returncode=0,
-            stdout="claude version 1.0.0",
-            stderr=""
+            returncode=0, stdout="claude version 1.0.0", stderr=""
         )
 
         provider = ClaudeCodeProvider(self.config)
@@ -67,11 +68,7 @@ class TestClaudeCodeProvider(unittest.TestCase):
         # Set an API key
         os.environ["ANTHROPIC_API_KEY"] = "test-key"
 
-        mock_run.return_value = Mock(
-            returncode=0,
-            stdout="",
-            stderr=""
-        )
+        mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
         provider = ClaudeCodeProvider(self.config)
 
@@ -82,8 +79,12 @@ class TestClaudeCodeProvider(unittest.TestCase):
     def test_verify_subscription_auth_not_logged_in(self, mock_run):
         """Test detection of not being logged in."""
         mock_run.side_effect = [
-            Mock(returncode=0, stdout="claude version 1.0.0", stderr=""),  # version check
-            Mock(returncode=1, stdout="", stderr="please run `claude login`")  # auth check
+            Mock(
+                returncode=0, stdout="claude version 1.0.0", stderr=""
+            ),  # version check
+            Mock(
+                returncode=1, stdout="", stderr="please run `claude login`"
+            ),  # auth check
         ]
 
         with patch("src.providers.claude_code_provider.logger") as mock_logger:
@@ -100,7 +101,9 @@ class TestClaudeCodeProvider(unittest.TestCase):
 
             # Test exact mappings
             self.assertEqual(provider._map_model_to_cli("claude_sonnet_4"), "sonnet")
-            self.assertEqual(provider._map_model_to_cli("claude-3-5-sonnet-20241022"), "sonnet")
+            self.assertEqual(
+                provider._map_model_to_cli("claude-3-5-sonnet-20241022"), "sonnet"
+            )
             self.assertEqual(provider._map_model_to_cli("claude_opus_4"), "opus")
             self.assertEqual(provider._map_model_to_cli("claude_haiku"), "haiku")
 
@@ -113,16 +116,21 @@ class TestClaudeCodeProvider(unittest.TestCase):
             self.assertEqual(provider._map_model_to_cli("unknown-model"), "sonnet")
 
     @patch("subprocess.run")
-    def test_call_model_success(self, mock_run):
+    @patch("src.providers.claude_code_provider.can_make_claude_request")
+    def test_call_model_success(self, mock_can_make_request, mock_run):
         """Test successful model call."""
+        mock_can_make_request.return_value = True
+        
         mock_run.side_effect = [
             Mock(returncode=0, stdout="claude version 1.0.0", stderr=""),  # version
             Mock(returncode=0, stdout="", stderr=""),  # auth
             Mock(
                 returncode=0,
-                stdout=json.dumps({"response": "Test response", "session_id": "abc123"}),
-                stderr=""
-            )  # actual call
+                stdout=json.dumps(
+                    {"response": "Test response", "session_id": "abc123"}
+                ),
+                stderr="",
+            ),  # actual call
         ]
 
         provider = ClaudeCodeProvider(self.config)
@@ -133,7 +141,7 @@ class TestClaudeCodeProvider(unittest.TestCase):
             role="Coder",
             operation="test",
             session_id="test-session",  # Provide session ID to trigger storage
-            use_cache=False
+            use_cache=False,
         )
 
         self.assertEqual(response, "Test response")
@@ -146,7 +154,11 @@ class TestClaudeCodeProvider(unittest.TestCase):
         mock_run.side_effect = [
             Mock(returncode=0, stdout="claude version 1.0.0", stderr=""),
             Mock(returncode=0, stdout="", stderr=""),
-            Mock(returncode=0, stdout=json.dumps({"response": "Cached response"}), stderr="")
+            Mock(
+                returncode=0,
+                stdout=json.dumps({"response": "Cached response"}),
+                stderr="",
+            ),
         ]
 
         provider = ClaudeCodeProvider(self.config)
@@ -156,7 +168,7 @@ class TestClaudeCodeProvider(unittest.TestCase):
             prompt="Test prompt",
             model="claude_sonnet_4",
             role="Planner",
-            use_cache=True
+            use_cache=True,
         )
 
         # Second call (should hit cache)
@@ -164,7 +176,7 @@ class TestClaudeCodeProvider(unittest.TestCase):
             prompt="Test prompt",
             model="claude_sonnet_4",
             role="Planner",
-            use_cache=True
+            use_cache=True,
         )
 
         self.assertEqual(response1, response2)
@@ -177,16 +189,14 @@ class TestClaudeCodeProvider(unittest.TestCase):
         mock_run.side_effect = [
             Mock(returncode=0, stdout="claude version 1.0.0", stderr=""),
             Mock(returncode=0, stdout="", stderr=""),
-            subprocess.TimeoutExpired("claude", 30)
+            subprocess.TimeoutExpired("claude", 30),
         ]
 
         provider = ClaudeCodeProvider(self.config)
 
         with self.assertRaises(ModelTimeoutException) as ctx:
             provider.call_model(
-                prompt="Test prompt",
-                model="claude_sonnet_4",
-                use_cache=False
+                prompt="Test prompt", model="claude_sonnet_4", use_cache=False
             )
 
         self.assertIn("timed out after 30s", str(ctx.exception))
@@ -197,16 +207,14 @@ class TestClaudeCodeProvider(unittest.TestCase):
         mock_run.side_effect = [
             Mock(returncode=0, stdout="claude version 1.0.0", stderr=""),
             Mock(returncode=0, stdout="", stderr=""),
-            Mock(returncode=1, stdout="", stderr="Error: Invalid prompt")
+            Mock(returncode=1, stdout="", stderr="Error: Invalid prompt"),
         ]
 
         provider = ClaudeCodeProvider(self.config)
 
         with self.assertRaises(ModelException) as ctx:
             provider.call_model(
-                prompt="Test prompt",
-                model="claude_sonnet_4",
-                use_cache=False
+                prompt="Test prompt", model="claude_sonnet_4", use_cache=False
             )
 
         self.assertIn("Claude Code CLI failed", str(ctx.exception))
@@ -241,7 +249,7 @@ class TestClaudeCodeProvider(unittest.TestCase):
         mock_process.stdout = [
             '{"text": "Hello "}\n',
             '{"text": "world"}\n',
-            '{"text": "!"}\n'
+            '{"text": "!"}\n',
         ]
         mock_process.stderr.read.return_value = ""
         mock_process.wait.return_value = None
@@ -256,7 +264,7 @@ class TestClaudeCodeProvider(unittest.TestCase):
             response = provider.stream_response(
                 prompt="Test prompt",
                 model="claude_sonnet_4",
-                callback=lambda x: chunks.append(x)
+                callback=lambda x: chunks.append(x),
             )
 
             self.assertEqual(response, "Hello world!")
@@ -315,7 +323,7 @@ class TestClaudeCodeIntegration(unittest.TestCase):
         mock_run.return_value = Mock(
             returncode=0,
             stdout=json.dumps({"response": "Claude Code response"}),
-            stderr=""
+            stderr="",
         )
 
         # Set environment to use Claude Code

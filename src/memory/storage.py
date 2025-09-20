@@ -39,7 +39,9 @@ class MemoryStore:
                     pc = Pinecone(api_key=api_key)
                     index_name = self.config.get("pinecone_index", "memory-index")
                     self.pinecone_index = pc.Index(index_name)
-                except Exception as exc:  # pragma: no cover - handle missing index gracefully
+                except (
+                    Exception
+                ) as exc:  # pragma: no cover - handle missing index gracefully
                     logger.warning("Pinecone index initialisation failed: %s", exc)
                     self.pinecone_index = None
 
@@ -89,12 +91,16 @@ class MemoryStore:
                         "level": level,
                         "key": key,
                         "model": embedding_result.get("model", "unknown"),
-                        "text_preview": value[:200] if value else ""
+                        "text_preview": value[:200] if value else "",
                     }
                 else:
                     # Fallback to default dimensions if embedding fails
                     vector = self._generate_placeholder_vector(value)
-                    metadata = {"level": level, "key": key, "text_preview": value[:200] if value else ""}
+                    metadata = {
+                        "level": level,
+                        "key": key,
+                        "text_preview": value[:200] if value else "",
+                    }
             else:
                 # For non-string values, generate placeholder vector
                 vector = self._generate_placeholder_vector(str(value))
@@ -105,7 +111,9 @@ class MemoryStore:
 
             # Upsert to Pinecone with proper error handling
             self.pinecone_index.upsert([(f"{level}_{key}", vector, metadata)])
-            logger.debug(f"Upserted vector for {level}/{key} with {len(vector)} dimensions")
+            logger.debug(
+                f"Upserted vector for {level}/{key} with {len(vector)} dimensions"
+            )
 
         except ImportError:
             # If integrations module is not available, use placeholder
@@ -118,7 +126,9 @@ class MemoryStore:
         except Exception as exc:
             logger.debug(f"Vector generation/upsert failed for {level}/{key}: {exc}")
 
-    def _generate_placeholder_vector(self, text: str, dimensions: int = 768) -> list[float]:
+    def _generate_placeholder_vector(
+        self, text: str, dimensions: int = 768
+    ) -> list[float]:
         """Generate a deterministic placeholder vector from text."""
         import hashlib
 

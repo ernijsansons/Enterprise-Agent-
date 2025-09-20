@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 """Final integration test for Enterprise Agent with Claude Code."""
+import io
 import os
 import sys
-import io
-import json
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 # Fix Windows encoding for emojis
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -19,6 +18,7 @@ test_results = {"passed": 0, "failed": 0, "errors": []}
 
 def test_step(description):
     """Decorator for test steps."""
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             try:
@@ -32,7 +32,9 @@ def test_step(description):
                 test_results["errors"].append(f"{description}: {str(e)}")
                 print(f"❌ FAIL: {e}")
                 return None
+
         return wrapper
+
     return decorator
 
 
@@ -43,13 +45,12 @@ def test_imports():
     global CostEstimator, MemoryStore, TTLCache
 
     from src.agent_orchestrator import AgentOrchestrator
-    from src.providers.claude_code_provider import ClaudeCodeProvider
-    from src.providers.auth_manager import ClaudeAuthManager
-    from src.utils.costs import CostEstimator
     from src.memory import MemoryStore
+    from src.providers.auth_manager import ClaudeAuthManager
+    from src.providers.claude_code_provider import ClaudeCodeProvider
     from src.utils.cache import TTLCache
-    from src.governance import Governance
-    from src.utils.hitl import HITLManager
+    from src.utils.costs import CostEstimator
+
     return True
 
 
@@ -70,9 +71,7 @@ def test_claude_provider():
     with patch("subprocess.run") as mock_run:
         # Mock successful CLI responses
         mock_run.return_value = Mock(
-            returncode=0,
-            stdout="claude version 1.0.0",
-            stderr=""
+            returncode=0, stdout="claude version 1.0.0", stderr=""
         )
 
         provider = ClaudeCodeProvider({"timeout": 30})
@@ -172,6 +171,7 @@ def test_cache():
     # Test expiration
     cache.set("expire_key", "data", ttl=0.1)
     import time
+
     time.sleep(0.2)
     expired = cache.get("expire_key")
     assert expired is None
@@ -197,7 +197,7 @@ def test_environment_config():
 @test_step("Test all agent roles initialization")
 def test_roles():
     """Test agent role initialization."""
-    from src.roles import Planner, Coder, Validator, Reviewer, Reflector
+    from src.roles import Coder, Planner, Reflector, Reviewer, Validator
 
     mock_orchestrator = MagicMock()
 
@@ -259,8 +259,8 @@ def test_retry():
 @test_step("Test input validation")
 def test_validation():
     """Test input validation."""
-    from src.utils.validation import validate_input
     from src.exceptions import ValidationException
+    from src.utils.validation import validate_input
 
     # Valid input
     valid = validate_input("Test prompt", max_length=1000)
@@ -302,11 +302,9 @@ def test_governance():
     """Test governance checks."""
     from src.governance import Governance
 
-    gov = Governance({
-        "max_validations": 3,
-        "max_reflections": 2,
-        "min_confidence": 0.7
-    })
+    gov = Governance(
+        {"max_validations": 3, "max_reflections": 2, "min_confidence": 0.7}
+    )
 
     # Test validation count
     for i in range(3):
@@ -324,10 +322,7 @@ def test_hitl():
     """Test Human-in-the-loop manager."""
     from src.utils.hitl import HITLManager
 
-    hitl = HITLManager({
-        "threshold": 0.8,
-        "auto_approve_low_risk": True
-    })
+    hitl = HITLManager({"threshold": 0.8, "auto_approve_low_risk": True})
 
     # Test low risk auto-approval
     result = hitl.check_approval("low_risk_task", risk_level="low")
@@ -358,9 +353,9 @@ def test_model_routing():
 
 def main():
     """Run all integration tests."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🔧 ENTERPRISE AGENT FINAL INTEGRATION TEST")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     # Run all tests
     test_imports()
@@ -381,9 +376,9 @@ def main():
     test_model_routing()
 
     # Print summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("📊 TEST SUMMARY")
-    print("="*60)
+    print("=" * 60)
     print(f"✅ Passed: {test_results['passed']}")
     print(f"❌ Failed: {test_results['failed']}")
 

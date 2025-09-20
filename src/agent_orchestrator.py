@@ -14,14 +14,14 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from src.orchestration import build_graph
-from src.providers.claude_code_provider import ClaudeCodeProvider, get_claude_code_provider
 from src.providers.auth_manager import get_auth_manager
-from src.utils.notifications import notify_cli_failure, get_notification_manager
+from src.providers.claude_code_provider import get_claude_code_provider
 from src.roles import Coder, Planner, Reflector, Reviewer, Validator
 from src.tools import invoke_codex_cli
-from src.utils.cache import get_model_cache, ModelResponseCache
-from src.utils.concurrency import ExecutionManager, ThreadSafeDict, thread_safe
-from src.utils.retry import retry_on_failure, retry_on_timeout
+from src.utils.cache import get_model_cache
+from src.utils.concurrency import ExecutionManager
+from src.utils.notifications import notify_cli_failure
+from src.utils.retry import retry_on_timeout
 from src.utils.safety import scrub_pii
 from src.utils.secrets import load_secrets
 from src.utils.telemetry import record_event, record_metric
@@ -183,7 +183,9 @@ class AgentOrchestrator:
         self._executor = ExecutionManager(max_workers=4)
         self._model_cache = get_model_cache()
         self._domain_validator = DomainValidator()
-        self._string_validator = StringValidator(max_length=100000, strip_whitespace=True)
+        self._string_validator = StringValidator(
+            max_length=100000, strip_whitespace=True
+        )
 
         # Initialize Claude Code provider if enabled
         self._use_claude_code = os.getenv("USE_CLAUDE_CODE", "false").lower() == "true"
@@ -202,7 +204,11 @@ class AgentOrchestrator:
         config_path = Path(config_override) if config_override else Path(config_path)
         if not config_path.is_absolute():
             candidate = Path(__file__).resolve().parents[1] / config_path
-            config_path = candidate if candidate.exists() else (Path.cwd() / config_path).resolve()
+            config_path = (
+                candidate
+                if candidate.exists()
+                else (Path.cwd() / config_path).resolve()
+            )
         self._project_root = Path(__file__).resolve().parents[1]
         if not config_path.exists():
             raise FileNotFoundError(f"Config file not found: {config_path}")
@@ -234,7 +240,11 @@ class AgentOrchestrator:
         logger.info("AgentOrchestrator initialised")
 
     def _init_claude_code_provider(self) -> None:
-        """Initialize Claude Code CLI provider with enhanced validation."""
+        """Initialize Claude Code CLI provider with enhanced validation and error handling.
+        
+        This method handles the complete initialization of the Claude Code provider,
+        including authentication validation, configuration setup, and error recovery.
+        """
         try:
             # Enhanced authentication setup
             auth_manager = get_auth_manager()
@@ -243,58 +253,107 @@ class AgentOrchestrator:
             validation = auth_manager.validate_setup()
 
             if not validation["ready"]:
-                logger.warning(f"Claude Code setup not ready: {validation['status']}")
-
-                # Log specific issues and recommendations
-                for issue in validation["issues"]:
-                    logger.warning(f"Setup issue: {issue}")
-
-                for rec in validation["recommendations"]:
-                    logger.info(f"Recommendation: {rec}")
-
-                if validation["status"] == "needs_installation":
-                    logger.error("Claude Code CLI not installed. Provider disabled.")
-                    self._use_claude_code = False
-                    self._claude_code_provider = None
-                    return
-                elif validation["status"] == "needs_login":
-                    logger.warning("Claude Code authentication required for optimal operation.")
+                self._handle_validation_issues(validation)
+                return
 
             # Ensure subscription mode
-            if not auth_manager.ensure_subscription_mode():
-                logger.warning("Failed to ensure subscription mode for Claude Code")
+            if not self._ensure_subscription_mode(auth_manager):
+                return
 
             # Initialize provider with enhanced configuration
-            provider_config = {
-                "timeout": 60,
-                "enable_fallback": True,
-                "auto_mode": False,  # Require confirmations for safety
-                "working_directory": os.getcwd(),
-                "auto_remove_api_key": True  # Automatically handle API key conflicts
-            }
-            self._claude_code_provider = get_claude_code_provider(provider_config)
+            self._claude_code_provider = self._create_provider_instance()
 
-            # Enhanced verification
-            if validation["authenticated"]:
-                logger.info("Claude Code provider initialized successfully (subscription mode)")
-                # Initialize session for context retention
-                self._session_id = self._claude_code_provider.create_session() if self._claude_code_provider else None
-
-                # Store validation info for runtime monitoring
-                self._claude_validation = validation
-            else:
-                logger.warning(
-                    "Claude Code provider initialized but not logged in. "
-                    "Run 'claude login' to use your Max subscription."
-                )
-                self._session_id = None
-                self._claude_validation = validation
+            # Enhanced verification and session setup
+            self._setup_provider_session(validation)
 
         except Exception as exc:
             logger.error(f"Failed to initialize Claude Code provider: {exc}")
             notify_cli_failure("provider_initialization", str(exc))
             self._use_claude_code = False
             self._claude_code_provider = None
+
+    def _handle_validation_issues(self, validation: Dict[str, Any]) -> None:
+        """Handle validation issues with detailed logging and recommendations.
+        
+        Args:
+            validation: Validation results dictionary
+        """
+        logger.warning(f"Claude Code setup not ready: {validation['status']}")
+
+        # Log specific issues and recommendations
+        for issue in validation.get("issues", []):
+            logger.warning(f"Setup issue: {issue}")
+
+        for rec in validation.get("recommendations", []):
+            logger.info(f"Recommendation: {rec}")
+
+        if validation["status"] == "needs_installation":
+            logger.error("Claude Code CLI not installed. Provider disabled.")
+            self._use_claude_code = False
+            self._claude_code_provider = None
+        elif validation["status"] == "needs_login":
+            logger.warning(
+                "Claude Code authentication required for optimal operation."
+            )
+
+    def _ensure_subscription_mode(self, auth_manager) -> bool:
+        """Ensure subscription mode is properly configured.
+        
+        Args:
+            auth_manager: Authentication manager instance
+            
+        Returns:
+            True if subscription mode is ensured, False otherwise
+        """
+        try:
+            if not auth_manager.ensure_subscription_mode():
+                logger.warning("Failed to ensure subscription mode for Claude Code")
+                return False
+            return True
+        except Exception as e:
+            logger.error(f"Error ensuring subscription mode: {e}")
+            return False
+
+    def _create_provider_instance(self):
+        """Create and configure the Claude Code provider instance.
+        
+        Returns:
+            Configured Claude Code provider instance
+        """
+        provider_config = {
+            "timeout": 60,
+            "enable_fallback": True,
+            "auto_mode": False,  # Require confirmations for safety
+            "working_directory": os.getcwd(),
+            "auto_remove_api_key": True,  # Automatically handle API key conflicts
+        }
+        return get_claude_code_provider(provider_config)
+
+    def _setup_provider_session(self, validation: Dict[str, Any]) -> None:
+        """Setup provider session and store validation information.
+        
+        Args:
+            validation: Validation results dictionary
+        """
+        if validation.get("authenticated", False):
+            logger.info(
+                "Claude Code provider initialized successfully (subscription mode)"
+            )
+            # Initialize session for context retention
+            self._session_id = (
+                self._claude_code_provider.create_session()
+                if self._claude_code_provider
+                else None
+            )
+        else:
+            logger.warning(
+                "Claude Code provider initialized but not logged in. "
+                "Run 'claude login' to use your Max subscription."
+            )
+            self._session_id = None
+
+        # Store validation info for runtime monitoring
+        self._claude_validation = validation
 
     # --------------------------------------------------------------------- setup
     def _emit_event(self, stage: str, **payload: Any) -> None:
@@ -318,9 +377,13 @@ class AgentOrchestrator:
         """Provide quality feedback to Claude Code provider for learning."""
         if self._use_claude_code and self._claude_code_provider:
             try:
-                success = self._claude_code_provider.provide_quality_feedback(score, feedback)
+                success = self._claude_code_provider.provide_quality_feedback(
+                    score, feedback
+                )
                 if success:
-                    logger.debug(f"Provided quality feedback: score={score:.2f}, role={feedback.get('role')}")
+                    logger.debug(
+                        f"Provided quality feedback: score={score:.2f}, role={feedback.get('role')}"
+                    )
             except Exception as exc:
                 logger.warning(f"Failed to provide quality feedback: {exc}")
 
@@ -329,7 +392,7 @@ class AgentOrchestrator:
         context = {}
 
         # Add domain packs information
-        if hasattr(self, 'domain_packs') and self.domain_packs:
+        if hasattr(self, "domain_packs") and self.domain_packs:
             context["available_domains"] = list(self.domain_packs.keys())
 
         # Add current configuration highlights
@@ -343,7 +406,7 @@ class AgentOrchestrator:
             "Type hints required",
             "Comprehensive error handling",
             "Structured logging",
-            "Test-driven development"
+            "Test-driven development",
         ]
 
         # Add project-specific requirements
@@ -351,7 +414,7 @@ class AgentOrchestrator:
             "Zero-cost Claude Code integration",
             "High-quality outputs through validation loops",
             "Structured reasoning patterns",
-            "Session-based context retention"
+            "Session-based context retention",
         ]
 
         return context
@@ -361,11 +424,13 @@ class AgentOrchestrator:
         if self._use_claude_code:
             state["project_context"] = self._build_project_context()
             # Add session tracking for context retention
-            if hasattr(self, '_session_id') and self._session_id:
+            if hasattr(self, "_session_id") and self._session_id:
                 state["session_id"] = self._session_id
         return state
 
-    def _transfer_role_context(self, state: AgentState, from_role: str, to_role: str) -> AgentState:
+    def _transfer_role_context(
+        self, state: AgentState, from_role: str, to_role: str
+    ) -> AgentState:
         """Transfer context between roles for enhanced coordination."""
         if not self._use_claude_code:
             return state
@@ -374,25 +439,37 @@ class AgentOrchestrator:
         transition_context = {
             "from_role": from_role,
             "to_role": to_role,
-            "previous_outputs": {}
+            "previous_outputs": {},
         }
 
         # Capture relevant outputs from previous role
         if from_role == "planner":
             transition_context["previous_outputs"]["plan"] = state.get("plan", "")
-            transition_context["previous_outputs"]["epics"] = state.get("plan_epics", [])
+            transition_context["previous_outputs"]["epics"] = state.get(
+                "plan_epics", []
+            )
 
         elif from_role == "coder":
             transition_context["previous_outputs"]["code"] = state.get("code", "")
-            transition_context["previous_outputs"]["source"] = state.get("code_source", "")
+            transition_context["previous_outputs"]["source"] = state.get(
+                "code_source", ""
+            )
 
         elif from_role == "validator":
-            transition_context["previous_outputs"]["validation"] = state.get("validation", {})
-            transition_context["previous_outputs"]["needs_reflect"] = state.get("needs_reflect", False)
+            transition_context["previous_outputs"]["validation"] = state.get(
+                "validation", {}
+            )
+            transition_context["previous_outputs"]["needs_reflect"] = state.get(
+                "needs_reflect", False
+            )
 
         elif from_role == "reflector":
-            transition_context["previous_outputs"]["reflection"] = state.get("reflection", {})
-            transition_context["previous_outputs"]["confidence"] = state.get("confidence", 0.0)
+            transition_context["previous_outputs"]["reflection"] = state.get(
+                "reflection", {}
+            )
+            transition_context["previous_outputs"]["confidence"] = state.get(
+                "confidence", 0.0
+            )
 
         # Store in state for next role to access
         state[f"{to_role}_context"] = transition_context
@@ -409,7 +486,9 @@ class AgentOrchestrator:
                 with open(yaml_file, "r", encoding="utf-8") as handle:
                     packs[yaml_file.stem] = yaml.safe_load(handle) or {}
             except yaml.YAMLError as exc:
-                logger.warning("Failed to parse domain pack %s: %s", yaml_file.name, exc)
+                logger.warning(
+                    "Failed to parse domain pack %s: %s", yaml_file.name, exc
+                )
         return packs
 
     def _init_clients(self) -> None:
@@ -437,10 +516,13 @@ class AgentOrchestrator:
                 if "http_client" in inspect.signature(Anthropic.__init__).parameters:
                     try:
                         import httpx
+
                         # Create HTTP client with proper timeout and no proxy issues
                         http_client = httpx.Client(
                             timeout=httpx.Timeout(30.0, connect=10.0),
-                            limits=httpx.Limits(max_keepalive_connections=5, max_connections=10)
+                            limits=httpx.Limits(
+                                max_keepalive_connections=5, max_connections=10
+                            ),
                         )
                         anthropic_params["http_client"] = http_client
                     except ImportError:
@@ -456,7 +538,7 @@ class AgentOrchestrator:
                     test_response = self.anthropic_client.messages.create(
                         model="claude-3-haiku-20240307",  # Use the cheapest model for testing
                         max_tokens=1,
-                        messages=[{"role": "user", "content": "test"}]
+                        messages=[{"role": "user", "content": "test"}],
                     )
                     logger.info("Anthropic client initialized successfully")
                 except Exception as test_exc:
@@ -523,14 +605,15 @@ class AgentOrchestrator:
 
         # Strategy 2: Extract JSON object from surrounding text
         json_patterns = [
-            (r'\{[^{}]*\}', False),  # Simple object
-            (r'\{(?:[^{}]|(?:\{[^{}]*\}))*\}', False),  # Nested objects (1 level)
-            (r'```json\s*(.*?)\s*```', True),  # Markdown code block
-            (r'```\s*(.*?)\s*```', True),  # Generic code block
+            (r"\{[^{}]*\}", False),  # Simple object
+            (r"\{(?:[^{}]|(?:\{[^{}]*\}))*\}", False),  # Nested objects (1 level)
+            (r"```json\s*(.*?)\s*```", True),  # Markdown code block
+            (r"```\s*(.*?)\s*```", True),  # Generic code block
         ]
 
         for pattern, extract_group in json_patterns:
             import re
+
             matches = re.findall(pattern, candidate, re.DOTALL)
             for match in matches:
                 try:
@@ -562,8 +645,9 @@ class AgentOrchestrator:
         """Clean common issues in JSON strings."""
         # Remove trailing commas
         import re
-        json_str = re.sub(r',\s*}', '}', json_str)
-        json_str = re.sub(r',\s*]', ']', json_str)
+
+        json_str = re.sub(r",\s*}", "}", json_str)
+        json_str = re.sub(r",\s*]", "]", json_str)
 
         # Fix single quotes (carefully, avoiding strings with apostrophes)
         # This is a simplified approach - a full parser would be better
@@ -571,18 +655,17 @@ class AgentOrchestrator:
             json_str = json_str.replace("'", '"')
 
         # Remove comments
-        json_str = re.sub(r'//.*?$', '', json_str, flags=re.MULTILINE)
-        json_str = re.sub(r'/\*.*?\*/', '', json_str, flags=re.DOTALL)
+        json_str = re.sub(r"//.*?$", "", json_str, flags=re.MULTILINE)
+        json_str = re.sub(r"/\*.*?\*/", "", json_str, flags=re.DOTALL)
 
         return json_str.strip()
 
     def _repair_json(self, text: str) -> Optional[str]:
         """Attempt to repair malformed JSON."""
-        import re
 
         # Find the most likely JSON boundaries
-        start_patterns = ['{', '[']
-        end_patterns = ['}', ']']
+        start_patterns = ["{", "["]
+        end_patterns = ["}", "]"]
 
         for start_char, end_char in zip(start_patterns, end_patterns):
             start = text.find(start_char)
@@ -602,7 +685,7 @@ class AgentOrchestrator:
                         break
 
             if end != -1:
-                candidate = text[start:end + 1]
+                candidate = text[start : end + 1]
                 cleaned = self._clean_json_string(candidate)
                 try:
                     json.loads(cleaned)  # Validate
@@ -633,12 +716,12 @@ class AgentOrchestrator:
                 value = match[1] if len(match) > 1 else ""
 
                 # Convert value to appropriate type
-                if value.lower() in ('true', 'false'):
-                    value = value.lower() == 'true'
-                elif value.replace('.', '', 1).replace('-', '', 1).isdigit():
-                    value = float(value) if '.' in value else int(value)
-                elif ',' in value:  # Possible array
-                    value = [v.strip().strip('"') for v in value.split(',')]
+                if value.lower() in ("true", "false"):
+                    value = value.lower() == "true"
+                elif value.replace(".", "", 1).replace("-", "", 1).isdigit():
+                    value = float(value) if "." in value else int(value)
+                elif "," in value:  # Possible array
+                    value = [v.strip().strip('"') for v in value.split(",")]
 
                 result[key] = value
 
@@ -675,7 +758,11 @@ class AgentOrchestrator:
         **kwargs: Any,
     ) -> str:
         # Check if we should use Claude Code CLI instead of API
-        if self._use_claude_code and self._claude_code_provider and "claude" in model.lower():
+        if (
+            self._use_claude_code
+            and self._claude_code_provider
+            and "claude" in model.lower()
+        ):
             try:
                 logger.debug(f"Using Claude Code CLI for {role}/{operation}")
 
@@ -688,10 +775,10 @@ class AgentOrchestrator:
                     model=model,
                     role=role,
                     operation=operation,
-                    session_id=getattr(self, '_session_id', None),
+                    session_id=getattr(self, "_session_id", None),
                     use_cache=use_cache,
                     max_tokens=max_tokens,
-                    project_context=project_context
+                    project_context=project_context,
                 )
                 # Track as zero cost since it's included in subscription
                 self.cost_estimator.track(0, role, operation, model=model)
@@ -700,19 +787,15 @@ class AgentOrchestrator:
                 logger.warning(f"Claude Code CLI failed, falling back to API: {exc}")
 
                 # Enhanced fallback notification
-                notify_cli_failure(
-                    f"{role}/{operation}",
-                    str(exc),
-                    fallback_used=True
-                )
+                notify_cli_failure(f"{role}/{operation}", str(exc), fallback_used=True)
 
                 # Store failure info for monitoring
-                if hasattr(self, '_claude_validation'):
+                if hasattr(self, "_claude_validation"):
                     self._claude_validation["last_cli_failure"] = {
                         "timestamp": time.time(),
                         "error": str(exc),
                         "role": role,
-                        "operation": operation
+                        "operation": operation,
                     }
 
                 # Continue to API fallback
@@ -720,9 +803,7 @@ class AgentOrchestrator:
         # Check cache first (for API calls)
         if use_cache:
             cached_response = self._model_cache.get_response(
-                model=model,
-                prompt=prompt,
-                max_tokens=max_tokens
+                model=model, prompt=prompt, max_tokens=max_tokens
             )
             if cached_response:
                 logger.debug(f"Cache hit for {role}/{operation}")
@@ -776,7 +857,9 @@ class AgentOrchestrator:
                 blocks = getattr(response, "content", []) or []
                 output_parts = []
                 for block in blocks:
-                    text_part = getattr(block, "text", None) or getattr(block, "value", None)
+                    text_part = getattr(block, "text", None) or getattr(
+                        block, "value", None
+                    )
                     if text_part:
                         output_parts.append(text_part)
                 output = "".join(output_parts)
@@ -809,7 +892,7 @@ class AgentOrchestrator:
                     prompt=prompt,
                     response=output,
                     max_tokens=max_tokens,
-                    ttl=ttl
+                    ttl=ttl,
                 )
 
             return scrub_pii(output)
@@ -898,12 +981,15 @@ class AgentOrchestrator:
 
         # Provide quality feedback based on validation results
         validation_score = 0.8 if parsed.get("passes", False) else 0.3
-        self._provide_quality_feedback(validation_score, {
-            "validation_result": parsed,
-            "domain": state.get("domain"),
-            "role": "Coder",
-            "coverage": parsed.get("coverage")
-        })
+        self._provide_quality_feedback(
+            validation_score,
+            {
+                "validation_result": parsed,
+                "domain": state.get("domain"),
+                "role": "Coder",
+                "coverage": parsed.get("coverage"),
+            },
+        )
 
         return state
 
@@ -963,24 +1049,55 @@ class AgentOrchestrator:
         )
 
         # Provide quality feedback to Claude Code provider if available
-        self._provide_quality_feedback(state["confidence"], {
-            "review_scores": result.get("scores", []),
-            "rationales": result.get("rationales", []),
-            "domain": state.get("domain"),
-            "role": "Coder"
-        })
+        self._provide_quality_feedback(
+            state["confidence"],
+            {
+                "review_scores": result.get("scores", []),
+                "rationales": result.get("rationales", []),
+                "domain": state.get("domain"),
+                "role": "Coder",
+            },
+        )
 
         return state
 
     def _run_offline_pipeline(self, state: AgentState) -> AgentState:
+        """Run the offline pipeline with enhanced role coordination.
+        
+        Args:
+            state: Initial agent state
+            
+        Returns:
+            Final agent state after pipeline execution
+        """
         state = AgentState(state)
 
         # Enhanced role coordination for Claude Code
         state = self._enrich_state_with_context(state)
 
+        # Planning phase
         state = self.planner(state)
+        
+        # Main execution loop with reflection
+        state = self._execute_main_loop(state)
+        
+        # Review and governance
+        state = self._finalize_execution(state)
+        
+        return state
+
+    def _execute_main_loop(self, state: AgentState) -> AgentState:
+        """Execute the main coding loop with validation and reflection.
+        
+        Args:
+            state: Current agent state
+            
+        Returns:
+            Updated agent state
+        """
         max_iterations = 5
-        while True:
+        
+        try:
             # Pass planner context to coder for better reasoning
             state = self._transfer_role_context(state, "planner", "coder")
             state = self.coder(state)
@@ -989,26 +1106,71 @@ class AgentOrchestrator:
             state = self._transfer_role_context(state, "coder", "validator")
             state = self.validator(state)
 
-            if not state.get("needs_reflect"):
-                break
-            for _ in range(max_iterations):
+            # Reflection loop if needed
+            if state.get("needs_reflect"):
+                state = self._execute_reflection_loop(state, max_iterations)
+                
+        except Exception as e:
+            logger.error(f"Error in main execution loop: {e}")
+            state["error"] = str(e)
+            state["needs_reflect"] = True
+            
+        return state
+
+    def _execute_reflection_loop(self, state: AgentState, max_iterations: int) -> AgentState:
+        """Execute the reflection loop for iterative improvement.
+        
+        Args:
+            state: Current agent state
+            max_iterations: Maximum number of reflection iterations
+            
+        Returns:
+            Updated agent state
+        """
+        for iteration in range(max_iterations):
+            try:
                 # Pass validation context to reflector
                 state = self._transfer_role_context(state, "validator", "reflector")
                 state = self.reflector(state)
+                
                 if not state.get("needs_reflect"):
                     break
+                    
                 # Pass reflection context back to coder
                 state = self._transfer_role_context(state, "reflector", "coder")
                 state = self.coder(state)
                 state = self.validator(state)
-            break
+                
+            except Exception as e:
+                logger.error(f"Error in reflection loop iteration {iteration}: {e}")
+                state["reflection_error"] = str(e)
+                break
+                
+        return state
 
-        # Pass final context to reviewer
-        state = self._transfer_role_context(state, "validator", "reviewer")
-        state = self.reviewer(state)
-        if state.get("needs_reflect"):
-            state = self.reflector(state)
-        state = self._governance_node(state)
+    def _finalize_execution(self, state: AgentState) -> AgentState:
+        """Finalize execution with review and governance.
+        
+        Args:
+            state: Current agent state
+            
+        Returns:
+            Final agent state
+        """
+        try:
+            # Pass final context to reviewer
+            state = self._transfer_role_context(state, "validator", "reviewer")
+            state = self.reviewer(state)
+            
+            if state.get("needs_reflect"):
+                state = self.reflector(state)
+                
+            state = self._governance_node(state)
+            
+        except Exception as e:
+            logger.error(f"Error in finalization: {e}")
+            state["finalization_error"] = str(e)
+            
         return state
 
     def _governance_node(self, state: AgentState) -> AgentState:
@@ -1027,24 +1189,91 @@ class AgentOrchestrator:
     def run_mode(
         self, domain: str, task: str, vuln_flag: bool = False
     ) -> Dict[str, Any]:
-        initial = AgentState(
-            {
-                "task": task,
-                "domain": domain,
-                "iterations": 0,
-                "confidence": 0.0,
-                "vuln_flag": vuln_flag,
-            }
-        )
+        """Run the agent in the specified mode with enhanced error handling.
+        
+        Args:
+            domain: The domain for the task (e.g., 'coding', 'content')
+            task: The task description
+            vuln_flag: Whether to enable vulnerability scanning
+            
+        Returns:
+            Dictionary containing the execution results
+            
+        Raises:
+            ValueError: If domain or task is invalid
+            RuntimeError: If execution fails critically
+        """
+        # Input validation
+        if not domain or not isinstance(domain, str):
+            raise ValueError("Domain must be a non-empty string")
+        if not task or not isinstance(task, str):
+            raise ValueError("Task must be a non-empty string")
+            
+        try:
+            initial = AgentState(
+                {
+                    "task": task,
+                    "domain": domain,
+                    "iterations": 0,
+                    "confidence": 0.0,
+                    "vuln_flag": vuln_flag,
+                }
+            )
+            
+            # Execute pipeline with fallback handling
+            result = self._execute_pipeline(initial)
+            
+            # Post-process results
+            result = self._post_process_results(result, domain)
+            
+            # Record completion event
+            self._record_completion_event(result, domain)
+            
+            # Cleanup
+            self.memory.prune()
+            
+            return dict(result)
+            
+        except Exception as e:
+            logger.error(f"Critical error in run_mode: {e}")
+            raise RuntimeError(f"Agent execution failed: {e}") from e
+
+    def _execute_pipeline(self, initial: AgentState) -> AgentState:
+        """Execute the appropriate pipeline based on available clients.
+        
+        Args:
+            initial: Initial agent state
+            
+        Returns:
+            Final agent state
+        """
         if not any([self.openai_client, self.anthropic_client, self.gemini_client]):
-            result = self._run_offline_pipeline(initial)
+            logger.info("No API clients available, using offline pipeline")
+            return self._run_offline_pipeline(initial)
         else:
-            result = self.graph.invoke(initial)
-            if result is None:
-                logger.warning(
-                    "Graph invocation returned None; falling back to offline pipeline."
-                )
-                result = self._run_offline_pipeline(initial)
+            try:
+                result = self.graph.invoke(initial)
+                if result is None:
+                    logger.warning(
+                        "Graph invocation returned None; falling back to offline pipeline."
+                    )
+                    return self._run_offline_pipeline(initial)
+                return result
+            except Exception as e:
+                logger.error(f"Graph execution failed: {e}, falling back to offline pipeline")
+                return self._run_offline_pipeline(initial)
+
+    def _post_process_results(self, result: AgentState, domain: str) -> AgentState:
+        """Post-process the execution results.
+        
+        Args:
+            result: Execution result state
+            domain: Task domain
+            
+        Returns:
+            Processed result state
+        """
+        # Normalize plan structure
         plan_text = result.get("plan")
         plan_epics = result.get("plan_epics")
         if not isinstance(plan_text, dict) and (plan_text or plan_epics):
@@ -1053,16 +1282,29 @@ class AgentOrchestrator:
                 "epics": plan_epics or [],
                 "model": result.get("plan_model"),
             }
+            
+        # Add domain and cost information
         result["domain"] = domain
         result["cost_summary"] = self.cost_estimator.summary()
-        record_event(
-            "agent.run_completed",
-            domain=domain,
-            confidence=result.get("confidence", 0.0),
-            cost=result["cost_summary"].get("total_cost", 0.0),
-        )
-        self.memory.prune()
-        return dict(result)
+        
+        return result
+
+    def _record_completion_event(self, result: AgentState, domain: str) -> None:
+        """Record the completion event with telemetry.
+        
+        Args:
+            result: Execution result state
+            domain: Task domain
+        """
+        try:
+            record_event(
+                "agent.run_completed",
+                domain=domain,
+                confidence=result.get("confidence", 0.0),
+                cost=result["cost_summary"].get("total_cost", 0.0),
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record completion event: {e}")
 
 
 __all__ = ["AgentOrchestrator"]

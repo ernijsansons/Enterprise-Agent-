@@ -2,58 +2,90 @@
 
 ## 🚀 Use Enterprise Agent Across All Your Projects
 
+This guide shows you how to install and use the Enterprise Agent across multiple projects with zero API costs using Claude Code CLI.
+
+### Prerequisites
+- Node.js 16+ and npm installed
+- Anthropic Max subscription ($200/month)
+- Python 3.9+ installed
+
 ### One-Line Installation
 
 ```bash
-# Install globally via NPM
+# Option 1: Install globally via NPM (recommended)
 npm install -g enterprise-agent-cli
 
-# Or use the installer script
+# Option 2: Use the installer script
 curl -sSL https://raw.githubusercontent.com/yourorg/enterprise-agent/main/install.sh | bash
+
+# Verify installation
+enterprise-agent --version
 ```
 
 ### Setup Claude Code (Zero API Costs)
 
 ```bash
-# Install Claude Code CLI
+# Step 1: Install Claude Code CLI
 npm install -g @anthropic-ai/claude-code
 
-# Login with your Max subscription
+# Step 2: Verify installation
+claude --version
+
+# Step 3: Login with your Max subscription
 claude login
 
-# Configure agent to use Claude Code
+# Step 4: Configure agent to use Claude Code
+mkdir -p ~/.enterprise-agent
 echo "use_claude_code: true" >> ~/.enterprise-agent/config.yml
+
+# Step 5: Verify configuration
+cat ~/.enterprise-agent/config.yml
 ```
+
+> **Important**: This setup eliminates API costs by using your Max subscription's included CLI access.
 
 ## Usage in Any Project
 
 ### Initialize in Your Project
 
 ```bash
+# Navigate to your project directory
 cd /path/to/your/project
+
+# Initialize Enterprise Agent
 enterprise-agent init
+
+# Verify initialization
+ls -la .enterprise-agent/
 ```
 
 This creates `.enterprise-agent/` directory with:
-- `config.yml` - Project-specific settings
-- `templates/` - Custom prompt templates
-- `context/` - Project knowledge
-- `history/` - Command history
+- 📁 `config.yml` - Project-specific settings
+- 📁 `templates/` - Custom prompt templates
+- 📁 `context/` - Project knowledge and context
+- 📁 `history/` - Command history and logs
+- 📁 `workflows/` - Cursor IDE integration files
 
 ### Quick Commands
 
 ```bash
-# Code review
+# Code review and analysis
 enterprise-agent run --input "Review this codebase for best practices"
 
-# Generate tests
+# Generate comprehensive tests
 enterprise-agent run --input "Create comprehensive tests for the auth module"
 
 # UI components (for frontend projects)
 enterprise-agent run --domain ui --input "Create a responsive dashboard component"
 
-# Interactive mode
+# Backend API development
+enterprise-agent run --domain coding --input "Create a REST API endpoint for user management"
+
+# Interactive mode for complex tasks
 enterprise-agent interactive
+
+# Project analysis
+enterprise-agent analyze --input "Analyze project structure and suggest improvements"
 ```
 
 ### Cursor Integration

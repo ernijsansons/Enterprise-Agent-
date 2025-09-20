@@ -12,7 +12,7 @@ class AgentException(Exception):
         self,
         message: str,
         details: Optional[Dict[str, Any]] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(message)
         self.message = message
@@ -36,7 +36,7 @@ class ModelException(AgentException):
         message: str,
         model: Optional[str] = None,
         provider: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(message, **kwargs)
         self.model = model
@@ -49,6 +49,7 @@ class ModelException(AgentException):
 
 class ModelTimeoutException(ModelException):
     """Exception raised when model call times out."""
+
     pass
 
 
@@ -70,7 +71,7 @@ class ValidationException(AgentException):
         message: str,
         validation_type: Optional[str] = None,
         failures: Optional[list] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(message, **kwargs)
         self.validation_type = validation_type
@@ -89,7 +90,7 @@ class ConfigurationException(AgentException):
         message: str,
         config_path: Optional[str] = None,
         missing_keys: Optional[list] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(message, **kwargs)
         self.config_path = config_path
@@ -108,7 +109,7 @@ class OrchestrationException(AgentException):
         message: str,
         stage: Optional[str] = None,
         state: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(message, **kwargs)
         self.stage = stage
@@ -127,7 +128,7 @@ class ToolException(AgentException):
         message: str,
         tool_name: Optional[str] = None,
         exit_code: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(message, **kwargs)
         self.tool_name = tool_name
@@ -146,7 +147,7 @@ class SecurityException(AgentException):
         message: str,
         vulnerability_type: Optional[str] = None,
         severity: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(message, **kwargs)
         self.vulnerability_type = vulnerability_type
@@ -165,7 +166,7 @@ class MemoryException(AgentException):
         message: str,
         operation: Optional[str] = None,
         key: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(message, **kwargs)
         self.operation = operation
@@ -184,7 +185,7 @@ class GovernanceException(AgentException):
         message: str,
         check_type: Optional[str] = None,
         metrics: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(message, **kwargs)
         self.check_type = check_type
@@ -199,11 +200,7 @@ class RetryableException(AgentException):
     """Base class for exceptions that can be retried."""
 
     def __init__(
-        self,
-        message: str,
-        max_retries: int = 3,
-        retry_delay: float = 1.0,
-        **kwargs
+        self, message: str, max_retries: int = 3, retry_delay: float = 1.0, **kwargs
     ):
         super().__init__(message, **kwargs)
         self.max_retries = max_retries
@@ -212,7 +209,9 @@ class RetryableException(AgentException):
         self.details["retry_delay"] = retry_delay
 
 
-def handle_exception(exc: Exception, context: Optional[Dict[str, Any]] = None) -> AgentException:
+def handle_exception(
+    exc: Exception, context: Optional[Dict[str, Any]] = None
+) -> AgentException:
     """Convert any exception to an AgentException with context."""
     if isinstance(exc, AgentException):
         return exc
@@ -220,32 +219,26 @@ def handle_exception(exc: Exception, context: Optional[Dict[str, Any]] = None) -
     # Map common exceptions to specific types
     if isinstance(exc, TimeoutError):
         return ModelTimeoutException(
-            f"Operation timed out: {str(exc)}",
-            details=context,
-            cause=exc
+            f"Operation timed out: {str(exc)}", details=context, cause=exc
         )
 
     if isinstance(exc, FileNotFoundError):
         return ConfigurationException(
-            f"File not found: {str(exc)}",
-            details=context,
-            cause=exc
+            f"File not found: {str(exc)}", details=context, cause=exc
         )
 
     if isinstance(exc, (json.JSONDecodeError, ValueError)):
         return ValidationException(
             f"Data validation failed: {str(exc)}",
-            validation_type="json_parse" if isinstance(exc, json.JSONDecodeError) else "value",
+            validation_type="json_parse"
+            if isinstance(exc, json.JSONDecodeError)
+            else "value",
             details=context,
-            cause=exc
+            cause=exc,
         )
 
     # Default conversion
-    return AgentException(
-        f"Unexpected error: {str(exc)}",
-        details=context,
-        cause=exc
-    )
+    return AgentException(f"Unexpected error: {str(exc)}", details=context, cause=exc)
 
 
 __all__ = [

@@ -1,6 +1,3 @@
-import os
-from pathlib import Path
-
 from src.agent_orchestrator import AgentOrchestrator
 
 
@@ -22,8 +19,11 @@ def test_config_override_via_env(tmp_path, monkeypatch):
 
 def test_dotenv_override_precedence(tmp_path, monkeypatch):
     dotenv_path = tmp_path / ".env"
-    dotenv_path.write_text("""OPENAI_API_KEY=override-key
-""", encoding="utf-8")
+    dotenv_path.write_text(
+        """OPENAI_API_KEY=override-key
+""",
+        encoding="utf-8",
+    )
     monkeypatch.setenv("ENTERPRISE_AGENT_DOTENV", str(dotenv_path))
     monkeypatch.delenv("ENTERPRISE_AGENT_CONFIG", raising=False)
 

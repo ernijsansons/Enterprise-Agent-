@@ -1,10 +1,7 @@
 """Unit tests for Claude Code authentication manager."""
 import json
 import os
-import subprocess
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 from src.providers.auth_manager import ClaudeAuthManager, get_auth_manager
@@ -73,11 +70,7 @@ OTHER_VAR=value
     def test_is_logged_in_success(self, mock_exists, mock_run):
         """Test successful login check."""
         mock_exists.return_value = True  # Token file exists
-        mock_run.return_value = Mock(
-            returncode=0,
-            stdout="",
-            stderr=""
-        )
+        mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
         result = self.auth_manager.is_logged_in()
 
@@ -99,9 +92,7 @@ OTHER_VAR=value
         """Test login check when login is needed."""
         mock_exists.return_value = True
         mock_run.return_value = Mock(
-            returncode=1,
-            stdout="",
-            stderr="please run `claude login`"
+            returncode=1, stdout="", stderr="please run `claude login`"
         )
 
         result = self.auth_manager.is_logged_in()
@@ -114,9 +105,7 @@ OTHER_VAR=value
         """Test login check with unauthorized error."""
         mock_exists.return_value = True
         mock_run.return_value = Mock(
-            returncode=1,
-            stdout="",
-            stderr="unauthorized access"
+            returncode=1, stdout="", stderr="unauthorized access"
         )
 
         result = self.auth_manager.is_logged_in()
@@ -142,9 +131,7 @@ OTHER_VAR=value
 
             self.assertTrue(result)
             mock_run.assert_called_once_with(
-                ["claude", "login"],
-                capture_output=False,
-                text=True
+                ["claude", "login"], capture_output=False, text=True
             )
 
     @patch("subprocess.run")
@@ -168,9 +155,7 @@ OTHER_VAR=value
     def test_setup_token_success(self, mock_run):
         """Test successful token setup."""
         mock_run.return_value = Mock(
-            returncode=0,
-            stdout="Token created successfully",
-            stderr=""
+            returncode=0, stdout="Token created successfully", stderr=""
         )
 
         result = self.auth_manager.setup_token()
@@ -181,9 +166,7 @@ OTHER_VAR=value
     def test_setup_token_failure(self, mock_run):
         """Test failed token setup."""
         mock_run.return_value = Mock(
-            returncode=1,
-            stdout="",
-            stderr="Failed to create token"
+            returncode=1, stdout="", stderr="Failed to create token"
         )
 
         result = self.auth_manager.setup_token()
@@ -250,7 +233,9 @@ OTHER_VAR=value
     @patch("pathlib.Path.mkdir")
     def test_update_config(self, mock_mkdir, mock_write):
         """Test configuration update."""
-        with patch.object(self.auth_manager, "get_config", return_value={"old": "value"}):
+        with patch.object(
+            self.auth_manager, "get_config", return_value={"old": "value"}
+        ):
             result = self.auth_manager.update_config({"new": "data"})
 
             self.assertTrue(result)
@@ -263,10 +248,14 @@ OTHER_VAR=value
         """Test full automation setup flow."""
         mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
-        with patch.object(self.auth_manager, "ensure_subscription_mode", return_value=True):
+        with patch.object(
+            self.auth_manager, "ensure_subscription_mode", return_value=True
+        ):
             with patch.object(self.auth_manager, "is_logged_in", return_value=True):
                 with patch.object(self.auth_manager, "setup_token", return_value=True):
-                    with patch.object(self.auth_manager, "update_config", return_value=True) as mock_update:
+                    with patch.object(
+                        self.auth_manager, "update_config", return_value=True
+                    ) as mock_update:
                         result = self.auth_manager.setup_for_automation()
 
                         self.assertTrue(result)
@@ -278,7 +267,9 @@ OTHER_VAR=value
 
     def test_setup_for_automation_not_logged_in(self):
         """Test automation setup when not logged in."""
-        with patch.object(self.auth_manager, "ensure_subscription_mode", return_value=True):
+        with patch.object(
+            self.auth_manager, "ensure_subscription_mode", return_value=True
+        ):
             with patch.object(self.auth_manager, "is_logged_in", return_value=False):
                 result = self.auth_manager.setup_for_automation()
 

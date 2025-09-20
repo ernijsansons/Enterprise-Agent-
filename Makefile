@@ -29,7 +29,7 @@ export:
 	poetry run python -c "from src.utils.safety import scrub_pii; import json; print(json.dumps({'logs': 'anonymized'}, indent=2))"
 
 bandit:
-	poetry run bandit -r src/ -f json -o bandit-report.json || poetry run bandit -r src/
+	poetry run bandit -r src/ -f json -o bandit-report.json
 
 ci: lint test typecheck bench bandit
 

@@ -5,13 +5,14 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class NotificationLevel(Enum):
     """Notification severity levels."""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -20,6 +21,7 @@ class NotificationLevel(Enum):
 
 class NotificationType(Enum):
     """Types of notifications."""
+
     AUTHENTICATION = "authentication"
     CLI_FAILURE = "cli_failure"
     API_FALLBACK = "api_fallback"
@@ -53,7 +55,7 @@ class Notification:
             "details": self.details or {},
             "timestamp": self.timestamp,
             "action_required": self.action_required,
-            "recommendations": self.recommendations
+            "recommendations": self.recommendations,
         }
 
 
@@ -85,7 +87,7 @@ class NotificationManager:
         message: str,
         details: Optional[Dict[str, Any]] = None,
         action_required: bool = False,
-        recommendations: Optional[List[str]] = None
+        recommendations: Optional[List[str]] = None,
     ) -> None:
         """Send a notification.
 
@@ -105,7 +107,7 @@ class NotificationManager:
             message=message,
             details=details,
             action_required=action_required,
-            recommendations=recommendations or []
+            recommendations=recommendations or [],
         )
 
         # Store notification
@@ -113,7 +115,7 @@ class NotificationManager:
 
         # Trim old notifications
         if len(self.notifications) > self.max_notifications:
-            self.notifications = self.notifications[-self.max_notifications:]
+            self.notifications = self.notifications[-self.max_notifications :]
 
         # Send to handlers
         for handler in self.handlers:
@@ -128,7 +130,7 @@ class NotificationManager:
             NotificationLevel.INFO: "ℹ️",
             NotificationLevel.WARNING: "⚠️",
             NotificationLevel.ERROR: "❌",
-            NotificationLevel.CRITICAL: "🚨"
+            NotificationLevel.CRITICAL: "🚨",
         }
 
         symbol = level_symbols.get(notification.level, "•")
@@ -160,7 +162,7 @@ class NotificationManager:
         self,
         type: Optional[NotificationType] = None,
         level: Optional[NotificationLevel] = None,
-        since: Optional[float] = None
+        since: Optional[float] = None,
     ) -> List[Notification]:
         """Get notifications with optional filtering.
 
@@ -188,7 +190,7 @@ class NotificationManager:
     def clear_notifications(
         self,
         type: Optional[NotificationType] = None,
-        older_than: Optional[float] = None
+        older_than: Optional[float] = None,
     ) -> int:
         """Clear notifications with optional filtering.
 
@@ -205,7 +207,9 @@ class NotificationManager:
             self.notifications = [n for n in self.notifications if n.type != type]
 
         if older_than:
-            self.notifications = [n for n in self.notifications if n.timestamp >= older_than]
+            self.notifications = [
+                n for n in self.notifications if n.timestamp >= older_than
+            ]
 
         if not type and not older_than:
             self.notifications.clear()
@@ -213,10 +217,7 @@ class NotificationManager:
         return initial_count - len(self.notifications)
 
     def notify_cli_failure(
-        self,
-        operation: str,
-        error: str,
-        fallback_used: bool = False
+        self, operation: str, error: str, fallback_used: bool = False
     ) -> None:
         """Notify about Claude Code CLI failure.
 
@@ -228,11 +229,13 @@ class NotificationManager:
         recommendations = [
             "Check 'claude login' status",
             "Verify Claude Code CLI is installed and updated",
-            "Check network connectivity"
+            "Check network connectivity",
         ]
 
         if fallback_used:
-            recommendations.append("⚠️  Using API fallback - this will incur additional charges!")
+            recommendations.append(
+                "⚠️  Using API fallback - this will incur additional charges!"
+            )
 
         level = NotificationLevel.WARNING if fallback_used else NotificationLevel.ERROR
 
@@ -241,15 +244,17 @@ class NotificationManager:
             level=level,
             title=f"Claude Code CLI Failure: {operation}",
             message=f"CLI operation failed: {error}",
-            details={"operation": operation, "error": error, "fallback_used": fallback_used},
+            details={
+                "operation": operation,
+                "error": error,
+                "fallback_used": fallback_used,
+            },
             action_required=not fallback_used,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     def notify_authentication_issue(
-        self,
-        issue_type: str,
-        details: Optional[Dict[str, Any]] = None
+        self, issue_type: str, details: Optional[Dict[str, Any]] = None
     ) -> None:
         """Notify about authentication issues.
 
@@ -262,18 +267,18 @@ class NotificationManager:
         if issue_type == "not_logged_in":
             recommendations = [
                 "Run 'claude login' to authenticate with your Max subscription",
-                "Ensure you have an active Anthropic Max plan"
+                "Ensure you have an active Anthropic Max plan",
             ]
         elif issue_type == "api_key_conflict":
             recommendations = [
                 "Remove ANTHROPIC_API_KEY from environment variables",
                 "Comment out ANTHROPIC_API_KEY in .env file",
-                "Use Claude Code subscription instead of API"
+                "Use Claude Code subscription instead of API",
             ]
         elif issue_type == "cli_not_found":
             recommendations = [
                 "Install Claude Code CLI: npm install -g @anthropic-ai/claude-code",
-                "Verify Node.js is installed and updated"
+                "Verify Node.js is installed and updated",
             ]
 
         self.notify(
@@ -283,14 +288,11 @@ class NotificationManager:
             message=f"Authentication problem detected: {issue_type}",
             details=details,
             action_required=True,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     def notify_usage_warning(
-        self,
-        current_usage: int,
-        limit: int,
-        window_remaining: float
+        self, current_usage: int, limit: int, window_remaining: float
     ) -> None:
         """Notify about usage approaching limits.
 
@@ -306,15 +308,19 @@ class NotificationManager:
             recommendations = [
                 "Consider pausing non-critical operations",
                 "Wait for usage window to reset",
-                "Optimize prompts to be more efficient"
+                "Optimize prompts to be more efficient",
             ]
         elif percentage >= 80:
             recommendations = [
                 "Monitor usage more closely",
-                "Batch similar operations together"
+                "Batch similar operations together",
             ]
 
-        level = NotificationLevel.CRITICAL if percentage >= 90 else NotificationLevel.WARNING
+        level = (
+            NotificationLevel.CRITICAL
+            if percentage >= 90
+            else NotificationLevel.WARNING
+        )
 
         self.notify(
             type=NotificationType.USAGE_WARNING,
@@ -325,16 +331,14 @@ class NotificationManager:
                 "current_usage": current_usage,
                 "limit": limit,
                 "percentage": percentage,
-                "window_remaining_hours": window_remaining
+                "window_remaining_hours": window_remaining,
             },
             action_required=percentage >= 90,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     def notify_configuration_issue(
-        self,
-        issue: str,
-        recommendations: List[str]
+        self, issue: str, recommendations: List[str]
     ) -> None:
         """Notify about configuration issues.
 
@@ -348,7 +352,7 @@ class NotificationManager:
             title="Configuration Issue",
             message=issue,
             action_required=True,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
 
@@ -376,14 +380,20 @@ def notify_cli_failure(operation: str, error: str, fallback_used: bool = False) 
     get_notification_manager().notify_cli_failure(operation, error, fallback_used)
 
 
-def notify_authentication_issue(issue_type: str, details: Optional[Dict[str, Any]] = None) -> None:
+def notify_authentication_issue(
+    issue_type: str, details: Optional[Dict[str, Any]] = None
+) -> None:
     """Convenience function to notify about authentication issues."""
     get_notification_manager().notify_authentication_issue(issue_type, details)
 
 
-def notify_usage_warning(current_usage: int, limit: int, window_remaining: float) -> None:
+def notify_usage_warning(
+    current_usage: int, limit: int, window_remaining: float
+) -> None:
     """Convenience function to notify about usage warnings."""
-    get_notification_manager().notify_usage_warning(current_usage, limit, window_remaining)
+    get_notification_manager().notify_usage_warning(
+        current_usage, limit, window_remaining
+    )
 
 
 def notify_configuration_issue(issue: str, recommendations: List[str]) -> None:
@@ -400,5 +410,5 @@ __all__ = [
     "notify_cli_failure",
     "notify_authentication_issue",
     "notify_usage_warning",
-    "notify_configuration_issue"
+    "notify_configuration_issue",
 ]

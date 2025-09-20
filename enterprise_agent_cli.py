@@ -3,7 +3,6 @@
 import argparse
 import json
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -46,7 +45,8 @@ class EnterpriseAgentCLI:
 
         # Create project structure
         agent_dir.mkdir()
-        (agent_dir / "config.yml").write_text("""# Enterprise Agent Project Configuration
+        (agent_dir / "config.yml").write_text(
+            """# Enterprise Agent Project Configuration
 # This overrides global settings for this project
 
 # Use Claude Code CLI instead of API (saves money with Max subscription)
@@ -78,28 +78,33 @@ templates_dir: templates
 history:
   enabled: true
   max_entries: 100
-""")
+"""
+        )
 
         (agent_dir / "templates").mkdir()
         (agent_dir / "context").mkdir()
         (agent_dir / "history").mkdir()
-        (agent_dir / ".gitignore").write_text("""cache/
+        (agent_dir / ".gitignore").write_text(
+            """cache/
 history/
 *.log
-""")
+"""
+        )
 
         # Create example template
-        (agent_dir / "templates" / "code_review.md").write_text("""# Code Review Template
+        (agent_dir / "templates" / "code_review.md").write_text(
+            """# Code Review Template
 Please review the following code for:
 - Security vulnerabilities
 - Performance issues
 - Best practices
 - Test coverage
-""")
+"""
+        )
 
         print(f"✅ Initialized Enterprise Agent in {project_dir}")
-        print(f"   Created .enterprise-agent/ directory")
-        print(f"   Edit .enterprise-agent/config.yml to customize")
+        print("   Created .enterprise-agent/ directory")
+        print("   Edit .enterprise-agent/config.yml to customize")
 
     def run_agent(
         self,
@@ -144,14 +149,13 @@ Please review the following code for:
                 return self._run_interactive(orchestrator, domain)
             else:
                 # Run single command
-                print(f"🚀 Running Enterprise Agent")
+                print("🚀 Running Enterprise Agent")
                 print(f"   Domain: {domain}")
                 print(f"   Project: {project_dir}")
                 print(f"   Input: {input_text[:100]}...")
 
                 result = orchestrator.run(
-                    domain=domain,
-                    initial_state={"input": input_text}
+                    domain=domain, initial_state={"input": input_text}
                 )
 
                 # Save to history
@@ -187,8 +191,7 @@ Please review the following code for:
                     print(f"Unknown command: {user_input}")
                 elif user_input:
                     result = orchestrator.run(
-                        domain=domain,
-                        initial_state={"input": user_input}
+                        domain=domain, initial_state={"input": user_input}
                     )
                     print(f"\n{result}\n")
 
@@ -199,14 +202,16 @@ Please review the following code for:
 
     def _show_help(self) -> None:
         """Show interactive mode help."""
-        print("""
+        print(
+            """
 Commands:
   /domain <name>  - Switch domain (coding, ui, social, etc.)
   /history       - Show command history
   /clear         - Clear screen
   help           - Show this help
   exit           - Exit interactive mode
-""")
+"""
+        )
 
     def _load_project_config(self, config_file: Path) -> None:
         """Load project configuration.
@@ -218,6 +223,7 @@ Commands:
             return
 
         import yaml
+
         config = yaml.safe_load(config_file.read_text())
 
         # Apply configuration to environment
@@ -231,11 +237,7 @@ Commands:
                 os.environ["FALLBACK_MODEL"] = config["models"]["fallback"]
 
     def _save_history(
-        self,
-        project_dir: Path,
-        domain: str,
-        input_text: str,
-        result: Any
+        self, project_dir: Path, domain: str, input_text: str, result: Any
     ) -> None:
         """Save command to history.
 
@@ -250,13 +252,14 @@ Commands:
             return
 
         from datetime import datetime
+
         timestamp = datetime.now().isoformat()
 
         history_entry = {
             "timestamp": timestamp,
             "domain": domain,
             "input": input_text,
-            "result": str(result)[:500]  # Truncate large results
+            "result": str(result)[:500],  # Truncate large results
         }
 
         history_file = history_dir / f"{timestamp.split('T')[0]}.jsonl"
@@ -278,7 +281,7 @@ Commands:
             "project_dir": str(project_dir),
             "files": {},
             "tech_stack": [],
-            "suggestions": []
+            "suggestions": [],
         }
 
         # Detect technology stack
@@ -316,10 +319,7 @@ Commands:
         # Check if Claude Code is installed
         try:
             result = subprocess.run(
-                ["claude", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5
+                ["claude", "--version"], capture_output=True, text=True, timeout=5
             )
             if result.returncode == 0:
                 print(f"✅ Claude Code CLI installed: {result.stdout.strip()}")
@@ -336,7 +336,7 @@ Commands:
                 ["claude", "--print", "--model", "haiku", "test"],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
             if "please run `claude login`" in result.stderr.lower():
                 print("⚠️  Not logged in to Claude Code")
@@ -348,12 +348,14 @@ Commands:
 
         # Update global config
         if not self.global_config.exists():
-            self.global_config.write_text("""# Global Enterprise Agent Configuration
+            self.global_config.write_text(
+                """# Global Enterprise Agent Configuration
 use_claude_code: true
 models:
   primary: claude-3-5-sonnet-20241022
   fallback: gpt-4o-mini
-""")
+"""
+            )
             print(f"✅ Created global config: {self.global_config}")
 
         print("\n✅ Claude Code setup complete!")
@@ -371,9 +373,7 @@ def main():
     # Init command
     init_parser = subparsers.add_parser("init", help="Initialize agent in project")
     init_parser.add_argument(
-        "--dir",
-        type=Path,
-        help="Project directory (default: current)"
+        "--dir", type=Path, help="Project directory (default: current)"
     )
 
     # Run command
@@ -382,42 +382,21 @@ def main():
         "--domain",
         default="coding",
         choices=["coding", "ui", "social", "content", "trading", "real_estate"],
-        help="Domain to use"
+        help="Domain to use",
     )
-    run_parser.add_argument(
-        "--input",
-        required=True,
-        help="Input prompt"
-    )
-    run_parser.add_argument(
-        "--project-dir",
-        type=Path,
-        help="Project directory"
-    )
-    run_parser.add_argument(
-        "--config",
-        type=Path,
-        help="Custom config file"
-    )
+    run_parser.add_argument("--input", required=True, help="Input prompt")
+    run_parser.add_argument("--project-dir", type=Path, help="Project directory")
+    run_parser.add_argument("--config", type=Path, help="Custom config file")
 
     # Interactive command
     interactive_parser = subparsers.add_parser(
-        "interactive",
-        help="Run in interactive mode"
+        "interactive", help="Run in interactive mode"
     )
-    interactive_parser.add_argument(
-        "--domain",
-        default="coding",
-        help="Initial domain"
-    )
+    interactive_parser.add_argument("--domain", default="coding", help="Initial domain")
 
     # Analyze command
     analyze_parser = subparsers.add_parser("analyze", help="Analyze project")
-    analyze_parser.add_argument(
-        "--dir",
-        type=Path,
-        help="Project directory"
-    )
+    analyze_parser.add_argument("--dir", type=Path, help="Project directory")
 
     # Setup command
     setup_parser = subparsers.add_parser("setup", help="Setup Claude Code")
@@ -436,14 +415,11 @@ def main():
             domain=args.domain,
             input_text=args.input,
             project_dir=args.project_dir,
-            config_file=args.config
+            config_file=args.config,
         )
         print(f"\n✅ Complete: {result}")
     elif args.command == "interactive":
-        cli.run_agent(
-            domain=args.domain,
-            interactive=True
-        )
+        cli.run_agent(domain=args.domain, interactive=True)
     elif args.command == "analyze":
         analysis = cli.analyze_project(args.dir)
         print(json.dumps(analysis, indent=2))

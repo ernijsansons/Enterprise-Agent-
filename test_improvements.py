@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 """Comprehensive test suite for Enterprise Agent improvements."""
 
-import json
+import io
 import sys
 import time
 from pathlib import Path
-import io
 
 # Set UTF-8 encoding for Windows
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
+
 
 def test_agent_initialization():
     """Test basic agent initialization."""
     print("\n=== Testing Agent Initialization ===")
     try:
         from src.agent_orchestrator import AgentOrchestrator
+
         agent = AgentOrchestrator()
         print("✓ Agent initialized successfully")
         return agent
@@ -40,7 +41,7 @@ def test_json_parsing():
         ("{'single': 'quotes'}", {"single": "quotes"}),
         ('Some text {"embedded": "json"} more text', {"embedded": "json"}),
         ('```json\n{"code": "block"}\n```', {"code": "block"}),
-        ('malformed {broken json', {"raw_text": 'malformed {broken json'}),
+        ("malformed {broken json", {"raw_text": "malformed {broken json"}),
     ]
 
     passed = 0
@@ -66,7 +67,7 @@ def test_json_parsing():
 def test_cache_functionality():
     """Test caching with TTL."""
     print("\n=== Testing Cache Functionality ===")
-    from src.utils.cache import TTLCache, ModelResponseCache
+    from src.utils.cache import ModelResponseCache, TTLCache
 
     # Test basic cache
     cache = TTLCache(default_ttl=2)  # 2 second TTL for testing
@@ -83,15 +84,10 @@ def test_cache_functionality():
     # Test model response cache
     model_cache = ModelResponseCache(default_ttl=5)
     model_cache.cache_response(
-        model="gpt-4",
-        prompt="test prompt",
-        response="test response"
+        model="gpt-4", prompt="test prompt", response="test response"
     )
 
-    cached = model_cache.get_response(
-        model="gpt-4",
-        prompt="test prompt"
-    )
+    cached = model_cache.get_response(model="gpt-4", prompt="test prompt")
     assert cached == "test response", "Model cache failed"
     print("✓ Model response cache working")
 
@@ -104,8 +100,10 @@ def test_validation():
     """Test input validation."""
     print("\n=== Testing Input Validation ===")
     from src.utils.validation import (
-        StringValidator, NumberValidator, DomainValidator,
-        ModelNameValidator, ValidationException
+        DomainValidator,
+        ModelNameValidator,
+        StringValidator,
+        ValidationException,
     )
 
     # Test string validation
@@ -148,13 +146,11 @@ def test_validation():
 def test_retry_mechanism():
     """Test retry with exponential backoff."""
     print("\n=== Testing Retry Mechanism ===")
-    from src.utils.retry import retry_with_backoff, ExponentialBackoff
+    from src.utils.retry import ExponentialBackoff, retry_with_backoff
 
     attempt_count = 0
 
-    @retry_with_backoff(
-        strategy=ExponentialBackoff(max_retries=3, base_delay=0.1)
-    )
+    @retry_with_backoff(strategy=ExponentialBackoff(max_retries=3, base_delay=0.1))
     def flaky_function():
         nonlocal attempt_count
         attempt_count += 1
@@ -174,8 +170,9 @@ def test_retry_mechanism():
 def test_concurrency():
     """Test thread-safe operations."""
     print("\n=== Testing Concurrency ===")
-    from src.utils.concurrency import ThreadSafeDict, ExecutionManager
     import threading
+
+    from src.utils.concurrency import ExecutionManager, ThreadSafeDict
 
     # Test thread-safe dict
     safe_dict = ThreadSafeDict()
@@ -205,6 +202,7 @@ def test_concurrency():
 
     # Test execution manager
     with ExecutionManager(max_workers=2) as executor:
+
         def task(n):
             return n * 2
 
@@ -216,18 +214,11 @@ def test_concurrency():
 def test_error_handling():
     """Test structured error handling."""
     print("\n=== Testing Error Handling ===")
-    from src.exceptions import (
-        ModelException, ValidationException,
-        ConfigurationException, handle_exception
-    )
+    from src.exceptions import ModelException, ValidationException, handle_exception
 
     # Test custom exceptions
     try:
-        raise ModelException(
-            "Test error",
-            model="gpt-4",
-            provider="openai"
-        )
+        raise ModelException("Test error", model="gpt-4", provider="openai")
     except ModelException as e:
         assert e.model == "gpt-4", "Exception attribute not set"
         assert "model" in e.details, "Exception details not set"
@@ -277,7 +268,7 @@ def test_full_pipeline():
         result = agent.run_mode(
             domain="coding",
             task="Create a function to add two numbers",
-            vuln_flag=False
+            vuln_flag=False,
         )
 
         assert "plan" in result, "No plan in result"
@@ -294,7 +285,7 @@ def test_full_pipeline():
         result2 = agent.run_mode(
             domain="coding",
             task="Create a function to add two numbers",
-            vuln_flag=False
+            vuln_flag=False,
         )
         elapsed = time.time() - start
         print(f"✓ Second run completed in {elapsed:.2f}s (cache may be used)")
@@ -302,6 +293,7 @@ def test_full_pipeline():
     except Exception as e:
         print(f"✗ Pipeline execution failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 
@@ -339,6 +331,7 @@ def run_all_tests():
         except Exception as e:
             print(f"\n✗ Test {test_func.__name__} failed with error: {e}")
             import traceback
+
             traceback.print_exc()
             failed += 1
 

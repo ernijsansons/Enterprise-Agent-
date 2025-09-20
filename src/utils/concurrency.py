@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional, TypeVar
@@ -78,49 +78,71 @@ class ExecutionManager:
                 self._active_tasks.clear()
                 logger.debug("Executor shutdown complete")
 
-    def submit(self, fn: Callable, *args, task_id: Optional[str] = None, **kwargs) -> Any:
+    def submit(
+        self, fn: Callable, *args, task_id: Optional[str] = None, **kwargs
+    ) -> Any:
         """Submit a task for execution."""
+        if not callable(fn):
+            raise ValueError("First argument must be callable")
+            
         with self._lock:
             if self._executor is None:
                 self.start()
+                
+            # Ensure executor is available
+            if self._executor is None:
+                raise RuntimeError("Failed to start executor")
 
-            future = self._executor.submit(fn, *args, **kwargs)
+            try:
+                future = self._executor.submit(fn, *args, **kwargs)
 
-            if task_id:
-                self._active_tasks[task_id] = future
+                if task_id:
+                    self._active_tasks[task_id] = future
 
-            return future
+                return future
+            except Exception as exc:
+                logger.error(f"Failed to submit task: {exc}")
+                raise
 
     def map_parallel(
-        self,
-        fn: Callable,
-        items: List[Any],
-        timeout: Optional[float] = None
+        self, fn: Callable, items: List[Any], timeout: Optional[float] = None
     ) -> List[Any]:
         """Execute function on items in parallel and return results in order."""
+        if not items:
+            return []
+            
         with self._lock:
             if self._executor is None:
                 self.start()
-
-        futures = [self._executor.submit(fn, item) for item in items]
-        results = []
+            
+            # Ensure executor is available
+            if self._executor is None:
+                raise RuntimeError("Failed to start executor")
 
         try:
-            for future in futures:
-                result = future.result(timeout=timeout)
-                results.append(result)
-        except Exception as exc:
-            # Cancel remaining futures on error
-            for future in futures:
-                future.cancel()
-            raise exc
+            futures = [self._executor.submit(fn, item) for item in items]
+            results = []
 
-        return results
+            for future in futures:
+                try:
+                    result = future.result(timeout=timeout)
+                    results.append(result)
+                except Exception as exc:
+                    # Cancel remaining futures on error
+                    for remaining_future in futures:
+                        if not remaining_future.done():
+                            remaining_future.cancel()
+                    logger.error(f"Error in parallel execution: {exc}")
+                    raise exc
+
+            return results
+            
+        except Exception as exc:
+            logger.error(f"Failed to execute parallel tasks: {exc}")
+            raise
 
     def wait_for_tasks(
-        self,
-        task_ids: Optional[List[str]] = None,
-        timeout: Optional[float] = None
+        self, task_ids: Optional[List[str]] = None, timeout: Optional[float] = None
     ) -> Dict[str, Any]:
         """Wait for specific tasks or all tasks to complete."""
         if task_ids:
@@ -167,7 +189,9 @@ def thread_safe(lock: threading.Lock = None):
         def wrapper(*args, **kwargs):
             with lock:
                 return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 

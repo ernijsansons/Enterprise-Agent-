@@ -1,5 +1,4 @@
 """Tests for enhanced Enterprise Agent features."""
-import json
 import os
 import tempfile
 import time
@@ -9,15 +8,15 @@ from unittest.mock import Mock, patch
 import pytest
 
 from src.providers.auth_manager import ClaudeAuthManager
+from src.utils.config_validator import ConfigValidator
 from src.utils.notifications import (
-    NotificationManager,
     NotificationLevel,
+    NotificationManager,
     NotificationType,
+    notify_authentication_issue,
     notify_cli_failure,
-    notify_authentication_issue
 )
 from src.utils.usage_monitor import UsageMonitor, UsageWindow
-from src.utils.config_validator import ConfigValidator
 
 
 class TestEnhancedAuthManager:
@@ -27,46 +26,42 @@ class TestEnhancedAuthManager:
         """Setup test environment."""
         self.auth_manager = ClaudeAuthManager()
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_verify_claude_status_json(self, mock_run):
         """Test JSON status verification."""
         # Mock successful JSON response
         mock_run.return_value = Mock(
-            returncode=0,
-            stdout='{"authenticated": true, "plan": "max"}',
-            stderr=""
+            returncode=0, stdout='{"authenticated": true, "plan": "max"}', stderr=""
         )
 
         result = self.auth_manager.verify_claude_status_json()
         assert result["authenticated"] is True
         assert result["plan"] == "max"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_verify_claude_status_fallback(self, mock_run):
         """Test fallback when JSON not available."""
         # Mock command that doesn't support JSON
         mock_run.return_value = Mock(
-            returncode=1,
-            stdout="",
-            stderr="unknown flag: --json"
+            returncode=1, stdout="", stderr="unknown flag: --json"
         )
 
-        with patch.object(self.auth_manager, 'is_logged_in', return_value=True):
+        with patch.object(self.auth_manager, "is_logged_in", return_value=True):
             result = self.auth_manager.verify_claude_status_json()
             assert result["authenticated"] is True
             assert result["method"] == "fallback"
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_validate_setup_comprehensive(self, mock_run):
         """Test comprehensive setup validation."""
         # Mock CLI available
         mock_run.return_value = Mock(
-            returncode=0,
-            stdout="1.0.120 (Claude Code)",
-            stderr=""
+            returncode=0, stdout="1.0.120 (Claude Code)", stderr=""
         )
 
-        with patch.object(self.auth_manager, 'verify_claude_status_json') as mock_status:
+        with patch.object(
+            self.auth_manager, "verify_claude_status_json"
+        ) as mock_status:
             mock_status.return_value = {"authenticated": True}
 
             result = self.auth_manager.validate_setup()
@@ -78,7 +73,7 @@ class TestEnhancedAuthManager:
 
     def test_validate_setup_cli_missing(self):
         """Test validation when CLI is missing."""
-        with patch('subprocess.run', side_effect=FileNotFoundError):
+        with patch("subprocess.run", side_effect=FileNotFoundError):
             result = self.auth_manager.validate_setup()
 
             assert result["cli_available"] is False
@@ -101,7 +96,9 @@ class TestNotificationSystem:
     def setup_method(self):
         """Setup test environment."""
         self.notification_manager = NotificationManager()
-        self.notification_manager.handlers = []  # Remove default console handler for testing
+        self.notification_manager.handlers = (
+            []
+        )  # Remove default console handler for testing
 
     def test_notification_creation(self):
         """Test notification creation."""
@@ -111,7 +108,7 @@ class TestNotificationSystem:
             title="Test Failure",
             message="Test message",
             action_required=True,
-            recommendations=["Fix it"]
+            recommendations=["Fix it"],
         )
 
         assert len(self.notification_manager.notifications) == 1
@@ -128,13 +125,13 @@ class TestNotificationSystem:
             NotificationType.CLI_FAILURE,
             NotificationLevel.ERROR,
             "CLI Error",
-            "CLI failed"
+            "CLI failed",
         )
         self.notification_manager.notify(
             NotificationType.AUTHENTICATION,
             NotificationLevel.WARNING,
             "Auth Warning",
-            "Auth issue"
+            "Auth issue",
         )
 
         # Filter by type
@@ -157,13 +154,13 @@ class TestNotificationSystem:
             NotificationType.CLI_FAILURE,
             NotificationLevel.ERROR,
             "Error 1",
-            "Message 1"
+            "Message 1",
         )
         self.notification_manager.notify(
             NotificationType.AUTHENTICATION,
             NotificationLevel.WARNING,
             "Warning 1",
-            "Message 2"
+            "Message 2",
         )
 
         assert len(self.notification_manager.notifications) == 2
@@ -207,17 +204,14 @@ class TestUsageMonitor:
         config = {
             "max_prompts_per_window": 10,  # Small limit for testing
             "window_hours": 1,
-            "warning_threshold": 80
+            "warning_threshold": 80,
         }
         self.usage_monitor = UsageMonitor(config)
         self.usage_monitor.usage_file = Path(self.temp_dir) / "test_usage.json"
 
     def test_usage_window_creation(self):
         """Test usage window creation."""
-        window = UsageWindow(
-            start_time=time.time(),
-            end_time=time.time() + 3600
-        )
+        window = UsageWindow(start_time=time.time(), end_time=time.time() + 3600)
 
         assert window.prompt_count == 0
         assert len(window.requests) == 0
@@ -258,6 +252,7 @@ class TestUsageMonitor:
 
         # Should have triggered warning notification
         from src.utils.notifications import get_notification_manager
+
         notifications = get_notification_manager().get_notifications(
             type=NotificationType.USAGE_WARNING
         )
@@ -345,13 +340,15 @@ invalid: yaml: content
         """Test environment validation."""
         validator = ConfigValidator()
 
-        with patch.dict(os.environ, {"USE_CLAUDE_CODE": "true", "ANTHROPIC_API_KEY": "sk-test"}):
+        with patch.dict(
+            os.environ, {"USE_CLAUDE_CODE": "true", "ANTHROPIC_API_KEY": "sk-test"}
+        ):
             results = validator.validate_all()
 
             # Should detect API key conflict
             assert any("API billing" in issue["message"] for issue in results["issues"])
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_dependency_validation(self, mock_run):
         """Test dependency validation."""
         # Mock Claude CLI not found
@@ -362,7 +359,9 @@ invalid: yaml: content
 
         dep_results = results["dependencies"]
         assert dep_results["claude_cli"]["installed"] is False
-        assert any("Claude Code CLI" in warning["message"] for warning in results["warnings"])
+        assert any(
+            "Claude Code CLI" in warning["message"] for warning in results["warnings"]
+        )
 
     def test_security_validation(self):
         """Test security validation."""
@@ -394,7 +393,7 @@ enterprise_coding_agent:
 class TestIntegration:
     """Test integration between components."""
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_auth_notification_integration(self, mock_run):
         """Test integration between auth manager and notifications."""
         # Mock CLI failure
@@ -404,6 +403,7 @@ class TestIntegration:
 
         # Should generate notification
         from src.utils.notifications import get_notification_manager
+
         notifications = get_notification_manager().get_notifications(
             type=NotificationType.AUTHENTICATION
         )
@@ -421,6 +421,7 @@ class TestIntegration:
         assert monitor.paused is True
 
         from src.utils.notifications import get_notification_manager
+
         notifications = get_notification_manager().get_notifications(
             type=NotificationType.USAGE_WARNING
         )
