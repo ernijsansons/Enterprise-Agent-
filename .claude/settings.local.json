@@ -6,7 +6,8 @@
       "WebSearch",
       "Bash(claude --version)",
       "Bash(git add:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
