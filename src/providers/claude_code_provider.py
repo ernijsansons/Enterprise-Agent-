@@ -562,6 +562,17 @@ class ClaudeCodeProvider:
             # Record successful usage
             record_claude_usage(role or "unknown", operation or "call", len(output) // 4)
 
+            # Audit successful CLI usage
+            audit_cli_usage(
+                f"{role}/{operation}",
+                True,
+                {
+                    "model": cli_model,
+                    "tokens_estimated": len(output) // 4,
+                    "session_id": session_id
+                }
+            )
+
             # Cache the response
             if use_cache and output:
                 cache_ttl = 1800 if role == "Planner" else 900  # 30min/15min
