@@ -36,7 +36,9 @@
       "Bash(python3:*)",
       "Bash(pip install:*)",
       "Bash(timeout:*)",
-      "Bash(gh pr list:*)"
+      "Bash(gh pr list:*)",
+      "Bash(gh auth:*)",
+      "WebFetch(domain:api.github.com)"
     ],
     "deny": [],
     "ask": []

@@ -14,8 +14,8 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Callable
-from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Union
+from datetime import datetime
 
 
 class MetricType(Enum):

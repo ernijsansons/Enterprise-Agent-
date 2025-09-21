@@ -3,7 +3,7 @@
 import asyncio
 import time
 import logging
-from typing import Dict, List
+from typing import Dict
 
 # Configure logging
 logging.basicConfig(
@@ -248,7 +248,7 @@ async def main():
     # Analyze improvements
     analysis = analyze_performance_gains(sync_results, async_results)
 
-    print(f"\n🎉 Benchmark Complete!")
+    print("\n🎉 Benchmark Complete!")
     print(f"Overall Performance Improvement: {analysis['overall_speedup']:.1f}x faster")
 
     return {
@@ -262,4 +262,4 @@ if __name__ == "__main__":
     # Run the benchmark
     print("Starting async performance benchmark...")
     results = asyncio.run(main())
-    print(f"\nBenchmark completed successfully!")
+    print("\nBenchmark completed successfully!")

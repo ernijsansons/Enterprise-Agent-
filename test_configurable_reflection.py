@@ -183,7 +183,7 @@ def main():
     if test_early_termination_configuration():
         tests_passed += 1
 
-    print(f"\n" + "=" * 60)
+    print("\n" + "=" * 60)
     print(f"Test Results: {tests_passed}/{total_tests} tests passed")
 
     if tests_passed == total_tests:

@@ -7,7 +7,6 @@ import tempfile
 import time
 import threading
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -17,7 +16,7 @@ def test_concurrency_edge_cases():
     print("Testing concurrency edge cases...")
 
     try:
-        from src.utils.concurrency import ExecutionManager, ThreadSafeDict, synchronized_state
+        from src.utils.concurrency import ExecutionManager, ThreadSafeDict
 
         # Test 1: ExecutionManager with rapid start/stop
         print("  Testing rapid start/stop scenarios...")
@@ -577,7 +576,7 @@ def main():
         except Exception as e:
             print(f"FAILED: Test {test_func.__name__} failed with exception: {e}")
 
-    print(f"\n" + "=" * 55)
+    print("\n" + "=" * 55)
     print(f"Edge Case Test Results: {tests_passed}/{len(test_functions)} tests passed")
 
     if tests_passed == len(test_functions):

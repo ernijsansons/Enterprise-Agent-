@@ -1,7 +1,6 @@
 """Simple test runner for validating our implementations."""
 import sys
 import traceback
-import time
 
 # Add src to path
 sys.path.insert(0, 'src')

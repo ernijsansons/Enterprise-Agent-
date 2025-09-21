@@ -17,8 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from tests.comprehensive.test_framework import (
-    TestFramework, TestLayer, TestSuite, TestSeverity,
-    critical_test, high_priority_test, medium_priority_test, low_priority_test
+    TestFramework, TestLayer, TestSuite, critical_test, high_priority_test, medium_priority_test, low_priority_test
 )
 
 # Import Layer 1 tests

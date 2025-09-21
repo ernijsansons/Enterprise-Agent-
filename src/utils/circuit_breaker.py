@@ -5,7 +5,7 @@ import time
 import threading
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, Optional, TypeVar
 import logging
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ class CircuitBreaker:
             self._record_success()
             return result
 
-        except self.config.expected_exceptions as e:
+        except self.config.expected_exceptions:
             self._record_failure()
             raise
 

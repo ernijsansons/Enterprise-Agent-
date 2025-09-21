@@ -14,7 +14,7 @@ def test_metrics_collector():
     print("Testing metrics collector...")
 
     try:
-        from src.utils.metrics import MetricsCollector, MetricType, MetricSeverity
+        from src.utils.metrics import MetricsCollector, MetricSeverity
 
         with tempfile.TemporaryDirectory() as temp_dir:
             collector = MetricsCollector(
@@ -256,7 +256,6 @@ def test_metrics_with_orchestrator():
 
     try:
         # This tests that the imports work correctly
-        from src.agent_orchestrator import AgentOrchestrator
         from src.utils.metrics import get_metrics_collector
 
         # Check that metrics collector is accessible
@@ -299,7 +298,7 @@ def main():
     if test_metrics_with_orchestrator():
         tests_passed += 1
 
-    print(f"\n" + "=" * 55)
+    print("\n" + "=" * 55)
     print(f"Test Results: {tests_passed}/{total_tests} tests passed")
 
     if tests_passed == total_tests:

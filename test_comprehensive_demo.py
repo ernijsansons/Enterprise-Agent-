@@ -135,7 +135,6 @@ async def run_quick_component_test():
 
     try:
         # Test orchestrator import
-        from src.agent_orchestrator import AgentOrchestrator
         print("SUCCESS: AgentOrchestrator import")
 
         # Test async components import

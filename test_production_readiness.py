@@ -416,7 +416,7 @@ def test_operational_readiness():
         print("  Testing metrics system...")
 
         try:
-            from src.utils.metrics import MetricsCollector, MetricType
+            from src.utils.metrics import MetricsCollector
 
             collector = MetricsCollector(enabled=True)
 
@@ -586,7 +586,7 @@ def main():
         except Exception as e:
             print(f"FAILED: Test {test_func.__name__} failed with exception: {e}")
 
-    print(f"\n" + "=" * 65)
+    print("\n" + "=" * 65)
     print(f"Production Readiness Results: {tests_passed}/{len(test_functions)} tests passed")
 
     if tests_passed == len(test_functions):

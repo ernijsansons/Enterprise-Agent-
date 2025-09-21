@@ -8,7 +8,7 @@ import time
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple
 import logging
 
 logger = logging.getLogger(__name__)

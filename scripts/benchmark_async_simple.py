@@ -226,7 +226,7 @@ async def main():
     # Analyze improvements
     analysis = analyze_performance_gains(sync_results, async_results)
 
-    print(f"\nBenchmark Complete!")
+    print("\nBenchmark Complete!")
     print(f"Overall Performance Improvement: {analysis['overall_speedup']:.1f}x faster")
 
     return {
@@ -239,4 +239,4 @@ async def main():
 if __name__ == "__main__":
     print("Starting async performance benchmark...")
     results = asyncio.run(main())
-    print(f"\nBenchmark completed successfully!")
+    print("\nBenchmark completed successfully!")

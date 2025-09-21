@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import shlex
 import subprocess  # nosec B404
 from pathlib import Path
 from typing import Any, Dict, Optional

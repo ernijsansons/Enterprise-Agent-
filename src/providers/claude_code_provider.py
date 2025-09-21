@@ -11,12 +11,11 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.exceptions import ModelException, ModelTimeoutException, RateLimitExceeded
+from src.exceptions import ModelException, ModelTimeoutException
 from src.utils.cache import get_model_cache
 from src.utils.circuit_breaker import (
     get_circuit_breaker_registry,
     CircuitBreakerConfig,
-    CircuitBreakerError,
 )
 from src.utils.notifications import notify_authentication_issue, notify_cli_failure
 from src.utils.rate_limiter import get_rate_limiter, RateLimitConfig

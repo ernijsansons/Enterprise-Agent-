@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Validate all YAML configuration files."""
 
-import os
 import sys
 import yaml
 from pathlib import Path

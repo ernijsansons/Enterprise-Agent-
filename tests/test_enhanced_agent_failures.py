@@ -10,8 +10,7 @@ import pytest
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from src.agent_orchestrator import AgentOrchestrator, AgentState
 from src.roles.base import BaseRole
@@ -20,17 +19,14 @@ from src.roles.reflector import Reflector
 from src.utils.errors import (
     EnterpriseAgentError,
     ErrorCode,
-    ErrorSeverity,
     get_error_handler,
     create_validation_error,
     create_orchestration_error,
     handle_error
 )
 from src.exceptions import (
-    ValidationException,
     ModelException,
-    ModelTimeoutException,
-    AgentException
+    ModelTimeoutException
 )
 
 
@@ -438,7 +434,6 @@ class TestConcurrencyFailures:
     def test_concurrent_state_access(self):
         """Test thread-safe state access in orchestrator."""
         import threading
-        import time
 
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"

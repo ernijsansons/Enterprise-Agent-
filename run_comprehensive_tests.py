@@ -203,7 +203,7 @@ async def main():
     if not check_environment():
         return 1
 
-    print(f"Enterprise Agent Comprehensive Test Runner")
+    print("Enterprise Agent Comprehensive Test Runner")
     print(f"Time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print()
 

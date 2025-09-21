@@ -3,7 +3,6 @@
 import os
 import sys
 import tempfile
-import time
 from pathlib import Path
 
 # Add project root to path
@@ -312,7 +311,7 @@ def main():
     if test_enhanced_model_cache():
         tests_passed += 1
 
-    print(f"\n" + "=" * 60)
+    print("\n" + "=" * 60)
     print(f"Test Results: {tests_passed}/{total_tests} tests passed")
 
     if tests_passed == total_tests:

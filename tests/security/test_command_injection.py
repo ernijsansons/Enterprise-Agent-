@@ -1,5 +1,4 @@
 """Security tests for command injection prevention."""
-import subprocess
 import pytest
 from unittest.mock import patch, MagicMock
 import shlex

@@ -6,14 +6,12 @@ import logging
 import time
 from typing import Any, Dict, List, Optional
 
-from src.exceptions import ModelException, ModelTimeoutException
 from src.memory.async_storage import get_async_memory_store
 from src.providers.async_claude_provider import get_async_claude_provider
 from src.utils.async_cache import get_async_model_cache
 from src.utils.async_http import AsyncOpenAIClient, AsyncAnthropicClient, AIOHTTP_AVAILABLE
 from src.utils.costs import CostEstimator
 from src.governance import GovernanceChecker
-from src.utils.retry import retry_on_timeout
 from src.utils.safety import scrub_pii
 from src.utils.secrets import load_secrets
 

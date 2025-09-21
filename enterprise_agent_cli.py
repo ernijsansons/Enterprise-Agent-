@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -664,27 +664,27 @@ models:
         print(f"Errors Encountered: {self.errors_encountered}")
 
         # Configuration
-        print(f"\nConfiguration:")
+        print("\nConfiguration:")
         print(f"  Home Directory: {self.home_dir}")
         print(f"  Global Config: {self.global_config}")
         print(f"  Verbose Mode: {self.verbose}")
 
         # Check dependencies
-        print(f"\nDependencies:")
+        print("\nDependencies:")
         try:
             import yaml
-            print(f"  ✅ PyYAML available")
+            print("  ✅ PyYAML available")
         except ImportError:
-            print(f"  ❌ PyYAML not available")
+            print("  ❌ PyYAML not available")
 
         try:
             result = subprocess.run(["claude", "--version"], capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 print(f"  ✅ Claude Code CLI: {result.stdout.strip()}")
             else:
-                print(f"  ❌ Claude Code CLI not working")
+                print("  ❌ Claude Code CLI not working")
         except Exception:
-            print(f"  ❌ Claude Code CLI not found")
+            print("  ❌ Claude Code CLI not found")
 
         # Domain count
         print(f"\nAvailable Domains: {len(self.DOMAIN_CONFIGS)}")
@@ -758,17 +758,17 @@ models:
         print("=" * 50)
 
         if analysis['tech_stack']:
-            print(f"\n🔧 Technology Stack:")
+            print("\n🔧 Technology Stack:")
             for tech in analysis['tech_stack']:
                 print(f"  • {tech}")
 
         if analysis['files']:
-            print(f"\n📄 File Count:")
+            print("\n📄 File Count:")
             for pattern, count in analysis['files'].items():
                 print(f"  {pattern}: {count} files")
 
         if analysis['suggestions']:
-            print(f"\n💡 Suggestions:")
+            print("\n💡 Suggestions:")
             for suggestion in analysis['suggestions']:
                 print(f"  • {suggestion}")
 
@@ -873,7 +873,7 @@ For more information, visit: https://github.com/enterprise-agent
                 print("\n🔍 Dry Run Preview:")
                 print(json.dumps(result, indent=2))
             else:
-                print(f"\n✅ Complete: Success")
+                print("\n✅ Complete: Success")
                 if args.verbose:
                     print(json.dumps(result, indent=2, default=str))
         elif args.command == "interactive":

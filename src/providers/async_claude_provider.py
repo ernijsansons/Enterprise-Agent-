@@ -6,17 +6,14 @@ import json
 import logging
 import os
 import shlex
-import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from src.exceptions import ModelException, ModelTimeoutException, RateLimitExceeded
 from src.utils.async_cache import get_async_model_cache
 from src.utils.circuit_breaker import get_circuit_breaker_registry, CircuitBreakerError
-from src.utils.notifications import notify_authentication_issue, notify_cli_failure
+from src.utils.notifications import notify_cli_failure
 from src.utils.rate_limiter import get_rate_limiter
-from src.utils.security_audit import audit_authentication, audit_cli_usage
-from src.utils.usage_monitor import can_make_claude_request, record_claude_usage
 
 logger = logging.getLogger(__name__)
 

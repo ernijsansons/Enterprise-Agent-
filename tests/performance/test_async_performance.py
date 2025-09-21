@@ -1,13 +1,10 @@
 """Performance tests for async implementation improvements."""
-import asyncio
 import time
-from typing import Dict, List, Any
 import pytest
 import logging
 
 from src.agent_orchestrator import AgentOrchestrator
 from src.orchestration.async_orchestrator import get_async_orchestrator
-from src.providers.async_claude_provider import get_async_claude_provider
 
 logger = logging.getLogger(__name__)
 

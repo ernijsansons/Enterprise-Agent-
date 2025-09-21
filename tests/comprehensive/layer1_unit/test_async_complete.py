@@ -3,7 +3,6 @@ import asyncio
 import sys
 import time
 from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
@@ -412,19 +411,19 @@ class TestAsyncComplete:
             try:
                 await orchestrator.close()
                 cleanup_results["orchestrator"] = True
-            except Exception as e:
+            except Exception:
                 cleanup_results["orchestrator"] = False
 
             try:
                 await cache.clear()
                 cleanup_results["cache"] = True
-            except Exception as e:
+            except Exception:
                 cleanup_results["cache"] = False
 
             try:
                 await memory.close()
                 cleanup_results["memory"] = True
-            except Exception as e:
+            except Exception:
                 cleanup_results["memory"] = False
 
             success_count = sum(cleanup_results.values())

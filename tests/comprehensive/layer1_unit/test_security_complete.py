@@ -1,9 +1,7 @@
 """Complete unit tests for security components."""
 import os
 import sys
-import subprocess
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
@@ -21,7 +19,6 @@ class TestSecurityComplete:
     def test_command_injection_prevention(self):
         """Test command injection prevention mechanisms."""
         try:
-            from src.utils.safety import scrub_pii
             import shlex
 
             # Test dangerous command inputs
@@ -339,13 +336,13 @@ class TestSecurityComplete:
             try:
                 auth_audit = audit_authentication("test_user", "test_action")
                 audit_results["authentication"] = True
-            except Exception as e:
+            except Exception:
                 audit_results["authentication"] = False
 
             try:
                 cli_audit = audit_cli_usage("test_command", {"test": "params"})
                 audit_results["cli_usage"] = True
-            except Exception as e:
+            except Exception:
                 audit_results["cli_usage"] = False
 
             success_count = sum(audit_results.values())
@@ -371,13 +368,13 @@ class TestSecurityComplete:
             try:
                 can_request = can_make_claude_request()
                 monitoring_results["can_request_check"] = isinstance(can_request, bool)
-            except Exception as e:
+            except Exception:
                 monitoring_results["can_request_check"] = False
 
             try:
                 record_claude_usage("test_operation", 100, "success")
                 monitoring_results["usage_recording"] = True
-            except Exception as e:
+            except Exception:
                 monitoring_results["usage_recording"] = False
 
             success_count = sum(monitoring_results.values())
@@ -403,13 +400,13 @@ class TestSecurityComplete:
             try:
                 notify_authentication_issue("test_issue", "test_details")
                 notification_results["auth_notification"] = True
-            except Exception as e:
+            except Exception:
                 notification_results["auth_notification"] = False
 
             try:
                 notify_cli_failure("test_operation", "test_error")
                 notification_results["cli_notification"] = True
-            except Exception as e:
+            except Exception:
                 notification_results["cli_notification"] = False
 
             success_count = sum(notification_results.values())

@@ -241,7 +241,7 @@ def main():
     if test_error_context_and_metadata():
         tests_passed += 1
 
-    print(f"\n" + "=" * 50)
+    print("\n" + "=" * 50)
     print(f"Test Results: {tests_passed}/{total_tests} tests passed")
 
     if tests_passed == total_tests:
