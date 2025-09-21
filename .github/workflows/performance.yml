@@ -1,0 +1,295 @@
+name: Performance Benchmarks
+
+on:
+  schedule:
+    - cron: '0 4 * * 0'  # Weekly on Sunday at 4 AM UTC
+  workflow_dispatch:
+    inputs:
+      benchmark_type:
+        description: 'Type of benchmark to run'
+        required: true
+        type: choice
+        options:
+          - 'full'
+          - 'quick'
+          - 'stress'
+        default: 'quick'
+      iterations:
+        description: 'Number of iterations'
+        required: false
+        type: number
+        default: 10
+
+env:
+  PYTHON_VERSION: '3.10'
+  BENCHMARK_ITERATIONS: ${{ github.event.inputs.iterations || 10 }}
+
+jobs:
+  performance-benchmarks:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install poetry
+          poetry install --with dev
+          pip install memory-profiler psutil
+
+      - name: Prepare benchmark environment
+        run: |
+          mkdir -p benchmarks/results
+          mkdir -p .metrics
+          mkdir -p .cache
+
+      - name: Run Memory Usage Benchmarks
+        run: |
+          echo "Running memory usage benchmarks..."
+          python -c "
+          import psutil
+          import time
+          from src.agent_orchestrator import AgentOrchestrator
+          from configs.agent_config_v3_4 import load_config
+
+          # Monitor memory usage
+          process = psutil.Process()
+          initial_memory = process.memory_info().rss / 1024 / 1024  # MB
+
+          print(f'Initial memory: {initial_memory:.2f} MB')
+
+          # Load and initialize agent
+          config = load_config()
+          orchestrator = AgentOrchestrator(config)
+
+          after_init_memory = process.memory_info().rss / 1024 / 1024
+          print(f'Memory after init: {after_init_memory:.2f} MB')
+          print(f'Memory increase: {after_init_memory - initial_memory:.2f} MB')
+
+          # Save results
+          with open('benchmarks/results/memory_usage.txt', 'w') as f:
+              f.write(f'initial_memory_mb={initial_memory:.2f}\n')
+              f.write(f'after_init_memory_mb={after_init_memory:.2f}\n')
+              f.write(f'memory_increase_mb={after_init_memory - initial_memory:.2f}\n')
+          "
+        env:
+          CACHE_ENABLED: true
+          METRICS_ENABLED: true
+
+      - name: Run Performance Benchmarks
+        run: |
+          echo "Running performance benchmarks..."
+          python -c "
+          import time
+          import statistics
+          from src.utils.metrics import MetricsCollector
+          from src.utils.cache import TTLCache, CacheConfig
+
+          results = []
+
+          # Benchmark metrics collection
+          print('Benchmarking metrics collection...')
+          collector = MetricsCollector()
+
+          times = []
+          for i in range(${{ env.BENCHMARK_ITERATIONS }}):
+              start = time.time()
+              collector.record_counter('benchmark_counter', 1)
+              collector.record_gauge('benchmark_gauge', i * 10.5)
+              collector.record_timer('benchmark_timer', 0.123)
+              end = time.time()
+              times.append((end - start) * 1000)  # Convert to ms
+
+          avg_time = statistics.mean(times)
+          p95_time = statistics.quantiles(times, n=20)[18]  # 95th percentile
+          print(f'Metrics collection - Avg: {avg_time:.3f}ms, P95: {p95_time:.3f}ms')
+
+          results.append(f'metrics_avg_ms={avg_time:.3f}')
+          results.append(f'metrics_p95_ms={p95_time:.3f}')
+
+          # Benchmark cache operations
+          print('Benchmarking cache operations...')
+          cache = TTLCache(CacheConfig(max_size=1000))
+
+          # Cache write benchmark
+          times = []
+          for i in range(${{ env.BENCHMARK_ITERATIONS }}):
+              start = time.time()
+              cache.set(f'key_{i}', f'value_{i}' * 100)  # 600 byte values
+              end = time.time()
+              times.append((end - start) * 1000)
+
+          avg_write = statistics.mean(times)
+          print(f'Cache write - Avg: {avg_write:.3f}ms')
+          results.append(f'cache_write_avg_ms={avg_write:.3f}')
+
+          # Cache read benchmark
+          times = []
+          for i in range(${{ env.BENCHMARK_ITERATIONS }}):
+              start = time.time()
+              cache.get(f'key_{i}')
+              end = time.time()
+              times.append((end - start) * 1000)
+
+          avg_read = statistics.mean(times)
+          print(f'Cache read - Avg: {avg_read:.3f}ms')
+          results.append(f'cache_read_avg_ms={avg_read:.3f}')
+
+          # Save results
+          with open('benchmarks/results/performance.txt', 'w') as f:
+              for result in results:
+                  f.write(result + '\n')
+          "
+
+      - name: Run Stress Test
+        if: github.event.inputs.benchmark_type == 'stress' || github.event.inputs.benchmark_type == 'full'
+        run: |
+          echo "Running stress test..."
+          python -c "
+          import concurrent.futures
+          import time
+          from src.utils.metrics import get_metrics_collector
+          from src.utils.cache import TTLCache, CacheConfig
+
+          def stress_metrics():
+              collector = get_metrics_collector()
+              for i in range(1000):
+                  collector.record_counter('stress_counter', 1)
+                  collector.record_gauge('stress_gauge', i)
+              return 'metrics_done'
+
+          def stress_cache():
+              cache = TTLCache(CacheConfig(max_size=10000))
+              for i in range(1000):
+                  cache.set(f'stress_key_{i}', f'stress_value_{i}' * 50)
+                  cache.get(f'stress_key_{i // 2}')
+              return 'cache_done'
+
+          print('Running concurrent stress test...')
+          start_time = time.time()
+
+          with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+              futures = []
+              for _ in range(5):
+                  futures.append(executor.submit(stress_metrics))
+                  futures.append(executor.submit(stress_cache))
+
+              # Wait for all tasks to complete
+              results = [future.result() for future in concurrent.futures.as_completed(futures)]
+
+          end_time = time.time()
+          duration = end_time - start_time
+
+          print(f'Stress test completed in {duration:.2f} seconds')
+
+          with open('benchmarks/results/stress_test.txt', 'w') as f:
+              f.write(f'stress_test_duration_s={duration:.2f}\n')
+              f.write(f'concurrent_tasks=10\n')
+              f.write(f'operations_per_task=1000\n')
+          "
+
+      - name: Generate Benchmark Report
+        run: |
+          echo "# Performance Benchmark Report" > benchmarks/results/report.md
+          echo "Date: $(date)" >> benchmarks/results/report.md
+          echo "Benchmark Type: ${{ github.event.inputs.benchmark_type || 'scheduled' }}" >> benchmarks/results/report.md
+          echo "Iterations: ${{ env.BENCHMARK_ITERATIONS }}" >> benchmarks/results/report.md
+          echo "" >> benchmarks/results/report.md
+
+          if [ -f benchmarks/results/memory_usage.txt ]; then
+            echo "## Memory Usage" >> benchmarks/results/report.md
+            echo "\`\`\`" >> benchmarks/results/report.md
+            cat benchmarks/results/memory_usage.txt >> benchmarks/results/report.md
+            echo "\`\`\`" >> benchmarks/results/report.md
+            echo "" >> benchmarks/results/report.md
+          fi
+
+          if [ -f benchmarks/results/performance.txt ]; then
+            echo "## Performance Metrics" >> benchmarks/results/report.md
+            echo "\`\`\`" >> benchmarks/results/report.md
+            cat benchmarks/results/performance.txt >> benchmarks/results/report.md
+            echo "\`\`\`" >> benchmarks/results/report.md
+            echo "" >> benchmarks/results/report.md
+          fi
+
+          if [ -f benchmarks/results/stress_test.txt ]; then
+            echo "## Stress Test Results" >> benchmarks/results/report.md
+            echo "\`\`\`" >> benchmarks/results/report.md
+            cat benchmarks/results/stress_test.txt >> benchmarks/results/report.md
+            echo "\`\`\`" >> benchmarks/results/report.md
+          fi
+
+      - name: Upload Benchmark Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.run_number }}
+          path: benchmarks/results/
+          retention-days: 30
+
+      - name: Comment on PR (if applicable)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('benchmarks/results/report.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Performance Benchmark Results\n\n${report}`
+            });
+
+  compare-benchmarks:
+    name: Compare with Baseline
+    runs-on: ubuntu-latest
+    needs: performance-benchmarks
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download current results
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results-${{ github.run_number }}
+          path: current-results/
+
+      - name: Compare with baseline
+        run: |
+          echo "Comparing performance with baseline..."
+          echo "Current results:"
+          cat current-results/performance.txt || echo "No performance results found"
+
+          # In a real implementation, this would compare with historical data
+          echo "Baseline comparison would be implemented here"
+          echo "This would check for performance regressions"
+
+      - name: Performance regression check
+        run: |
+          echo "Checking for performance regressions..."
+
+          # Simple check - in practice this would be more sophisticated
+          if [ -f current-results/performance.txt ]; then
+            metrics_avg=$(grep "metrics_avg_ms" current-results/performance.txt | cut -d'=' -f2)
+            cache_avg=$(grep "cache_write_avg_ms" current-results/performance.txt | cut -d'=' -f2)
+
+            # Check if metrics are reasonable (less than 1ms avg)
+            if (( $(echo "$metrics_avg > 1.0" | bc -l) )); then
+              echo "::warning::Metrics collection performance may have regressed: ${metrics_avg}ms average"
+            fi
+
+            # Check if cache operations are reasonable (less than 0.1ms avg)
+            if (( $(echo "$cache_avg > 0.1" | bc -l) )); then
+              echo "::warning::Cache performance may have regressed: ${cache_avg}ms average"
+            fi
+          fi

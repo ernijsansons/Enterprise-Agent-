@@ -14,13 +14,46 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
+# Import structured error handling
+from src.utils.errors import (
+    EnterpriseAgentError,
+    ErrorCode,
+    ErrorCategory,
+    ErrorSeverity,
+    get_error_handler,
+    create_orchestration_error,
+    create_model_error,
+    create_validation_error,
+    create_config_error,
+    handle_error
+)
+from src.utils.metrics import (
+    get_metrics_collector,
+    MetricsConfig,
+    MetricSeverity,
+    record_counter,
+    record_gauge,
+    record_timer,
+    record_event,
+    timer
+)
+from src.utils.reflection_audit import (
+    get_reflection_auditor,
+    ReflectionPhase,
+    ReflectionDecision,
+    ValidationIssue,
+    start_reflection_session,
+    log_reflection_step,
+    finish_reflection_session
+)
+
 from src.orchestration import build_graph
 from src.orchestration.async_orchestrator import get_async_orchestrator
 from src.providers.auth_manager import get_auth_manager
 from src.providers.claude_code_provider import get_claude_code_provider
 from src.roles import Coder, Planner, Reflector, Reviewer, Validator
 from src.tools import invoke_codex_cli
-from src.utils.cache import get_model_cache
+from src.utils.cache import get_model_cache, ModelResponseCache, CacheConfig
 from src.utils.concurrency import ExecutionManager
 from src.utils.notifications import notify_cli_failure
 from src.utils.retry import retry_on_timeout
@@ -180,77 +213,226 @@ class AgentOrchestrator:
     """Coordinate planner, coder, validator, reflector, reviewer, and governance roles."""
 
     def __init__(self, config_path: str = "configs/agent_config_v3.4.yaml") -> None:
-        self._state_lock = threading.Lock()
-        self._model_lock = threading.Lock()
-        self._executor = ExecutionManager(max_workers=4)
-        self._model_cache = get_model_cache()
-        self._domain_validator = DomainValidator()
-        self._string_validator = StringValidator(
-            max_length=100000, strip_whitespace=True
-        )
+        # Initialize error handler, metrics collector, and reflection auditor first
+        self._error_handler = get_error_handler()
+        self._metrics_collector = get_metrics_collector()
+        self._reflection_auditor = get_reflection_auditor()
 
-        # Initialize Claude Code provider if enabled
-        self._use_claude_code = os.getenv("USE_CLAUDE_CODE", "false").lower() == "true"
-        self._claude_code_provider = None
-        if self._use_claude_code:
-            self._init_claude_code_provider()
-
-        # Initialize async orchestrator for performance improvements
-        self._async_enabled = os.getenv("ENABLE_ASYNC", "true").lower() == "true"
-        self._async_orchestrator = None
-        if self._async_enabled:
-            try:
-                self._async_orchestrator = get_async_orchestrator(self._build_async_config())
-                logger.info("Async orchestrator initialized for performance improvements")
-            except Exception as e:
-                logger.warning(f"Failed to initialize async orchestrator: {e}")
-                self._async_enabled = False
         try:
-            self.secrets = load_secrets()
-        except Exception as exc:  # pragma: no cover - secrets should not block boot
-            logger.warning(
-                "Secret loading degraded; continuing with limited credentials: %s", exc
+            self._state_lock = threading.Lock()
+            self._model_lock = threading.Lock()
+            self._executor = ExecutionManager(max_workers=4)
+            self._domain_validator = DomainValidator()
+            self._string_validator = StringValidator(
+                max_length=100000, strip_whitespace=True
             )
-            self.secrets = {}
 
-        config_override = os.getenv("ENTERPRISE_AGENT_CONFIG")
-        config_path = Path(config_override) if config_override else Path(config_path)
-        if not config_path.is_absolute():
-            candidate = Path(__file__).resolve().parents[1] / config_path
-            config_path = (
-                candidate
-                if candidate.exists()
-                else (Path.cwd() / config_path).resolve()
+            # Initialize Claude Code provider if enabled
+            self._use_claude_code = os.getenv("USE_CLAUDE_CODE", "false").lower() == "true"
+            self._claude_code_provider = None
+            if self._use_claude_code:
+                self._init_claude_code_provider()
+
+            # Initialize async orchestrator for performance improvements
+            self._async_enabled = os.getenv("ENABLE_ASYNC", "true").lower() == "true"
+            self._async_orchestrator = None
+            if self._async_enabled:
+                try:
+                    self._async_orchestrator = get_async_orchestrator(self._build_async_config())
+                    logger.info("Async orchestrator initialized for performance improvements")
+                except Exception as e:
+                    error_details = handle_error(
+                        create_orchestration_error(
+                            "Failed to initialize async orchestrator",
+                            ErrorCode.ORCHESTRATION_INIT_FAILED,
+                            context={"async_enabled": True, "error": str(e)},
+                            cause=e
+                        )
+                    )
+                    logger.warning(f"Failed to initialize async orchestrator: {e}")
+                    self._async_enabled = False
+
+            # Load secrets with error handling
+            try:
+                self.secrets = load_secrets()
+            except Exception as exc:
+                error_details = handle_error(
+                    EnterpriseAgentError(
+                        ErrorCode.AUTH_SETUP_FAILED,
+                        "Secret loading degraded; continuing with limited credentials",
+                        context={"error": str(exc)},
+                        severity=ErrorSeverity.LOW,
+                        recovery_suggestions=["Check secret configuration", "Verify environment variables"],
+                        cause=exc
+                    )
+                )
+                self.secrets = {}
+
+            # Load and validate configuration
+            self._load_config(config_path)
+
+            # Initialize components with error handling
+            self._init_components()
+
+            # Initialize clients, roles, and graph
+            self._init_clients()
+            self._init_roles()
+            self._init_graph()
+
+            logger.info("AgentOrchestrator initialized successfully")
+
+        except Exception as e:
+            error_details = handle_error(
+                create_orchestration_error(
+                    f"Failed to initialize AgentOrchestrator: {str(e)}",
+                    ErrorCode.ORCHESTRATION_INIT_FAILED,
+                    context={"config_path": config_path},
+                    cause=e
+                )
             )
-        self._project_root = Path(__file__).resolve().parents[1]
-        if not config_path.exists():
-            raise FileNotFoundError(f"Config file not found: {config_path}")
+            raise
 
-        with open(config_path, "r", encoding="utf-8") as handle:
-            self.config = yaml.safe_load(handle) or {}
+    def _load_config(self, config_path: str) -> None:
+        """Load and validate configuration with structured error handling."""
+        try:
+            config_override = os.getenv("ENTERPRISE_AGENT_CONFIG")
+            config_path = Path(config_override) if config_override else Path(config_path)
 
-        self.agent_cfg = self.config.get("enterprise_coding_agent", {})
-        self.orchestration_cfg = self.agent_cfg.get("orchestration", {})
-        self.domain_packs = self._load_domain_packs()
-        memory_cfg = self.agent_cfg.get("memory", {})
-        optimizer_cfg = self.orchestration_cfg.get("runtime_optimizer", {})
-        governance_cfg = self.agent_cfg.get("governance", {})
+            if not config_path.is_absolute():
+                candidate = Path(__file__).resolve().parents[1] / config_path
+                config_path = (
+                    candidate
+                    if candidate.exists()
+                    else (Path.cwd() / config_path).resolve()
+                )
 
-        self.memory = MemoryStore(memory_cfg)
-        self.cost_estimator = CostEstimator(optimizer_cfg)
-        self.governance = GovernanceChecker(governance_cfg)
+            self._project_root = Path(__file__).resolve().parents[1]
 
-        self.openai_client = None
-        self.anthropic_client = None
-        self.gemini_client = None
-        self._codex_available = (
-            bool(shutil.which("codex")) and os.getenv("CODEX_CLI_ENABLED", "0") == "1"
-        )
+            if not config_path.exists():
+                raise create_config_error(
+                    f"Configuration file not found: {config_path}",
+                    ErrorCode.CONFIG_FILE_NOT_FOUND,
+                    context={"config_path": str(config_path)},
+                    recovery_suggestions=[
+                        "Check if the configuration file exists",
+                        "Verify the ENTERPRISE_AGENT_CONFIG environment variable",
+                        "Use the default config path: configs/agent_config_v3.4.yaml"
+                    ]
+                )
 
-        self._init_clients()
-        self._init_roles()
-        self._init_graph()
-        logger.info("AgentOrchestrator initialised")
+            with open(config_path, "r", encoding="utf-8") as handle:
+                self.config = yaml.safe_load(handle) or {}
+
+        except yaml.YAMLError as e:
+            raise create_config_error(
+                f"Failed to parse configuration file: {str(e)}",
+                ErrorCode.CONFIG_PARSE_ERROR,
+                context={"config_path": str(config_path), "yaml_error": str(e)},
+                recovery_suggestions=[
+                    "Check YAML syntax in configuration file",
+                    "Validate configuration structure",
+                    "Use a YAML validator tool"
+                ],
+                cause=e
+            )
+        except Exception as e:
+            raise create_config_error(
+                f"Failed to load configuration: {str(e)}",
+                ErrorCode.CONFIG_VALIDATION_FAILED,
+                context={"config_path": str(config_path)},
+                cause=e
+            )
+
+        # Validate required configuration sections
+        if "enterprise_coding_agent" not in self.config:
+            raise create_config_error(
+                "Missing required 'enterprise_coding_agent' section in configuration",
+                ErrorCode.CONFIG_MISSING_REQUIRED_FIELD,
+                context={"config_path": str(config_path), "missing_section": "enterprise_coding_agent"},
+                recovery_suggestions=[
+                    "Add the 'enterprise_coding_agent' section to your configuration",
+                    "Use the default configuration template",
+                    "Check configuration documentation"
+                ]
+            )
+
+    def _init_components(self) -> None:
+        """Initialize core components with error handling."""
+        try:
+            self.agent_cfg = self.config.get("enterprise_coding_agent", {})
+            self.orchestration_cfg = self.agent_cfg.get("orchestration", {})
+            self.domain_packs = self._load_domain_packs()
+            memory_cfg = self.agent_cfg.get("memory", {})
+            optimizer_cfg = self.orchestration_cfg.get("runtime_optimizer", {})
+            governance_cfg = self.agent_cfg.get("governance", {})
+
+            # Initialize configurable caching
+            self._init_cache_system()
+
+            self.memory = MemoryStore(memory_cfg)
+            self.cost_estimator = CostEstimator(optimizer_cfg)
+            self.governance = GovernanceChecker(governance_cfg)
+
+            self.openai_client = None
+            self.anthropic_client = None
+            self.gemini_client = None
+            self._codex_available = (
+                bool(shutil.which("codex")) and os.getenv("CODEX_CLI_ENABLED", "0") == "1"
+            )
+
+        except Exception as e:
+            raise create_orchestration_error(
+                f"Failed to initialize core components: {str(e)}",
+                ErrorCode.ORCHESTRATION_INIT_FAILED,
+                context={"component_init": "core_components"},
+                cause=e
+            )
+
+    def _init_cache_system(self) -> None:
+        """Initialize configurable cache system."""
+        try:
+            cache_cfg = self.agent_cfg.get("caching", {})
+            model_cache_cfg = cache_cfg.get("model_cache", {})
+
+            # Create cache configuration from YAML config with environment overrides
+            cache_config = CacheConfig.from_env()
+
+            # Override with YAML configuration
+            if cache_cfg:
+                for key, value in cache_cfg.items():
+                    if hasattr(cache_config, key) and key != "model_cache":
+                        setattr(cache_config, key, value)
+
+            # Initialize model cache with configuration
+            model_cache_config = CacheConfig(
+                enabled=model_cache_cfg.get("enabled", cache_config.enabled),
+                default_ttl=model_cache_cfg.get("default_ttl", 900),  # 15 minutes for models
+                max_size=model_cache_cfg.get("max_size", 500),
+                adaptive_ttl=cache_config.adaptive_ttl,
+                quality_threshold=cache_config.quality_threshold,
+                high_quality_ttl_multiplier=model_cache_cfg.get("high_confidence_ttl_multiplier", 2.0),
+                persistence_enabled=cache_config.persistence_enabled,
+                persistence_path=cache_config.persistence_path,
+                compression_enabled=cache_config.compression_enabled,
+                compression_threshold=cache_config.compression_threshold,
+                eviction_policy=cache_config.eviction_policy,
+                metrics_enabled=cache_config.metrics_enabled
+            )
+
+            self._model_cache = ModelResponseCache(config=model_cache_config)
+            self._cache_config = cache_config
+
+            # Store cache multipliers for Claude responses
+            self._claude_ttl_multiplier = model_cache_cfg.get("claude_ttl_multiplier", 1.5)
+
+            logger.info(f"Initialized configurable cache system: enabled={cache_config.enabled}, "
+                       f"adaptive_ttl={cache_config.adaptive_ttl}, eviction_policy={cache_config.eviction_policy}")
+
+        except Exception as e:
+            logger.warning(f"Failed to initialize cache system: {e}, using defaults")
+            self._model_cache = get_model_cache()
+            self._cache_config = CacheConfig()
+            self._claude_ttl_multiplier = 1.5
 
     def _init_claude_code_provider(self) -> None:
         """Initialize Claude Code CLI provider with enhanced validation and error handling.
@@ -921,9 +1103,49 @@ class AgentOrchestrator:
                 )
 
             return scrub_pii(output)
-        except Exception as exc:  # pragma: no cover - propagate for caller handling
-            logger.error("Model call failed for %s/%s: %s", role, operation, exc)
-            raise
+        except Exception as exc:
+            # Create structured error with context
+            error_context = {
+                "model": resolved_model,
+                "role": role,
+                "operation": operation,
+                "provider": provider,
+                "prompt_length": len(prompt),
+                "max_tokens": max_tokens
+            }
+
+            # Determine specific error code based on exception type
+            error_code = ErrorCode.MODEL_CALL_FAILED
+            if "timeout" in str(exc).lower():
+                error_code = ErrorCode.MODEL_TIMEOUT
+            elif "rate" in str(exc).lower() and "limit" in str(exc).lower():
+                error_code = ErrorCode.MODEL_RATE_LIMITED
+            elif "auth" in str(exc).lower() or "unauthorized" in str(exc).lower():
+                error_code = ErrorCode.MODEL_AUTHENTICATION_FAILED
+            elif "quota" in str(exc).lower() or "usage" in str(exc).lower():
+                error_code = ErrorCode.MODEL_QUOTA_EXCEEDED
+
+            model_error = create_model_error(
+                f"Model call failed for {role}/{operation}: {str(exc)}",
+                model=resolved_model,
+                error_code=error_code,
+                context=error_context,
+                cause=exc
+            )
+
+            # Add recovery suggestions based on error type
+            if error_code == ErrorCode.MODEL_RATE_LIMITED:
+                model_error.add_recovery_suggestion("Reduce request frequency")
+                model_error.add_recovery_suggestion("Implement exponential backoff")
+            elif error_code == ErrorCode.MODEL_AUTHENTICATION_FAILED:
+                model_error.add_recovery_suggestion("Check API key configuration")
+                model_error.add_recovery_suggestion("Verify authentication credentials")
+            elif error_code == ErrorCode.MODEL_QUOTA_EXCEEDED:
+                model_error.add_recovery_suggestion("Check usage limits")
+                model_error.add_recovery_suggestion("Consider upgrading plan")
+
+            handle_error(model_error, error_context)
+            raise model_error
 
     async def _call_model_async(
         self,
@@ -1010,12 +1232,21 @@ class AgentOrchestrator:
         # Store current state for role context access
         self._current_state = state
 
-        plan = self.planner_role.decompose(
-            state.get("task", ""), state.get("domain", "")
-        )
+        with timer("planner_execution", tags={"domain": state.get("domain", "unknown")}):
+            plan = self.planner_role.decompose(
+                state.get("task", ""), state.get("domain", "")
+            )
+
         state["plan"] = plan.get("text", "")
         state["plan_epics"] = plan.get("epics", [])
         state["plan_model"] = plan.get("model")
+
+        # Record metrics
+        record_counter("planner_executions", tags={"domain": state.get("domain")})
+        record_gauge("plan_epics_count", len(state["plan_epics"]))
+        record_event("planner_completed", MetricSeverity.INFO,
+                    domain=state.get("domain"), epics=len(state["plan_epics"]))
+
         self._emit_event(
             "planner.completed",
             domain=state.get("domain"),
@@ -1027,12 +1258,21 @@ class AgentOrchestrator:
         # Store current state for role context access
         self._current_state = state
 
-        result = self.coder_role.generate(
-            state.get("plan", ""), state.get("domain", "")
-        )
+        with timer("coder_execution", tags={"domain": state.get("domain", "unknown")}):
+            result = self.coder_role.generate(
+                state.get("plan", ""), state.get("domain", "")
+            )
+
         state["code"] = result.get("output", "")
         state["code_source"] = result.get("source")
         state["code_model"] = result.get("model")
+
+        # Record metrics
+        record_counter("coder_executions", tags={"domain": state.get("domain")})
+        record_gauge("code_length", len(state["code"]))
+        record_event("coder_completed", MetricSeverity.INFO,
+                    domain=state.get("domain"), source=state.get("code_source"))
+
         self._emit_event(
             "coder.completed",
             domain=state.get("domain"),
@@ -1100,7 +1340,28 @@ class AgentOrchestrator:
     def _reflect_route(self, state: AgentState) -> str:
         iterations = state.get("iterations", 0)
         confidence = state.get("confidence", 0.0)
-        if iterations < 5 and confidence < 0.8:
+
+        # Get configurable max iterations and confidence threshold
+        reflection_cfg = self.agent_cfg.get("reflecting", {})
+        max_iterations = reflection_cfg.get("max_iterations", 5)
+        confidence_threshold = self.agent_cfg.get("reviewing", {}).get("confidence_threshold", 0.8)
+
+        # Support environment variable overrides
+        env_max_iterations = os.getenv("REFLECTION_MAX_ITERATIONS")
+        if env_max_iterations:
+            try:
+                max_iterations = int(env_max_iterations)
+            except ValueError:
+                pass  # Use config default
+
+        env_confidence_threshold = os.getenv("REFLECTION_CONFIDENCE_THRESHOLD")
+        if env_confidence_threshold:
+            try:
+                confidence_threshold = float(env_confidence_threshold)
+            except ValueError:
+                pass  # Use config default
+
+        if iterations < max_iterations and confidence < confidence_threshold:
             return "coder"
         return "reviewer"
 
@@ -1173,7 +1434,18 @@ class AgentOrchestrator:
         Returns:
             Updated agent state
         """
-        max_iterations = 5
+        # Get max iterations from config with fallback to default
+        reflection_cfg = self.agent_cfg.get("reflecting", {})
+        max_iterations = reflection_cfg.get("max_iterations", 5)
+
+        # Support environment variable override
+        env_max_iterations = os.getenv("REFLECTION_MAX_ITERATIONS")
+        if env_max_iterations:
+            try:
+                max_iterations = int(env_max_iterations)
+                logger.info(f"Using reflection max_iterations from environment: {max_iterations}")
+            except ValueError:
+                logger.warning(f"Invalid REFLECTION_MAX_ITERATIONS value: {env_max_iterations}, using config default: {max_iterations}")
 
         try:
             # Pass planner context to coder for better reasoning
@@ -1198,7 +1470,7 @@ class AgentOrchestrator:
     def _execute_reflection_loop(
         self, state: AgentState, max_iterations: int
     ) -> AgentState:
-        """Execute the reflection loop for iterative improvement.
+        """Execute the reflection loop for iterative improvement with comprehensive audit logging.
 
         Args:
             state: Current agent state
@@ -1207,26 +1479,317 @@ class AgentOrchestrator:
         Returns:
             Updated agent state
         """
+        # Start reflection audit session
+        domain = state.get("domain", "unknown")
+        task = state.get("task", "reflection")
+        initial_confidence = state.get("confidence", 0.0)
+
+        audit_session_id = start_reflection_session(
+            domain=domain,
+            task=task,
+            initial_confidence=initial_confidence,
+            max_iterations=max_iterations,
+            configuration={
+                "early_termination_enabled": True,
+                "domain": domain,
+                "validation_issues": state.get("validation", {})
+            }
+        )
+
+        # Get early termination configuration
+        reflection_cfg = self.agent_cfg.get("reflecting", {})
+        early_termination_cfg = reflection_cfg.get("early_termination", {})
+
+        enable_early_termination = early_termination_cfg.get("enable", True)
+        stagnation_threshold = early_termination_cfg.get("stagnation_threshold", 3)
+        min_iterations = early_termination_cfg.get("min_iterations", 1)
+        progress_threshold = early_termination_cfg.get("progress_threshold", 0.1)
+
+        # Track confidence history for early termination
+        confidence_history = []
+        stagnation_count = 0
+
+        logger.info(f"Starting reflection loop: max_iterations={max_iterations}, early_termination={enable_early_termination}")
+
+        # Log initial validation analysis
+        validation_issues = self._analyze_validation_issues(state.get("validation", {}))
+        log_reflection_step(
+            audit_session_id,
+            ReflectionPhase.VALIDATION_ANALYSIS,
+            input_data={"validation": state.get("validation", {})},
+            output_data={"issues_identified": len(validation_issues)},
+            confidence_before=initial_confidence,
+            issues=validation_issues
+        )
+
+        final_decision = ReflectionDecision.CONTINUE_REFLECTION
+        termination_reason = None
+
         for iteration in range(max_iterations):
             try:
+                previous_confidence = state.get("confidence", 0.0)
+
+                # Log iteration start
+                log_reflection_step(
+                    audit_session_id,
+                    ReflectionPhase.ISSUE_IDENTIFICATION,
+                    input_data={"iteration": iteration, "confidence": previous_confidence},
+                    confidence_before=previous_confidence,
+                    iteration=iteration
+                )
+
                 # Pass validation context to reflector
                 state = self._transfer_role_context(state, "validator", "reflector")
-                state = self.reflector(state)
 
+                # Execute reflector with audit logging
+                reflection_start = time.time()
+                state = self.reflector(state)
+                reflection_duration = time.time() - reflection_start
+
+                current_confidence = state.get("confidence", 0.0)
+                confidence_history.append(current_confidence)
+
+                # Log reflection results
+                reflection_analysis = state.get("reflection_analysis", {})
+                fixes_generated = reflection_analysis.get("fixes", []) if isinstance(reflection_analysis, dict) else []
+                selected_fix = reflection_analysis.get("selected_fix") if isinstance(reflection_analysis, dict) else None
+
+                log_reflection_step(
+                    audit_session_id,
+                    ReflectionPhase.FIX_GENERATION,
+                    input_data={"previous_confidence": previous_confidence},
+                    output_data={
+                        "confidence": current_confidence,
+                        "fixes_count": len(fixes_generated),
+                        "selected_fix_index": selected_fix
+                    },
+                    confidence_before=previous_confidence,
+                    confidence_after=current_confidence,
+                    fixes=fixes_generated,
+                    selected_fix=str(selected_fix) if selected_fix is not None else None,
+                    duration=reflection_duration,
+                    iteration=iteration
+                )
+
+                logger.debug(f"Reflection iteration {iteration}: confidence {previous_confidence:.3f} -> {current_confidence:.3f}")
+
+                # Check if reflection indicates halt
                 if not state.get("needs_reflect"):
+                    final_decision = ReflectionDecision.HALT_REFLECTION
+                    termination_reason = "reflector_decision"
+                    logger.info(f"Reflection loop halted by reflector after {iteration + 1} iterations")
                     break
+
+                # Early termination checks
+                if enable_early_termination and iteration >= min_iterations:
+                    # Check for stagnation (no significant improvement)
+                    confidence_improvement = current_confidence - previous_confidence
+                    if confidence_improvement < progress_threshold:
+                        stagnation_count += 1
+                    else:
+                        stagnation_count = 0
+
+                    # Terminate if stagnating for too long
+                    if stagnation_count >= stagnation_threshold:
+                        final_decision = ReflectionDecision.EARLY_TERMINATION
+                        termination_reason = "stagnation"
+                        logger.info(f"Early termination due to stagnation after {iteration + 1} iterations (stagnation_count={stagnation_count})")
+
+                        log_reflection_step(
+                            audit_session_id,
+                            ReflectionPhase.TERMINATION_DECISION,
+                            input_data={"stagnation_count": stagnation_count, "threshold": stagnation_threshold},
+                            output_data={"decision": "early_termination", "reason": "stagnation"},
+                            confidence_after=current_confidence,
+                            decisions=["early_termination"],
+                            stagnation_count=stagnation_count
+                        )
+
+                        state["early_termination_reason"] = "stagnation"
+                        state["needs_reflect"] = False
+                        break
+
+                    # Check for regression (confidence getting worse)
+                    if len(confidence_history) >= 2:
+                        recent_trend = confidence_history[-1] - confidence_history[-2]
+                        if recent_trend < -0.2:  # Significant regression
+                            final_decision = ReflectionDecision.EARLY_TERMINATION
+                            termination_reason = "regression"
+                            logger.info(f"Early termination due to confidence regression after {iteration + 1} iterations")
+
+                            log_reflection_step(
+                                audit_session_id,
+                                ReflectionPhase.TERMINATION_DECISION,
+                                input_data={"confidence_trend": recent_trend},
+                                output_data={"decision": "early_termination", "reason": "regression"},
+                                confidence_after=current_confidence,
+                                decisions=["early_termination"],
+                                confidence_trend=recent_trend
+                            )
+
+                            state["early_termination_reason"] = "regression"
+                            state["needs_reflect"] = False
+                            break
+
+                # Log iteration completion
+                self._reflection_auditor.log_iteration_complete(
+                    audit_session_id,
+                    iteration + 1,
+                    current_confidence,
+                    state.get("needs_reflect", False),
+                    termination_reason
+                )
 
                 # Pass reflection context back to coder
                 state = self._transfer_role_context(state, "reflector", "coder")
+
+                # Execute coder and validator with timing
+                coder_start = time.time()
                 state = self.coder(state)
+                coder_duration = time.time() - coder_start
+
+                validator_start = time.time()
                 state = self.validator(state)
+                validator_duration = time.time() - validator_start
+
+                # Log code modification
+                log_reflection_step(
+                    audit_session_id,
+                    ReflectionPhase.CODE_MODIFICATION,
+                    input_data={"iteration": iteration},
+                    output_data={
+                        "code_length": len(state.get("code", "")),
+                        "coder_duration": coder_duration,
+                        "validator_duration": validator_duration
+                    },
+                    confidence_after=state.get("confidence", current_confidence),
+                    iteration=iteration,
+                    coder_duration=coder_duration,
+                    validator_duration=validator_duration
+                )
 
             except Exception as e:
-                logger.error(f"Error in reflection loop iteration {iteration}: {e}")
-                state["reflection_error"] = str(e)
+                # Handle reflection loop errors with structured error handling
+                reflection_error = EnterpriseAgentError(
+                    ErrorCode.REFLECTION_LOOP_FAILED,
+                    f"Error in reflection loop iteration {iteration}: {str(e)}",
+                    context={
+                        "iteration": iteration,
+                        "max_iterations": max_iterations,
+                        "current_confidence": state.get("confidence", 0.0),
+                        "needs_reflect": state.get("needs_reflect", False)
+                    },
+                    recovery_suggestions=[
+                        "Check validation results for issues",
+                        "Review reflection configuration",
+                        "Consider reducing max_iterations"
+                    ],
+                    cause=e
+                )
+
+                handle_error(reflection_error)
+
+                # Log error in audit trail
+                log_reflection_step(
+                    audit_session_id,
+                    ReflectionPhase.TERMINATION_DECISION,
+                    input_data={"iteration": iteration},
+                    output_data={"decision": "error_termination"},
+                    error=str(e),
+                    confidence_after=state.get("confidence", 0.0),
+                    decisions=["error_termination"],
+                    iteration=iteration
+                )
+
+                state["reflection_error"] = reflection_error.details.to_dict()
+                state["early_termination_reason"] = "error"
+                final_decision = ReflectionDecision.ERROR_TERMINATION
+                termination_reason = "error"
                 break
 
+        # Handle max iterations reached
+        if len(confidence_history) >= max_iterations and final_decision == ReflectionDecision.CONTINUE_REFLECTION:
+            final_decision = ReflectionDecision.MAX_ITERATIONS_REACHED
+            termination_reason = "max_iterations"
+
+        # Record reflection loop statistics
+        final_confidence = state.get("confidence", 0.0)
+        confidence_gain = final_confidence - initial_confidence
+
+        state["reflection_stats"] = {
+            "iterations_completed": len(confidence_history),
+            "max_iterations": max_iterations,
+            "initial_confidence": initial_confidence,
+            "final_confidence": final_confidence,
+            "confidence_gain": confidence_gain,
+            "confidence_history": confidence_history,
+            "early_termination": state.get("early_termination_reason") is not None,
+            "termination_reason": state.get("early_termination_reason", "completed"),
+            "audit_session_id": audit_session_id
+        }
+
+        # Finish audit session
+        finish_reflection_session(
+            audit_session_id,
+            final_decision,
+            final_confidence,
+            outcome={
+                "iterations_completed": len(confidence_history),
+                "confidence_gain": confidence_gain,
+                "termination_reason": termination_reason,
+                "success": confidence_gain > 0
+            }
+        )
+
+        logger.info(f"Reflection loop completed: {len(confidence_history)} iterations, confidence {initial_confidence:.3f} -> {final_confidence:.3f} (gain: {confidence_gain:+.3f})")
+
         return state
+
+    def _analyze_validation_issues(self, validation_data: Dict[str, Any]) -> List[ValidationIssue]:
+        """Analyze validation data to extract issues for audit logging.
+
+        Args:
+            validation_data: Validation results
+
+        Returns:
+            List of validation issues
+        """
+        issues = []
+
+        if not isinstance(validation_data, dict):
+            return issues
+
+        # Extract general validation failures
+        if not validation_data.get("passes", True):
+            issues.append(ValidationIssue(
+                issue_type="validation_failure",
+                severity="high",
+                description="General validation failure",
+                confidence=1.0 - validation_data.get("coverage", 0.0)
+            ))
+
+        # Extract coverage issues
+        coverage = validation_data.get("coverage", 1.0)
+        if coverage < 0.8:
+            issues.append(ValidationIssue(
+                issue_type="low_coverage",
+                severity="medium" if coverage > 0.5 else "high",
+                description=f"Low test coverage: {coverage:.1%}",
+                confidence=1.0 - coverage
+            ))
+
+        # Extract specific errors or warnings if available
+        errors = validation_data.get("errors", [])
+        if isinstance(errors, list):
+            for error in errors[:5]:  # Limit to first 5 errors
+                issues.append(ValidationIssue(
+                    issue_type="validation_error",
+                    severity="high",
+                    description=str(error)[:200],  # Truncate long descriptions
+                    confidence=0.9
+                ))
+
+        return issues
 
     def _finalize_execution(self, state: AgentState) -> AgentState:
         """Finalize execution with review and governance.
@@ -1505,6 +2068,19 @@ class AgentOrchestrator:
             )
         except Exception as e:
             logger.warning(f"Failed to record completion event: {e}")
+
+    def get_error_summary(self) -> Dict[str, Any]:
+        """Get summary of errors encountered during orchestrator operation.
+
+        Returns:
+            Dictionary containing error statistics and recent errors
+        """
+        return self._error_handler.get_error_summary()
+
+    def reset_error_history(self) -> None:
+        """Reset the error history for clean state (useful for testing)."""
+        self._error_handler.error_history.clear()
+        self._error_handler.error_counts.clear()
 
 
 __all__ = ["AgentOrchestrator"]

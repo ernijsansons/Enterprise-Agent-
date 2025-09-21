@@ -1,0 +1,213 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v3.4.1)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PYTHON_VERSION: '3.10'
+
+jobs:
+  validate-release:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install poetry
+          poetry install --with dev
+
+      - name: Extract version info
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Check if this is a pre-release
+          if [[ "$VERSION" =~ (alpha|beta|rc) ]] || [ "${{ github.event.inputs.prerelease }}" = "true" ]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+            echo "Invalid version format: $VERSION"
+            echo "Expected format: v[MAJOR].[MINOR].[PATCH](-[PRERELEASE])"
+            exit 1
+          fi
+
+      - name: Run full test suite
+        run: |
+          poetry run pytest tests/ -v --cov=src --cov-report=xml
+          python test_metrics_system.py
+          python smoke_test.py
+        env:
+          CACHE_ENABLED: true
+          METRICS_ENABLED: true
+
+  build-release:
+    name: Build Release
+    runs-on: ubuntu-latest
+    needs: validate-release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install poetry
+          poetry install --with dev
+
+      - name: Update version in pyproject.toml
+        run: |
+          VERSION="${{ needs.validate-release.outputs.version }}"
+          # Remove 'v' prefix for poetry version
+          POETRY_VERSION="${VERSION#v}"
+          poetry version "$POETRY_VERSION"
+
+      - name: Build package
+        run: poetry build
+
+      - name: Verify build
+        run: |
+          poetry run pip install dist/*.whl
+          python -c "import src.agent_orchestrator; print('Package verification successful')"
+
+      - name: Generate changelog
+        run: |
+          VERSION="${{ needs.validate-release.outputs.version }}"
+          echo "# Release $VERSION" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "## Changes" >> RELEASE_NOTES.md
+
+          # Get commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            git log --pretty=format:"- %s (%h)" "$LAST_TAG"..HEAD >> RELEASE_NOTES.md
+          else
+            echo "- Initial release" >> RELEASE_NOTES.md
+          fi
+
+          echo "" >> RELEASE_NOTES.md
+          echo "## Installation" >> RELEASE_NOTES.md
+          echo "\`\`\`bash" >> RELEASE_NOTES.md
+          echo "pip install dist/enterprise_coding_agent_v3_4-*.whl" >> RELEASE_NOTES.md
+          echo "\`\`\`" >> RELEASE_NOTES.md
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ needs.validate-release.outputs.version }}
+          path: |
+            dist/
+            RELEASE_NOTES.md
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate-release, build-release]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ needs.validate-release.outputs.version }}
+          path: ./release-assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.validate-release.outputs.version }}
+          name: Enterprise Agent ${{ needs.validate-release.outputs.version }}
+          body_path: ./release-assets/RELEASE_NOTES.md
+          files: |
+            ./release-assets/dist/*
+          prerelease: ${{ needs.validate-release.outputs.is_prerelease == 'true' }}
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-release:
+    name: Deploy Release
+    runs-on: ubuntu-latest
+    needs: [validate-release, create-release]
+    if: needs.validate-release.outputs.is_prerelease == 'false'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ needs.validate-release.outputs.version }}
+          path: ./release-assets/
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying Enterprise Agent ${{ needs.validate-release.outputs.version }} to production..."
+          echo "Package: $(ls ./release-assets/dist/)"
+          echo "This would deploy to production environment"
+
+      - name: Notify deployment
+        run: |
+          echo "Enterprise Agent ${{ needs.validate-release.outputs.version }} deployed successfully!"
+          echo "Release available at: https://github.com/${{ github.repository }}/releases/tag/${{ needs.validate-release.outputs.version }}"
+
+  post-release:
+    name: Post-Release Tasks
+    runs-on: ubuntu-latest
+    needs: [validate-release, create-release]
+    if: always() && needs.create-release.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update main branch
+        if: needs.validate-release.outputs.is_prerelease == 'false'
+        run: |
+          echo "Post-release cleanup for stable release"
+          echo "This would update documentation, bump version, etc."
+
+      - name: Create next development milestone
+        run: |
+          echo "Creating next development milestone..."
+          echo "This would create GitHub milestone for next version"

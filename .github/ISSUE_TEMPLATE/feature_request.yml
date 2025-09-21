@@ -1,0 +1,182 @@
+name: ✨ Feature Request
+description: Suggest a new feature for the Enterprise Agent
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest a new feature! Please provide as much detail as possible to help us understand your request.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature Summary
+      description: A clear and concise description of the feature you'd like to see.
+      placeholder: Brief description of the feature...
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why do you want this feature? What problem does it solve?
+      placeholder: Explain the problem this feature would solve...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like to see implemented.
+      placeholder: Describe your proposed solution...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Describe any alternative solutions or features you've considered.
+      placeholder: What alternatives have you considered?
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component would this feature affect?
+      options:
+        - Agent Orchestrator
+        - Metrics System
+        - Caching System
+        - CLI Interface
+        - Configuration
+        - Error Handling
+        - Reflection System
+        - New Component
+        - Multiple Components
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - High (Essential for my use case)
+        - Medium (Would be very helpful)
+        - Low (Nice to have)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Implementation Complexity (your estimate)
+      description: How complex do you think this feature would be to implement?
+      options:
+        - Simple (Small change to existing code)
+        - Medium (New functionality, moderate changes)
+        - Complex (Significant new functionality)
+        - Major (Large architectural changes)
+        - Unknown
+
+  - type: checkboxes
+    id: compatibility
+    attributes:
+      label: Compatibility Considerations
+      description: Select all that apply
+      options:
+        - label: This feature should be backward compatible
+        - label: This feature may require breaking changes
+        - label: This feature affects the public API
+        - label: This feature affects configuration
+        - label: This feature affects performance
+
+  - type: textarea
+    id: use_cases
+    attributes:
+      label: Use Cases
+      description: Describe specific use cases for this feature.
+      placeholder: |
+        1. Use case 1: ...
+        2. Use case 2: ...
+        3. Use case 3: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples
+      description: Provide examples of how this feature would be used.
+      render: python
+      placeholder: |
+        # Example usage
+        agent = AgentOrchestrator(config)
+        result = agent.new_feature(parameter="value")
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Configuration Changes
+      description: What configuration options would this feature require?
+      render: yaml
+      placeholder: |
+        # Example configuration
+        new_feature:
+          enabled: true
+          setting1: value1
+          setting2: value2
+
+  - type: checkboxes
+    id: requirements
+    attributes:
+      label: Requirements
+      description: Select all that apply
+      options:
+        - label: This feature requires new dependencies
+        - label: This feature requires documentation updates
+        - label: This feature requires new tests
+        - label: This feature requires performance benchmarking
+        - label: This feature requires security review
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: List any new dependencies this feature would require.
+      placeholder: |
+        - new-library==1.0.0
+        - another-dependency>=2.0.0
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify these items before submitting
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have provided a clear description of the feature
+          required: true
+        - label: I have considered the impact on existing functionality
+          required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context, mockups, or examples about the feature request here.
+      placeholder: Any additional information that might help...
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Note**: Feature requests are evaluated based on community interest, implementation complexity, and alignment with project goals.

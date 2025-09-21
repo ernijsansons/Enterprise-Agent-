@@ -78,8 +78,14 @@ enterprise_coding_agent:
     ensemble: correction_plan  # Combine fixes
     prompt: debugger_mode  # Focused debugging
     trigger: test_failure_threshold > 0.5
-    max_iterations: 5  # Self-healing limit
+    max_iterations: 5  # Self-healing limit (configurable via REFLECTION_MAX_ITERATIONS env var)
     halt_on_find: true  # Stop if confidence >=0.8
+    confidence_threshold: 0.8  # Minimum confidence to halt reflection (configurable via REFLECTION_CONFIDENCE_THRESHOLD env var)
+    early_termination:
+      enable: true  # Enable early termination heuristics
+      stagnation_threshold: 3  # Stop if no improvement for N iterations
+      min_iterations: 1  # Minimum iterations before early termination
+      progress_threshold: 0.1  # Minimum confidence improvement required
     gpt_5_codex_enhance: true  # Primary CLI
     claude_code_enhance: conditional  # Vuln only
     <<: *default_config
@@ -124,6 +130,27 @@ enterprise_coding_agent:
     storage: hybrid(vector+graph+relational)  # Pinecone + NetworkX
     knowledge_graph: gitlab_rust_based  # Deps
     decay_layer: relevance_based_pruning_agent  # Prune 40%
+  caching:
+    enabled: true  # Enable caching system (configurable via CACHE_ENABLED env var)
+    default_ttl: 600  # 10 minutes default (configurable via CACHE_DEFAULT_TTL env var)
+    max_size: 1000  # Maximum cache entries (configurable via CACHE_MAX_SIZE env var)
+    cleanup_interval: 60  # Cleanup every minute (configurable via CACHE_CLEANUP_INTERVAL env var)
+    adaptive_ttl: true  # Enable adaptive TTL based on quality scores
+    quality_threshold: 0.8  # Minimum quality for extended TTL
+    high_quality_ttl_multiplier: 2.0  # Multiply TTL for high-quality items
+    low_quality_ttl_multiplier: 0.5  # Reduce TTL for low-quality items
+    persistence_enabled: false  # Enable disk persistence (configurable via CACHE_PERSISTENCE_ENABLED env var)
+    persistence_path: ".cache"  # Path for persistent cache files
+    compression_enabled: true  # Enable compression for large values
+    compression_threshold: 1024  # Compress values larger than this (bytes)
+    eviction_policy: "lru"  # "lru", "lfu", or "ttl" (configurable via CACHE_EVICTION_POLICY env var)
+    metrics_enabled: true  # Enable detailed metrics collection
+    model_cache:
+      enabled: true  # Enable model response caching
+      default_ttl: 900  # 15 minutes for model responses
+      max_size: 500  # Model cache size
+      claude_ttl_multiplier: 1.5  # Longer TTL for Claude responses (subscription value)
+      high_confidence_ttl_multiplier: 2.0  # Longer TTL for high-confidence responses
   intelligence:
     semantic_search: *semantic_search_tool
     dependency_analysis: enabled
@@ -152,6 +179,20 @@ enterprise_coding_agent:
       - genflow_telemetry
     telemetry:
       genflow_telemetry: sub_agent_logs
+    metrics:
+      enabled: true  # Enable comprehensive metrics collection (configurable via METRICS_ENABLED env var)
+      buffer_size: 10000  # Maximum metrics to buffer before flushing
+      flush_interval: 60.0  # Flush metrics every 60 seconds
+      export_path: ".metrics"  # Path to export metrics files (configurable via METRICS_EXPORT_PATH env var)
+      collect_system_metrics: true  # Collect system performance metrics
+      collect_performance_metrics: true  # Collect execution timing metrics
+      collect_error_metrics: true  # Collect error and failure metrics
+      collect_model_metrics: true  # Collect model call metrics
+      collect_reflection_metrics: true  # Collect reflection loop metrics
+      aggregation:
+        histogram_buckets: [0.1, 0.5, 1.0, 2.5, 5.0, 10.0]  # Histogram buckets for timing
+        percentiles: [0.5, 0.95, 0.99]  # Percentiles to calculate
+        retention_hours: 24  # Hours to retain detailed metrics
   governance:
     metrics:
       - code_quality: "sonarqube (complexity, duplication, maintainability >85)"
