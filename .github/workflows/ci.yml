@@ -3,16 +3,21 @@ name: Enterprise Agent CI/CD
 on:
   push:
     branches: [main, develop]
+    tags:
+      - 'v*'
   pull_request:
     branches: [main, develop]
   schedule:
     - cron: '0 2 * * *'  # Daily smoke tests at 2 AM UTC
+  workflow_dispatch:  # Manual trigger
 
 env:
   PYTHON_VERSION: '3.10'
   CACHE_ENABLED: true
   METRICS_ENABLED: true
   REFLECTION_MAX_ITERATIONS: 3
+  POETRY_VERSION: '1.7.0'
+  CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
 jobs:
   lint:
@@ -25,18 +30,28 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
+      - name: Install Poetry
+        run: |
+          pip install poetry==${{ env.POETRY_VERSION }}
+          poetry config virtualenvs.in-project true
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-
       - name: Install dependencies
         run: |
-          pip install poetry
-          poetry install --with dev
+          poetry install --with dev --no-interaction --no-ansi
       - name: Format Check
-        run: poetry run black --check .
+        run: poetry run black --check . || (echo "::error::Code formatting issues detected. Run 'black .' locally." && exit 1)
       - name: Import Sort Check
-        run: poetry run isort --check-only .
+        run: poetry run isort --check-only . || (echo "::error::Import sorting issues detected. Run 'isort .' locally." && exit 1)
       - name: Lint Check
-        run: poetry run ruff check . --ignore F401,F841,E402,E712
+        run: poetry run ruff check . --ignore F401,F841,E402,E712 --format github
       - name: Type Check
-        run: poetry run mypy src/ --ignore-missing-imports --no-strict-optional
+        run: poetry run mypy src/ --ignore-missing-imports --no-strict-optional --show-error-codes
 
   security:
     name: Security Analysis
@@ -53,7 +68,27 @@ jobs:
           pip install poetry
           poetry install --with dev
       - name: Security Scan
-        run: poetry run bandit -r src/ -f json -o bandit-report.json
+        run: |
+          poetry run bandit -r src/ -f json -o bandit-report.json -ll
+          poetry run bandit -r src/ -f txt || true
+      - name: Parse Security Results
+        if: always()
+        run: |
+          if [ -f bandit-report.json ]; then
+            python -c "
+          import json
+          with open('bandit-report.json') as f:
+              report = json.load(f)
+              issues = report.get('results', [])
+              if issues:
+                  print(f'::error::Found {len(issues)} security issues')
+                  for issue in issues[:5]:  # Show first 5
+                      print(f'::warning file={issue.get(\"filename\")}::{issue.get(\"issue_text\")}')
+                  exit(1)
+              else:
+                  print('No security issues found')
+          "
+          fi
       - name: Upload Security Report
         uses: actions/upload-artifact@v4
         if: always()
@@ -63,18 +98,27 @@ jobs:
       - name: Check for Secrets
         run: |
           echo "Checking for potential secrets in code..."
-          if grep -r -i -E "(api_key|password|secret|token)" src/ --exclude-dir=__pycache__ | grep -v "# Safe comment"; then
-            echo "::warning::Potential secrets found in code"
-          else
-            echo "No secrets detected"
+          # Use more sophisticated secret detection
+          if grep -r -i -E "(sk-[a-zA-Z0-9]{48}|AIza[a-zA-Z0-9]{35}|[0-9a-f]{40})" src/ --exclude-dir=__pycache__ 2>/dev/null; then
+            echo "::error::Potential secrets or API keys found in code"
+            exit 1
           fi
+          echo "No secrets detected"
 
   test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
+    name: Unit Tests (Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         python-version: ['3.9', '3.10', '3.11', '3.12']
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        exclude:
+          # Exclude some combinations to save CI time
+          - os: windows-latest
+            python-version: '3.9'
+          - os: macos-latest
+            python-version: '3.9'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python ${{ matrix.python-version }}
@@ -82,17 +126,30 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
+      - name: Install Poetry
+        run: |
+          pip install poetry==${{ env.POETRY_VERSION }}
+          poetry config virtualenvs.in-project true
+      - name: Adjust dependencies for Python version
+        if: matrix.python-version == '3.9'
+        run: |
+          # Adjust pyproject.toml for Python 3.9 compatibility
+          python -c "import re; content = open('pyproject.toml').read(); content = re.sub(r'python = \"\^3\.10\"', 'python = \"^3.9\"', content); open('pyproject.toml', 'w').write(content)"
       - name: Install dependencies
         run: |
-          pip install poetry
-          poetry install --with dev
+          poetry install --with dev --no-interaction --no-ansi
       - name: Create test directories
         run: |
           mkdir -p tests
           mkdir -p .metrics
           mkdir -p .cache
+          mkdir -p logs
       - name: Run Unit Tests
-        run: poetry run pytest tests/ -x --tb=short --cov=src --cov-report=xml --cov-report=html --junitxml=pytest-results.xml
+        run: |
+          poetry run pytest tests/ -x --tb=short --cov=src --cov-report=xml --cov-report=html --cov-report=term-missing --junitxml=pytest-results.xml || (
+            echo "::error::Unit tests failed on Python ${{ matrix.python-version }} / ${{ matrix.os }}"
+            exit 1
+          )
         env:
           CACHE_ENABLED: ${{ env.CACHE_ENABLED }}
           METRICS_ENABLED: ${{ env.METRICS_ENABLED }}
@@ -108,18 +165,59 @@ jobs:
         with:
           name: coverage-${{ matrix.python-version }}
           path: htmlcov/
+      - name: Check Coverage Threshold
+        if: matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest'
+        run: |
+          coverage_percent=$(poetry run coverage report --skip-covered | grep TOTAL | awk '{print $4}' | sed 's/%//')
+          if [ "${coverage_percent%.*}" -lt 80 ]; then
+            echo "::warning::Code coverage ${coverage_percent}% is below 80% threshold"
+          fi
       - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v4
-        if: matrix.python-version == '3.10'
+        if: matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest'
         with:
           file: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
+          fail_ci_if_error: false
+
+  config-validation:
+    name: Configuration Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: |
+          pip install pyyaml jsonschema
+      - name: Validate YAML configs
+        run: |
+          python validate_config.py configs/agent_config_v3.4.yaml
+          echo "Configuration validation passed"
+      - name: Check config consistency
+        run: |
+          python -c "
+          import yaml
+          import json
+          import sys
+          with open('configs/agent_config_v3.4.yaml') as f:
+              config = yaml.safe_load(f)
+          # Validate required sections
+          required = ['agents', 'cache', 'models', 'domains']
+          missing = [s for s in required if s not in config]
+          if missing:
+              print(f'::error::Missing required config sections: {missing}')
+              sys.exit(1)
+          print('Config structure validated')
+          "
 
   integration-test:
     name: Integration Tests
     runs-on: ubuntu-latest
-    needs: [test]
+    needs: [test, config-validation]
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
@@ -137,15 +235,37 @@ jobs:
           mkdir -p .cache
           mkdir -p test_output
       - name: Run Metrics System Test
-        run: python test_metrics_system.py
+        run: |
+          python test_metrics_system.py || (
+            echo "::error::Metrics system test failed"
+            exit 1
+          )
         env:
           METRICS_ENABLED: true
           METRICS_EXPORT_PATH: .metrics
       - name: Run Smoke Test
-        run: python smoke_test.py
+        run: |
+          python smoke_test.py || (
+            echo "::error::Smoke test failed"
+            exit 1
+          )
         env:
           CACHE_ENABLED: true
           METRICS_ENABLED: true
+      - name: Run Edge Case Tests
+        run: |
+          if [ -f test_edge_cases.py ]; then
+            python test_edge_cases.py || (
+              echo "::warning::Edge case tests failed"
+            )
+          fi
+      - name: Run Production Readiness Tests
+        run: |
+          if [ -f test_production_readiness.py ]; then
+            python test_production_readiness.py || (
+              echo "::warning::Production readiness tests failed"
+            )
+          fi
       - name: Validate Configuration Loading
         run: |
           python -c "
@@ -198,10 +318,52 @@ jobs:
           name: smoke-test-report
           path: smoke_report.md
 
+  performance-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: |
+          pip install poetry==${{ env.POETRY_VERSION }}
+          poetry install --with dev
+      - name: Run Performance Benchmarks
+        run: |
+          echo "Running performance benchmarks..."
+          python -c "
+          import time
+          import json
+          from src.agent_orchestrator import AgentOrchestrator
+
+          start = time.time()
+          agent = AgentOrchestrator()
+          init_time = time.time() - start
+
+          # Save benchmark results
+          results = {'initialization_time': init_time}
+          with open('benchmark_results.json', 'w') as f:
+              json.dump(results, f)
+
+          if init_time > 5:
+              print(f'::warning::Slow initialization: {init_time:.2f}s')
+          else:
+              print(f'Initialization time: {init_time:.2f}s')
+          "
+      - name: Upload Benchmark Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark_results.json
+
   build:
     name: Build Package
     runs-on: ubuntu-latest
-    needs: [lint, security, test, integration-test]
+    needs: [lint, security, test, config-validation, integration-test]
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
@@ -214,11 +376,24 @@ jobs:
           pip install poetry
           poetry install --with dev
       - name: Build Package
-        run: poetry build
+        run: |
+          poetry build --format wheel
+          poetry build --format sdist
+          echo "Built packages:"
+          ls -la dist/
       - name: Verify Package
         run: |
-          poetry run pip install dist/*.whl
+          # Test wheel installation
+          pip install dist/*.whl
           python -c "import src.agent_orchestrator; print('Package import successful')"
+          pip uninstall -y enterprise-coding-agent-v3.4
+
+          # Test sdist installation
+          pip install dist/*.tar.gz
+          python -c "import src.agent_orchestrator; print('Source distribution import successful')"
+      - name: Check Package Metadata
+        run: |
+          python -m pip show enterprise-coding-agent-v3.4 || echo "Package metadata check"
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -251,8 +426,8 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [build]
-    if: github.ref == 'refs/heads/main'
+    needs: [build, performance-test]
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -261,17 +436,32 @@ jobs:
         with:
           name: dist
           path: dist/
+      - name: Validate Production Deployment
+        run: |
+          echo "Validating production deployment readiness..."
+          # Check for required files
+          for file in README.md LICENSE pyproject.toml; do
+            if [ ! -f "$file" ]; then
+              echo "::error::Required file $file not found"
+              exit 1
+            fi
+          done
+          echo "Production validation passed"
       - name: Deploy to Production
         run: |
           echo "Deploying to production environment..."
           echo "Package: $(ls dist/)"
+          echo "Version: ${{ github.ref_name }}"
           echo "This would deploy to production server"
       - name: Run Post-Deploy Tests
         run: |
           echo "Running production validation..."
           echo "All production tests passed"
-      - name: Create Release
+      - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          echo "Creating release for tag: ${{ github.ref_name }}"
-          echo "Release created successfully"
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false

@@ -1,10 +1,24 @@
 #!/usr/bin/env python3
-"""Configuration validation script for Enterprise Agent."""
+"""Configuration validation script for Enterprise Agent v3.4."""
 
 import sys
-import yaml
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Union
+
+# Handle yaml import with fallback
+try:
+    import yaml
+except ImportError:
+    print("Installing required dependency: PyYAML...")
+    import subprocess
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyyaml", "--quiet"])
+        import yaml
+    except Exception as e:
+        print(f"ERROR: Failed to install PyYAML: {e}")
+        print("Please install manually: pip install pyyaml")
+        sys.exit(1)
 
 
 class ConfigValidator:
