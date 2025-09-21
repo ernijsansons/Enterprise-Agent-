@@ -1,11 +1,24 @@
 # Enterprise Coding Agent v3.4 Configuration
-# Modular, DRY design for multi-domain workflows. GPT-5-Codex primary for agentic tasks.
+# Modular, DRY design for multi-domain workflows with comprehensive error handling.
 # Generated September 15, 2025. Load with ruamel.yaml for advanced features.
+#
+# Configuration Validation Rules:
+# - All timeout values must be positive integers (max 3600)
+# - Retry values must be between 0 and 10
+# - Temperature values must be between 0.0 and 2.0
+# - Buffer sizes must be positive integers (max 100000)
+# - TTL values must be positive integers (max 86400)
+#
+# Environment Variable Overrides:
+# - REFLECTION_MAX_ITERATIONS
+# - CACHE_ENABLED
+# - METRICS_ENABLED
+# - SECURITY_LEVEL
 
 default_model_config: &default_config
-  timeout: 2100  # Max for adaptive thinking
-  retry: 3  # Backoff retries
-  temperature: 0.2  # Low for determinism
+  timeout: 2100  # Max timeout for adaptive thinking (seconds, max: 3600)
+  retry: 3  # Backoff retries (0-10)
+  temperature: 0.2  # Low for determinism (0.0-2.0)
 
 components: &components
   models: &models
@@ -132,17 +145,17 @@ enterprise_coding_agent:
     decay_layer: relevance_based_pruning_agent  # Prune 40%
   caching:
     enabled: true  # Enable caching system (configurable via CACHE_ENABLED env var)
-    default_ttl: 600  # 10 minutes default (configurable via CACHE_DEFAULT_TTL env var)
-    max_size: 1000  # Maximum cache entries (configurable via CACHE_MAX_SIZE env var)
-    cleanup_interval: 60  # Cleanup every minute (configurable via CACHE_CLEANUP_INTERVAL env var)
+    default_ttl: 600  # 10 minutes default (range: 60-86400, configurable via CACHE_DEFAULT_TTL env var)
+    max_size: 1000  # Maximum cache entries (range: 100-100000, configurable via CACHE_MAX_SIZE env var)
+    cleanup_interval: 60  # Cleanup every minute (range: 10-3600, configurable via CACHE_CLEANUP_INTERVAL env var)
     adaptive_ttl: true  # Enable adaptive TTL based on quality scores
-    quality_threshold: 0.8  # Minimum quality for extended TTL
-    high_quality_ttl_multiplier: 2.0  # Multiply TTL for high-quality items
-    low_quality_ttl_multiplier: 0.5  # Reduce TTL for low-quality items
+    quality_threshold: 0.8  # Minimum quality for extended TTL (range: 0.0-1.0)
+    high_quality_ttl_multiplier: 2.0  # Multiply TTL for high-quality items (range: 1.0-10.0)
+    low_quality_ttl_multiplier: 0.5  # Reduce TTL for low-quality items (range: 0.1-1.0)
     persistence_enabled: false  # Enable disk persistence (configurable via CACHE_PERSISTENCE_ENABLED env var)
-    persistence_path: ".cache"  # Path for persistent cache files
+    persistence_path: ".cache"  # Path for persistent cache files (must be valid directory path)
     compression_enabled: true  # Enable compression for large values
-    compression_threshold: 1024  # Compress values larger than this (bytes)
+    compression_threshold: 1024  # Compress values larger than this (range: 512-10485760 bytes)
     eviction_policy: "lru"  # "lru", "lfu", or "ttl" (configurable via CACHE_EVICTION_POLICY env var)
     metrics_enabled: true  # Enable detailed metrics collection
     model_cache:

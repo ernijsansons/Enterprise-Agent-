@@ -1,48 +1,58 @@
-# Quick Start: Multi-Project Enterprise Agent
+# Quick Start: Enterprise Agent v3.4 - Production Ready
 
-## 🚀 Use Enterprise Agent Across All Your Projects
+## 🚀 Enterprise-Grade AI Agent with Zero API Costs
 
-This guide shows you how to install and use the Enterprise Agent across multiple projects with zero API costs using Claude Code CLI.
+This guide shows you how to install and use the enhanced Enterprise Agent v3.4 with production-ready features including comprehensive metrics, security, and observability.
+
+### ⚡ What's New in v3.4
+- **Production-Ready**: Complete CI/CD pipeline with automated testing
+- **Enhanced Security**: Comprehensive error handling and vulnerability scanning
+- **Full Observability**: Real-time metrics collection and performance monitoring
+- **Privacy-First**: GDPR-compliant telemetry with user consent management
+- **Advanced Caching**: Adaptive TTL with compression and multiple eviction policies
+- **Robust Validation**: Enhanced input validation with clear error messages
 
 ### Prerequisites
-- Node.js 16+ and npm installed
-- Anthropic Max subscription ($200/month)
-- Python 3.9+ installed
+- **Python 3.9+** (verified during installation)
+- **Node.js 16+** (for Claude Code CLI - zero API costs)
+- **Git 2.0+** (for version control)
+- **Anthropic Max subscription** ($200/month for CLI access)
 
-### One-Line Installation
+### ⚡ One-Line Installation
 
 ```bash
-# Option 1: Install globally via NPM (recommended)
-npm install -g enterprise-agent-cli
-
-# Option 2: Use the installer script
+# Recommended: Use our enhanced installer with dependency validation
 curl -sSL https://raw.githubusercontent.com/yourorg/enterprise-agent/main/install.sh | bash
 
-# Verify installation
-enterprise-agent --version
+# Alternative: Clone and install manually
+git clone https://github.com/yourorg/enterprise-agent.git
+cd enterprise-agent
+bash install.sh
+
+# Verify installation with comprehensive status check
+enterprise-agent status
 ```
 
-### Setup Claude Code (Zero API Costs)
+### 🔧 Setup Claude Code (Zero API Costs)
 
 ```bash
-# Step 1: Install Claude Code CLI
+# Step 1: Install Claude Code CLI (with version validation)
 npm install -g @anthropic-ai/claude-code
 
-# Step 2: Verify installation
+# Step 2: Verify installation and check version
 claude --version
 
 # Step 3: Login with your Max subscription
 claude login
 
-# Step 4: Configure agent to use Claude Code
-mkdir -p ~/.enterprise-agent
-echo "use_claude_code: true" >> ~/.enterprise-agent/config.yml
+# Step 4: Configure agent for subscription mode
+enterprise-agent config claude-code --enable
 
-# Step 5: Verify configuration
-cat ~/.enterprise-agent/config.yml
+# Step 5: Validate configuration
+enterprise-agent config validate
 ```
 
-> **Important**: This setup eliminates API costs by using your Max subscription's included CLI access.
+> **🔥 Cost Savings**: This setup eliminates API costs entirely by using your Max subscription's included CLI access, saving $1000s per month.
 
 ## Usage in Any Project
 

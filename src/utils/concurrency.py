@@ -119,25 +119,32 @@ class ExecutionManager:
             if self._executor is None:
                 raise RuntimeError("Failed to start executor")
 
+        futures = []
         try:
+            # Submit all tasks first
             futures = [self._executor.submit(fn, item) for item in items]
             results = []
 
-            for future in futures:
+            # Wait for results with proper error handling
+            for i, future in enumerate(futures):
                 try:
                     result = future.result(timeout=timeout)
                     results.append(result)
                 except Exception as exc:
                     # Cancel remaining futures on error
-                    for remaining_future in futures:
-                        if not remaining_future.done():
+                    for j, remaining_future in enumerate(futures):
+                        if j > i and not remaining_future.done():
                             remaining_future.cancel()
-                    logger.error(f"Error in parallel execution: {exc}")
-                    raise exc
+                    logger.error(f"Error in parallel execution for item {i}: {exc}")
+                    raise RuntimeError(f"Parallel execution failed on item {i}: {exc}") from exc
 
             return results
 
         except Exception as exc:
+            # Ensure all futures are cancelled on any error
+            for future in futures:
+                if not future.done():
+                    future.cancel()
             logger.error(f"Failed to execute parallel tasks: {exc}")
             raise
 
@@ -172,23 +179,47 @@ def synchronized_state(lock: threading.Lock = None):
     if lock is None:
         lock = threading.Lock()
 
-    lock.acquire()
+    acquired = False
     try:
+        acquired = lock.acquire(timeout=30)  # 30 second timeout to prevent deadlocks
+        if not acquired:
+            raise RuntimeError("Failed to acquire lock within timeout")
         yield
     finally:
-        lock.release()
+        if acquired:
+            lock.release()
 
 
-def thread_safe(lock: threading.Lock = None):
-    """Decorator to make a method thread-safe."""
-    if lock is None:
-        lock = threading.Lock()
+class ThreadSafeMeta(type):
+    """Metaclass to automatically create instance-specific locks."""
+    def __call__(cls, *args, **kwargs):
+        instance = super().__call__(*args, **kwargs)
+        instance._instance_lock = threading.RLock()
+        return instance
 
+
+def thread_safe(lock_attr: str = None):
+    """Decorator to make a method thread-safe.
+
+    Args:
+        lock_attr: Name of the lock attribute on the instance (default: '_instance_lock')
+    """
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(self, *args, **kwargs):
+            # Use instance lock or create a new one
+            if lock_attr:
+                lock = getattr(self, lock_attr, None)
+                if lock is None:
+                    raise AttributeError(f"Lock attribute '{lock_attr}' not found on instance")
+            else:
+                # Try to get instance lock, create if doesn't exist
+                if not hasattr(self, '_instance_lock'):
+                    self._instance_lock = threading.RLock()
+                lock = self._instance_lock
+
             with lock:
-                return func(*args, **kwargs)
+                return func(self, *args, **kwargs)
 
         return wrapper
 

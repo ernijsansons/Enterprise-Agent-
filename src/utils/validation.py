@@ -62,31 +62,70 @@ class StringValidator(Validator):
 
         if self.min_length and len(value) < self.min_length:
             raise ValidationException(
-                f"String too short (min {self.min_length} chars)",
+                f"String must be at least {self.min_length} characters long (provided: {len(value)} characters). "
+                f"Please provide a longer input.",
                 validation_type="length",
+                provided_value=len(value),
+                expected_range=f">={self.min_length}"
             )
 
         if self.max_length and len(value) > self.max_length:
             raise ValidationException(
-                f"String too long (max {self.max_length} chars)",
+                f"String must be at most {self.max_length} characters long (provided: {len(value)} characters). "
+                f"Please shorten your input.",
                 validation_type="length",
+                provided_value=len(value),
+                expected_range=f"<={self.max_length}"
             )
 
         if self.pattern and not self.pattern.match(value):
             raise ValidationException(
-                f"String does not match required pattern: {self.pattern.pattern}",
+                f"String does not match the required format. Expected pattern: {self.pattern.pattern}. "
+                f"Please check your input format and try again.",
                 validation_type="pattern",
+                provided_value=value[:50] + "..." if len(value) > 50 else value,
+                expected_pattern=self.pattern.pattern
             )
 
         if self.allowed_chars:
             invalid_chars = set(value) - self.allowed_chars
             if invalid_chars:
+                invalid_chars_display = "".join(sorted(invalid_chars)[:10])
+                if len(invalid_chars) > 10:
+                    invalid_chars_display += "..."
                 raise ValidationException(
-                    f"String contains invalid characters: {invalid_chars}",
+                    f"String contains {len(invalid_chars)} invalid character(s): '{invalid_chars_display}'. "
+                    f"Only these characters are allowed: {self._format_allowed_chars()}",
                     validation_type="chars",
+                    invalid_characters=list(invalid_chars),
+                    allowed_characters=list(self.allowed_chars)
                 )
 
         return value
+
+    def _format_allowed_chars(self) -> str:
+        """Format allowed characters for user-friendly display."""
+        if not self.allowed_chars:
+            return ""
+
+        # Sort characters for consistent display
+        chars = sorted(self.allowed_chars)
+
+        # Group common character types
+        if len(chars) > 20:
+            # For large sets, show types instead of individual chars
+            char_types = []
+            if any(c.isalpha() for c in chars):
+                char_types.append("letters")
+            if any(c.isdigit() for c in chars):
+                char_types.append("digits")
+            if any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in chars):
+                char_types.append("special characters")
+
+            return " and ".join(char_types) if char_types else "specified characters"
+        else:
+            # For small sets, show individual characters
+            return "".join(chars)
 
 
 class NumberValidator(Validator):
@@ -113,37 +152,54 @@ class NumberValidator(Validator):
                     value = float(value) if "." in value else int(value)
                 except ValueError:
                     raise ValidationException(
-                        f"Cannot convert '{value}' to number",
+                        f"Cannot convert '{value}' to a number. Please provide a valid numeric value (e.g., 42, 3.14, -10).",
                         validation_type="conversion",
+                        provided_value=value,
+                        expected_type="number"
                     )
             else:
                 raise ValidationException(
-                    f"Expected number, got {type(value).__name__}",
+                    f"Expected a number, but received {type(value).__name__}. "
+                    f"Please provide a numeric value (integer or decimal).",
                     validation_type="type",
+                    provided_type=type(value).__name__,
+                    expected_type="number"
                 )
 
         if not self.allow_float and isinstance(value, float) and not value.is_integer():
             raise ValidationException(
-                "Float values not allowed",
+                f"Decimal values are not allowed. Please provide a whole number (integer). "
+                f"Received: {value}",
                 validation_type="type",
+                provided_value=value,
+                expected_type="integer"
             )
 
         if not self.allow_negative and value < 0:
             raise ValidationException(
-                "Negative values not allowed",
+                f"Negative values are not allowed. Please provide a positive number or zero. "
+                f"Received: {value}",
                 validation_type="range",
+                provided_value=value,
+                expected_range=">=0"
             )
 
         if self.min_value is not None and value < self.min_value:
             raise ValidationException(
-                f"Value too small (min {self.min_value})",
+                f"Value must be at least {self.min_value} (provided: {value}). "
+                f"Please provide a larger number.",
                 validation_type="range",
+                provided_value=value,
+                expected_range=f">={self.min_value}"
             )
 
         if self.max_value is not None and value > self.max_value:
             raise ValidationException(
-                f"Value too large (max {self.max_value})",
+                f"Value must be at most {self.max_value} (provided: {value}). "
+                f"Please provide a smaller number.",
                 validation_type="range",
+                provided_value=value,
+                expected_range=f"<={self.max_value}"
             )
 
         return int(value) if not self.allow_float else value

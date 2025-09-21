@@ -91,16 +91,19 @@ class ClaudeCodeProvider:
                 )
                 return True
             else:
-                audit_cli_usage("version_check", False, {"error": "CLI not responding"})
+                audit_cli_usage("version_check", False, {"error": "CLI not responding", "returncode": result.returncode})
                 raise ModelException(
-                    "Claude Code CLI not found. Please install with: npm install -g @anthropic-ai/claude-code",
+                    f"Claude Code CLI check failed with return code {result.returncode}. Please ensure CLI is properly installed.",
                     provider="claude_code",
+                    error_code="CLI_CHECK_FAILED"
                 )
         except FileNotFoundError:
             notify_authentication_issue("cli_not_found")
+            audit_cli_usage("version_check", False, {"error": "CLI_NOT_FOUND"})
             raise ModelException(
-                "Claude Code CLI not installed. Please run: npm install -g @anthropic-ai/claude-code",
+                "Claude Code CLI not found. Please install with: npm install -g @anthropic-ai/claude-code",
                 provider="claude_code",
+                error_code="CLI_NOT_FOUND"
             )
         except subprocess.TimeoutExpired:
             notify_cli_failure("version_check", "Command timed out")

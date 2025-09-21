@@ -42,43 +42,83 @@ print_info() {
 # Check dependencies
 check_dependencies() {
     local missing_deps=()
+    local warnings=()
 
     # Check Git
     if ! command -v git &> /dev/null; then
         missing_deps+=("git")
+    else
+        # Verify git version (need >= 2.0)
+        git_version=$(git --version | grep -oE '[0-9]+\.[0-9]+' | head -1)
+        if [[ $(echo "$git_version 2.0" | tr " " "\n" | sort -V | head -1) != "2.0" ]] && [[ "$git_version" != "2.0" ]]; then
+            warnings+=("Git version $git_version is old, recommend >= 2.0")
+        fi
     fi
 
-    # Check Python
+    # Check Python and version
     if ! command -v python3 &> /dev/null; then
         missing_deps+=("python3")
+    else
+        # Verify Python version (need >= 3.9)
+        python_version=$(python3 --version | grep -oE '[0-9]+\.[0-9]+' | head -1)
+        if python3 -c "import sys; exit(0 if sys.version_info >= (3, 9) else 1)" 2>/dev/null; then
+            print_success "Python $python_version detected"
+        else
+            print_error "Python version $python_version is too old. Need Python >= 3.9"
+            exit 1
+        fi
     fi
 
     # Check pip
     if ! command -v pip3 &> /dev/null; then
         missing_deps+=("pip3")
+    else
+        # Check if pip is working
+        if ! pip3 --version &> /dev/null; then
+            print_error "pip3 is installed but not working properly"
+            exit 1
+        fi
     fi
 
-    # Check Node.js
+    # Check Node.js (optional but recommended)
     if ! command -v node &> /dev/null; then
-        missing_deps+=("nodejs")
+        warnings+=("Node.js not found - Claude Code CLI won't be available")
+    else
+        # Verify Node version (need >= 16)
+        node_version=$(node --version | grep -oE '[0-9]+' | head -1)
+        if [[ $node_version -lt 16 ]]; then
+            warnings+=("Node.js version $node_version is old, recommend >= 16 for Claude Code CLI")
+        fi
     fi
 
-    # Check npm
+    # Check npm (optional but recommended)
     if ! command -v npm &> /dev/null; then
-        missing_deps+=("npm")
+        warnings+=("npm not found - Claude Code CLI won't be available")
     fi
 
-    if [ ${#missing_deps[@]} -ne 0 ]; then
-        print_error "Missing dependencies: ${missing_deps[*]}"
-        echo ""
-        echo "Please install missing dependencies:"
-        echo "  Ubuntu/Debian: sudo apt-get install ${missing_deps[*]}"
-        echo "  macOS: brew install ${missing_deps[*]}"
-        echo "  Fedora: sudo dnf install ${missing_deps[*]}"
+    # Check for virtual environment support
+    if ! python3 -m venv --help &> /dev/null; then
+        print_error "Python venv module not available. Install python3-venv package"
         exit 1
     fi
 
-    print_success "All dependencies satisfied"
+    # Display warnings
+    for warning in "${warnings[@]}"; do
+        print_warning "$warning"
+    done
+
+    if [ ${#missing_deps[@]} -ne 0 ]; then
+        print_error "Missing critical dependencies: ${missing_deps[*]}"
+        echo ""
+        echo "Please install missing dependencies:"
+        echo "  Ubuntu/Debian: sudo apt-get install ${missing_deps[*]} python3-venv"
+        echo "  macOS: brew install ${missing_deps[*]}"
+        echo "  Fedora: sudo dnf install ${missing_deps[*]} python3-venv"
+        echo "  CentOS/RHEL: sudo yum install ${missing_deps[*]} python3-venv"
+        exit 1
+    fi
+
+    print_success "All critical dependencies satisfied"
 }
 
 # Clone or update repository
@@ -124,52 +164,162 @@ install_python_deps() {
 
     # Create virtual environment
     if [ ! -d "venv" ]; then
+        print_info "Creating virtual environment..."
         if python3 -m venv venv; then
             print_success "Created virtual environment"
         else
             print_error "Failed to create virtual environment"
-            exit 1
+            # Try alternative location in case of permission issues
+            print_info "Trying alternative location..."
+            TEMP_VENV="/tmp/enterprise-agent-venv-$$"
+            if python3 -m venv "$TEMP_VENV"; then
+                mv "$TEMP_VENV" venv
+                print_success "Created virtual environment in alternative location"
+            else
+                print_error "Failed to create virtual environment. Check Python installation."
+                exit 1
+            fi
         fi
+    else
+        print_info "Virtual environment already exists"
     fi
 
-    # Activate virtual environment
-    if source venv/bin/activate; then
-        print_success "Activated virtual environment"
+    # Activate virtual environment with error handling
+    if [ -f "venv/bin/activate" ]; then
+        # shellcheck source=/dev/null
+        if source venv/bin/activate; then
+            print_success "Activated virtual environment"
+        else
+            print_error "Failed to activate virtual environment"
+            exit 1
+        fi
     else
-        print_error "Failed to activate virtual environment"
+        print_error "Virtual environment activation script not found"
         exit 1
     fi
 
-    # Upgrade pip
-    if pip install --upgrade pip; then
-        print_success "Upgraded pip"
-    else
-        print_warning "Failed to upgrade pip, continuing..."
+    # Verify Python in virtual environment
+    if ! python --version &> /dev/null; then
+        print_error "Python not available in virtual environment"
+        exit 1
     fi
 
-    # Install requirements
-    if [ -f "requirements.txt" ]; then
-        if pip install -r requirements.txt; then
-            print_success "Python dependencies installed from requirements.txt"
+    # Upgrade pip with retry
+    print_info "Upgrading pip..."
+    local pip_retry=3
+    while [ $pip_retry -gt 0 ]; do
+        if pip install --upgrade pip --no-warn-script-location; then
+            print_success "Upgraded pip"
+            break
         else
-            print_error "Failed to install dependencies from requirements.txt"
-            exit 1
+            pip_retry=$((pip_retry - 1))
+            if [ $pip_retry -eq 0 ]; then
+                print_warning "Failed to upgrade pip after 3 attempts, continuing..."
+            else
+                print_warning "Pip upgrade failed, retrying... ($pip_retry attempts left)"
+                sleep 2
+            fi
         fi
+    done
+
+    # Choose installation method
+    local install_method=""
+    if [ -f "pyproject.toml" ] && command -v poetry &> /dev/null; then
+        install_method="poetry"
+        print_info "Using Poetry for dependency management"
+    elif [ -f "requirements.txt" ]; then
+        install_method="requirements"
+        print_info "Using requirements.txt for dependency management"
     else
-        # Create minimal requirements
+        install_method="minimal"
+        print_info "Creating minimal requirements for basic functionality"
+    fi
+
+    # Install dependencies based on method
+    case $install_method in
+        "poetry")
+            if poetry install --no-dev; then
+                print_success "Dependencies installed via Poetry"
+            else
+                print_warning "Poetry installation failed, falling back to pip"
+                install_method="requirements"
+            fi
+            ;;
+    esac
+
+    if [ "$install_method" = "requirements" ]; then
+        if [ -f "requirements.txt" ]; then
+            print_info "Installing from requirements.txt..."
+            if pip install -r requirements.txt --no-warn-script-location; then
+                print_success "Python dependencies installed from requirements.txt"
+            else
+                print_error "Failed to install dependencies from requirements.txt"
+                print_info "Checking for specific error details..."
+                pip install -r requirements.txt --no-warn-script-location --verbose || {
+                    print_error "Detailed installation failed. Check network connection and PyPI access."
+                    exit 1
+                }
+            fi
+        fi
+    elif [ "$install_method" = "minimal" ]; then
+        # Create minimal requirements with fallback versions
         print_info "Creating minimal requirements.txt..."
-        cat > requirements.txt <<EOF
-pyyaml>=6.0.1
-python-dotenv>=1.0.1
-requests>=2.31.0
-anthropic>=0.20.0
-openai>=1.2.0
+        cat > requirements.txt <<'EOF'
+# Minimal requirements for Enterprise Agent
+pyyaml>=6.0.1,<7.0
+python-dotenv>=1.0.1,<2.0
+requests>=2.31.0,<3.0
+# AI providers (optional)
+anthropic>=0.20.0,<1.0
+openai>=1.2.0,<2.0
+# Utilities
+click>=8.0.0,<9.0
+rich>=13.0.0,<14.0
 EOF
-        if pip install -r requirements.txt; then
-            print_success "Python dependencies installed from minimal requirements"
+
+        print_info "Installing minimal dependencies..."
+        if pip install -r requirements.txt --no-warn-script-location; then
+            print_success "Minimal Python dependencies installed"
         else
             print_error "Failed to install minimal dependencies"
-            exit 1
+            print_info "Trying to install core packages individually..."
+
+            # Try installing core packages one by one
+            local core_packages=("pyyaml" "python-dotenv" "requests" "click")
+            local failed_packages=()
+
+            for package in "${core_packages[@]}"; do
+                if pip install "$package" --no-warn-script-location; then
+                    print_success "Installed $package"
+                else
+                    failed_packages+=("$package")
+                    print_warning "Failed to install $package"
+                fi
+            done
+
+            if [ ${#failed_packages[@]} -ne 0 ]; then
+                print_error "Failed to install core packages: ${failed_packages[*]}"
+                print_error "Please check your internet connection and try again"
+                exit 1
+            fi
+        fi
+    fi
+
+    # Verify installation
+    print_info "Verifying installation..."
+    if python -c "import yaml, dotenv, requests" 2>/dev/null; then
+        print_success "Core dependencies verified"
+    else
+        print_error "Core dependency verification failed"
+        exit 1
+    fi
+
+    # Test CLI entry point
+    if [ -f "enterprise_agent_cli.py" ]; then
+        if python enterprise_agent_cli.py --version &>/dev/null; then
+            print_success "CLI entry point verified"
+        else
+            print_warning "CLI entry point test failed, but installation may still work"
         fi
     fi
 

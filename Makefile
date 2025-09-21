@@ -3,6 +3,8 @@ setup:
 	npm init -y && npm i -D @openai/codex
 	# SAFETY: Verify CLI without API call
 	npx codex --version
+	# Validate configuration files
+	python3 validate_config.py configs/agent_config_v3.4.yaml
 
 lint:
 	poetry run black src/ tests/
@@ -34,7 +36,10 @@ bandit:
 security: bandit
 	@echo "Security scan completed successfully"
 
-quality: lint typecheck security
+validate-config:
+	python3 validate_config.py configs/agent_config_v3.4.yaml
+
+quality: lint typecheck security validate-config
 	@echo "All quality checks passed"
 
 ci: quality test bench
