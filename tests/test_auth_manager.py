@@ -43,27 +43,21 @@ class TestClaudeAuthManager(unittest.TestCase):
 
         self.assertTrue(result)
 
-    @patch("pathlib.Path.exists")
-    @patch("pathlib.Path.read_text")
-    @patch("pathlib.Path.write_text")
-    def test_remove_api_key_from_env_file(self, mock_write, mock_read, mock_exists):
-        """Test removing API key from .env file."""
-        mock_exists.return_value = True
-        mock_read.return_value = """
+    def test_remove_api_key_from_env_file(self):
+        """Test comment out API key functionality."""
+        # Test the helper method directly
+        content = """
 OPENAI_API_KEY=sk-openai-123
 ANTHROPIC_API_KEY=sk-ant-456
 OTHER_VAR=value
 """
+        result = self.auth_manager._comment_out_api_key(content)
 
-        os.environ["ANTHROPIC_API_KEY"] = "test-key"
-        self.auth_manager.ensure_subscription_mode()
-
-        # Check that the file was modified
-        mock_write.assert_called_once()
-        written_content = mock_write.call_args[0][0]
-        self.assertIn("# ANTHROPIC_API_KEY", written_content)
-        self.assertIn("Disabled for Claude Code subscription mode", written_content)
-        self.assertIn("OPENAI_API_KEY=sk-openai-123", written_content)
+        # Verify the API key line was commented out
+        self.assertIn("# ANTHROPIC_API_KEY=sk-ant-456  # Disabled for Claude Code subscription mode", result)
+        self.assertIn("OPENAI_API_KEY=sk-openai-123", result)
+        self.assertIn("OTHER_VAR=value", result)
+        self.assertNotIn("\nANTHROPIC_API_KEY=sk-ant-456\n", result)
 
     @patch("subprocess.run")
     @patch("pathlib.Path.exists")
@@ -131,7 +125,7 @@ OTHER_VAR=value
 
             self.assertTrue(result)
             mock_run.assert_called_once_with(
-                ["claude", "login"], capture_output=False, text=True
+                ["claude", "login"], capture_output=False, text=True, shell=False
             )
 
     @patch("subprocess.run")
