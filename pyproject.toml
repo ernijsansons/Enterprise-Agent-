@@ -9,7 +9,7 @@ packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.10,<3.14"
-langgraph = "^0.6.7"  # Updated for improved workflow features
+langgraph = "^0.6.7"  # Major breaking changes: Context API migration required
 openai = "1.2.0"  # Pinned for GPT-5-Codex support
 anthropic = "0.20.0"  # Pinned for Claude backups
 google-generativeai = "0.8.5"  # Deprecated - migrate to google-genai before Aug 31, 2025
