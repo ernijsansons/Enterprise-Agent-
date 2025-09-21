@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shlex
 import subprocess  # nosec B404
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -20,10 +21,10 @@ class ClaudeAuthManager:
         self.token_path = Path.home() / ".claude" / "token"
 
     def ensure_subscription_mode(self) -> bool:
-        """Ensure Claude Code uses subscription, not API key.
+        """Check if Claude Code is in subscription mode (not API key mode).
 
         Returns:
-            True if in subscription mode, False otherwise
+            True if in subscription mode, False if API key is present
         """
         # Check for API key in environment
         api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -31,49 +32,41 @@ class ClaudeAuthManager:
         if api_key:
             logger.warning(
                 "ANTHROPIC_API_KEY detected! This will cause Claude Code to use API billing "
-                "instead of your Max subscription. Removing environment variable..."
+                "instead of your Max subscription. Please remove or comment out the "
+                "ANTHROPIC_API_KEY from your .env file to use subscription mode."
             )
-
-            # Remove API key from environment
-            try:
-                del os.environ["ANTHROPIC_API_KEY"]
-                logger.info("Removed ANTHROPIC_API_KEY from environment")
-
-                # Also check .env file
-                env_file = Path.cwd() / ".env"
-                if env_file.exists():
-                    self._remove_api_key_from_env_file(env_file)
-
-            except Exception as e:
-                logger.error(f"Failed to remove API key: {e}")
-                return False
+            return False
 
         return True
 
-    def _remove_api_key_from_env_file(self, env_file: Path) -> None:
-        """Remove or comment out ANTHROPIC_API_KEY from .env file.
+    def check_env_file_for_api_key(self, env_file: Path) -> bool:
+        """Check if ANTHROPIC_API_KEY is present in .env file.
 
         Args:
             env_file: Path to .env file
+
+        Returns:
+            True if API key is present, False otherwise
         """
         try:
+            if not env_file.exists():
+                return False
+
             lines = env_file.read_text().splitlines()
-            new_lines = []
-
             for line in lines:
-                if line.strip().startswith("ANTHROPIC_API_KEY"):
-                    # Comment out the line
-                    new_lines.append(
-                        f"# {line} # Disabled for Claude Code subscription mode"
+                if line.strip().startswith(
+                    "ANTHROPIC_API_KEY"
+                ) and not line.strip().startswith("#"):
+                    logger.warning(
+                        f"ANTHROPIC_API_KEY found in {env_file}. "
+                        "Please comment it out to use subscription mode."
                     )
-                    logger.info("Commented out ANTHROPIC_API_KEY in .env file")
-                else:
-                    new_lines.append(line)
-
-            env_file.write_text("\n".join(new_lines))
+                    return True
+            return False
 
         except Exception as e:
-            logger.error(f"Failed to modify .env file: {e}")
+            logger.error(f"Failed to check .env file: {e}")
+            return False
 
     def is_logged_in(self) -> bool:
         """Check if user is logged in to Claude Code.
@@ -92,6 +85,7 @@ class ClaudeAuthManager:
                 capture_output=True,
                 text=True,
                 timeout=10,
+                shell=False,  # Explicitly disable shell to prevent injection
             )
 
             # Check for login prompt in output
@@ -132,6 +126,7 @@ class ClaudeAuthManager:
                     ["claude", "login"],
                     capture_output=False,  # Allow user interaction
                     text=True,
+                    shell=False,  # Explicitly disable shell
                 )
 
                 if result.returncode == 0:
@@ -321,7 +316,9 @@ class ClaudeAuthManager:
                 "authenticated": False,
                 "using_api_key": False,
                 "plan_type": "Unknown",
-                "recommendations": ["Run 'claude login' to authenticate with your Max subscription"]
+                "recommendations": [
+                    "Run 'claude login' to authenticate with your Max subscription"
+                ],
             }
 
         if os.getenv("ANTHROPIC_API_KEY"):
@@ -329,14 +326,16 @@ class ClaudeAuthManager:
                 "authenticated": True,
                 "using_api_key": True,
                 "plan_type": "Max subscription (API mode - will incur charges)",
-                "recommendations": ["Remove ANTHROPIC_API_KEY from environment variables"]
+                "recommendations": [
+                    "Remove ANTHROPIC_API_KEY from environment variables"
+                ],
             }
         else:
             return {
                 "authenticated": True,
                 "using_api_key": False,
                 "plan_type": "Max subscription (assumed)",
-                "recommendations": []
+                "recommendations": [],
             }
 
     def get_config(self) -> Dict[str, Any]:

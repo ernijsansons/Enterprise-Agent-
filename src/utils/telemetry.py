@@ -17,27 +17,27 @@ def _emit(payload: Dict[str, Any]) -> None:
     path = os.getenv("TELEMETRY_FILE")
     if not path:
         return
-        
+
     try:
         line = json.dumps(payload, default=str)
     except (TypeError, ValueError) as e:
         logger.error(f"Failed to serialize telemetry payload: {e}")
         return
-        
+
     try:
         max_bytes = int(os.getenv("TELEMETRY_MAX_BYTES", 5_000_000))
     except ValueError:
         max_bytes = 5_000_000
-        
+
     path_obj = Path(path)
-    
+
     # Ensure parent directory exists
     try:
         path_obj.parent.mkdir(parents=True, exist_ok=True)
     except OSError as e:
         logger.error(f"Failed to create telemetry directory: {e}")
         return
-        
+
     # Check file size
     try:
         if path_obj.exists() and path_obj.stat().st_size > max_bytes:
@@ -48,7 +48,7 @@ def _emit(payload: Dict[str, Any]) -> None:
     except OSError as e:
         logger.error(f"Failed to check telemetry file size: {e}")
         return
-        
+
     # Write to file
     try:
         with open(path, "a", encoding="utf-8") as handle:

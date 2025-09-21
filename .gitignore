@@ -56,13 +56,14 @@ Thumbs.db
 
 # Coverage reports
 .coverage
+.coverage.*
 coverage.xml
 htmlcov/
 .pytest_cache/
 
 # Test artifacts
-.coverage.*
 bandit-report.json
+bandit-report-new.json
 
 # IDE settings
 .claude/settings.local.json

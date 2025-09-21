@@ -211,6 +211,7 @@ class TTLCache:
             def get_score(x: Dict[str, Any]) -> float:
                 score = x.get("score", 0)
                 return float(score) if isinstance(score, (int, float, str)) else 0.0
+
             return sorted(low_quality_patterns, key=get_score)[:10]
 
 

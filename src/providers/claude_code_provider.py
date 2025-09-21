@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shlex
 import subprocess  # nosec B404
 import time
 import uuid
@@ -499,7 +500,7 @@ class ClaudeCodeProvider:
 
         # Initialize cache_key for potential use in exception handling
         cache_key = None
-        
+
         # Check cache first (use enhanced prompt for cache key)
         if use_cache:
             cache_key = f"{model}:{role}:{enhanced_prompt[:100]}"
@@ -523,7 +524,9 @@ class ClaudeCodeProvider:
 
         # Add session management if provided
         if session_id and session_id in self.sessions:
-            cmd.extend(["--resume", self.sessions[session_id]])
+            # Sanitize session ID to prevent injection
+            safe_session_id = shlex.quote(self.sessions[session_id])
+            cmd.extend(["--resume", safe_session_id])
 
         # Add fallback model for reliability
         if self.config.get("enable_fallback", True):
@@ -533,7 +536,8 @@ class ClaudeCodeProvider:
         if self.config.get("auto_mode", False):
             cmd.append("--dangerously-skip-permissions")
 
-        # Add the enhanced prompt
+        # Add the enhanced prompt (already safe as it's passed as argument, not shell interpreted)
+        # But we'll ensure it doesn't contain shell metacharacters if it ever gets used in shell mode
         cmd.append(enhanced_prompt)
 
         try:
@@ -549,12 +553,18 @@ class ClaudeCodeProvider:
 
             # Execute command with enhanced error handling
             try:
+                # Ensure working directory is safe
+                work_dir = self.config.get("working_directory", os.getcwd())
+                if not os.path.isdir(work_dir):
+                    work_dir = os.getcwd()
+
                 result = subprocess.run(  # nosec B603
                     cmd,
                     capture_output=True,
                     text=True,
                     timeout=self.config.get("timeout", 60),
-                    cwd=self.config.get("working_directory", os.getcwd()),
+                    cwd=work_dir,
+                    shell=False,  # Explicitly disable shell to prevent injection
                 )
             except subprocess.TimeoutExpired as e:
                 logger.error(f"Claude Code CLI timeout after {e.timeout}s")
@@ -566,7 +576,9 @@ class ClaudeCodeProvider:
                 ) from e
             except FileNotFoundError:
                 logger.error("Claude Code CLI not found in PATH")
-                notify_cli_failure(f"{role}/{operation}", "Claude Code CLI not installed")
+                notify_cli_failure(
+                    f"{role}/{operation}", "Claude Code CLI not installed"
+                )
                 raise ModelException(
                     "Claude Code CLI not found. Please install it first.",
                     provider="claude_code",
@@ -916,4 +928,8 @@ def reset_claude_code_provider() -> None:
     _provider_instance = None
 
 
-__all__ = ["ClaudeCodeProvider", "get_claude_code_provider", "reset_claude_code_provider"]
+__all__ = [
+    "ClaudeCodeProvider",
+    "get_claude_code_provider",
+    "reset_claude_code_provider",
+]

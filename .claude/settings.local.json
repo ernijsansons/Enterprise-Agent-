@@ -31,7 +31,8 @@
       "Bash(xargs:*)",
       "Bash(git fetch:*)",
       "Bash(git rev-parse:*)",
-      "Bash(git remote get-url:*)"
+      "Bash(git remote get-url:*)",
+      "Bash(black:*)"
     ],
     "deny": [],
     "ask": []

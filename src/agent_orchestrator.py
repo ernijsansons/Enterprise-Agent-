@@ -241,7 +241,7 @@ class AgentOrchestrator:
 
     def _init_claude_code_provider(self) -> None:
         """Initialize Claude Code CLI provider with enhanced validation and error handling.
-        
+
         This method handles the complete initialization of the Claude Code provider,
         including authentication validation, configuration setup, and error recovery.
         """
@@ -274,7 +274,7 @@ class AgentOrchestrator:
 
     def _handle_validation_issues(self, validation: Dict[str, Any]) -> None:
         """Handle validation issues with detailed logging and recommendations.
-        
+
         Args:
             validation: Validation results dictionary
         """
@@ -292,16 +292,14 @@ class AgentOrchestrator:
             self._use_claude_code = False
             self._claude_code_provider = None
         elif validation["status"] == "needs_login":
-            logger.warning(
-                "Claude Code authentication required for optimal operation."
-            )
+            logger.warning("Claude Code authentication required for optimal operation.")
 
     def _ensure_subscription_mode(self, auth_manager) -> bool:
         """Ensure subscription mode is properly configured.
-        
+
         Args:
             auth_manager: Authentication manager instance
-            
+
         Returns:
             True if subscription mode is ensured, False otherwise
         """
@@ -316,7 +314,7 @@ class AgentOrchestrator:
 
     def _create_provider_instance(self):
         """Create and configure the Claude Code provider instance.
-        
+
         Returns:
             Configured Claude Code provider instance
         """
@@ -331,7 +329,7 @@ class AgentOrchestrator:
 
     def _setup_provider_session(self, validation: Dict[str, Any]) -> None:
         """Setup provider session and store validation information.
-        
+
         Args:
             validation: Validation results dictionary
         """
@@ -1063,10 +1061,10 @@ class AgentOrchestrator:
 
     def _run_offline_pipeline(self, state: AgentState) -> AgentState:
         """Run the offline pipeline with enhanced role coordination.
-        
+
         Args:
             state: Initial agent state
-            
+
         Returns:
             Final agent state after pipeline execution
         """
@@ -1077,26 +1075,26 @@ class AgentOrchestrator:
 
         # Planning phase
         state = self.planner(state)
-        
+
         # Main execution loop with reflection
         state = self._execute_main_loop(state)
-        
+
         # Review and governance
         state = self._finalize_execution(state)
-        
+
         return state
 
     def _execute_main_loop(self, state: AgentState) -> AgentState:
         """Execute the main coding loop with validation and reflection.
-        
+
         Args:
             state: Current agent state
-            
+
         Returns:
             Updated agent state
         """
         max_iterations = 5
-        
+
         try:
             # Pass planner context to coder for better reasoning
             state = self._transfer_role_context(state, "planner", "coder")
@@ -1109,21 +1107,23 @@ class AgentOrchestrator:
             # Reflection loop if needed
             if state.get("needs_reflect"):
                 state = self._execute_reflection_loop(state, max_iterations)
-                
+
         except Exception as e:
             logger.error(f"Error in main execution loop: {e}")
             state["error"] = str(e)
             state["needs_reflect"] = True
-            
+
         return state
 
-    def _execute_reflection_loop(self, state: AgentState, max_iterations: int) -> AgentState:
+    def _execute_reflection_loop(
+        self, state: AgentState, max_iterations: int
+    ) -> AgentState:
         """Execute the reflection loop for iterative improvement.
-        
+
         Args:
             state: Current agent state
             max_iterations: Maximum number of reflection iterations
-            
+
         Returns:
             Updated agent state
         """
@@ -1132,28 +1132,28 @@ class AgentOrchestrator:
                 # Pass validation context to reflector
                 state = self._transfer_role_context(state, "validator", "reflector")
                 state = self.reflector(state)
-                
+
                 if not state.get("needs_reflect"):
                     break
-                    
+
                 # Pass reflection context back to coder
                 state = self._transfer_role_context(state, "reflector", "coder")
                 state = self.coder(state)
                 state = self.validator(state)
-                
+
             except Exception as e:
                 logger.error(f"Error in reflection loop iteration {iteration}: {e}")
                 state["reflection_error"] = str(e)
                 break
-                
+
         return state
 
     def _finalize_execution(self, state: AgentState) -> AgentState:
         """Finalize execution with review and governance.
-        
+
         Args:
             state: Current agent state
-            
+
         Returns:
             Final agent state
         """
@@ -1161,16 +1161,16 @@ class AgentOrchestrator:
             # Pass final context to reviewer
             state = self._transfer_role_context(state, "validator", "reviewer")
             state = self.reviewer(state)
-            
+
             if state.get("needs_reflect"):
                 state = self.reflector(state)
-                
+
             state = self._governance_node(state)
-            
+
         except Exception as e:
             logger.error(f"Error in finalization: {e}")
             state["finalization_error"] = str(e)
-            
+
         return state
 
     def _governance_node(self, state: AgentState) -> AgentState:
@@ -1190,15 +1190,15 @@ class AgentOrchestrator:
         self, domain: str, task: str, vuln_flag: bool = False
     ) -> Dict[str, Any]:
         """Run the agent in the specified mode with enhanced error handling.
-        
+
         Args:
             domain: The domain for the task (e.g., 'coding', 'content')
             task: The task description
             vuln_flag: Whether to enable vulnerability scanning
-            
+
         Returns:
             Dictionary containing the execution results
-            
+
         Raises:
             ValueError: If domain or task is invalid
             RuntimeError: If execution fails critically
@@ -1208,7 +1208,7 @@ class AgentOrchestrator:
             raise ValueError("Domain must be a non-empty string")
         if not task or not isinstance(task, str):
             raise ValueError("Task must be a non-empty string")
-            
+
         try:
             initial = AgentState(
                 {
@@ -1219,31 +1219,31 @@ class AgentOrchestrator:
                     "vuln_flag": vuln_flag,
                 }
             )
-            
+
             # Execute pipeline with fallback handling
             result = self._execute_pipeline(initial)
-            
+
             # Post-process results
             result = self._post_process_results(result, domain)
-            
+
             # Record completion event
             self._record_completion_event(result, domain)
-            
+
             # Cleanup
             self.memory.prune()
-            
+
             return dict(result)
-            
+
         except Exception as e:
             logger.error(f"Critical error in run_mode: {e}")
             raise RuntimeError(f"Agent execution failed: {e}") from e
 
     def _execute_pipeline(self, initial: AgentState) -> AgentState:
         """Execute the appropriate pipeline based on available clients.
-        
+
         Args:
             initial: Initial agent state
-            
+
         Returns:
             Final agent state
         """
@@ -1260,16 +1260,18 @@ class AgentOrchestrator:
                     return self._run_offline_pipeline(initial)
                 return result
             except Exception as e:
-                logger.error(f"Graph execution failed: {e}, falling back to offline pipeline")
+                logger.error(
+                    f"Graph execution failed: {e}, falling back to offline pipeline"
+                )
                 return self._run_offline_pipeline(initial)
 
     def _post_process_results(self, result: AgentState, domain: str) -> AgentState:
         """Post-process the execution results.
-        
+
         Args:
             result: Execution result state
             domain: Task domain
-            
+
         Returns:
             Processed result state
         """
@@ -1282,16 +1284,16 @@ class AgentOrchestrator:
                 "epics": plan_epics or [],
                 "model": result.get("plan_model"),
             }
-            
+
         # Add domain and cost information
         result["domain"] = domain
         result["cost_summary"] = self.cost_estimator.summary()
-        
+
         return result
 
     def _record_completion_event(self, result: AgentState, domain: str) -> None:
         """Record the completion event with telemetry.
-        
+
         Args:
             result: Execution result state
             domain: Task domain

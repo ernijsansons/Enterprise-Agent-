@@ -106,7 +106,9 @@ class ConfigValidator:
             for section in required_sections:
                 if not self._get_nested_value(config_data, section):
                     self._add_issue(
-                        "config_structure", f"Missing required section: {section}", "high"
+                        "config_structure",
+                        f"Missing required section: {section}",
+                        "high",
                     )
 
             return True, config_data
@@ -268,9 +270,10 @@ class ConfigValidator:
             )
 
         # Check for insecure auto-mode settings
-        auto_mode = (
-            self._get_nested_value(config_data, "claude_code.auto_mode") or
-            self._get_nested_value(config_data, "enterprise_coding_agent.claude_code.auto_mode")
+        auto_mode = self._get_nested_value(
+            config_data, "claude_code.auto_mode"
+        ) or self._get_nested_value(
+            config_data, "enterprise_coding_agent.claude_code.auto_mode"
         )
         if auto_mode:
             security_results["insecure_settings"].append("auto_mode enabled")
@@ -465,7 +468,9 @@ def quick_health_check() -> bool:
         # Check Claude Code if enabled
         if os.getenv("USE_CLAUDE_CODE", "false").lower() == "true":
             try:
-                subprocess.run(["claude", "--version"], capture_output=True, timeout=3)  # nosec B603, B607
+                subprocess.run(
+                    ["claude", "--version"], capture_output=True, timeout=3
+                )  # nosec B603, B607
             except (FileNotFoundError, subprocess.TimeoutExpired):
                 return False
 

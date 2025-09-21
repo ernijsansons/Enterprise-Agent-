@@ -84,11 +84,11 @@ class ExecutionManager:
         """Submit a task for execution."""
         if not callable(fn):
             raise ValueError("First argument must be callable")
-            
+
         with self._lock:
             if self._executor is None:
                 self.start()
-                
+
             # Ensure executor is available
             if self._executor is None:
                 raise RuntimeError("Failed to start executor")
@@ -110,11 +110,11 @@ class ExecutionManager:
         """Execute function on items in parallel and return results in order."""
         if not items:
             return []
-            
+
         with self._lock:
             if self._executor is None:
                 self.start()
-            
+
             # Ensure executor is available
             if self._executor is None:
                 raise RuntimeError("Failed to start executor")
@@ -136,7 +136,7 @@ class ExecutionManager:
                     raise exc
 
             return results
-            
+
         except Exception as exc:
             logger.error(f"Failed to execute parallel tasks: {exc}")
             raise

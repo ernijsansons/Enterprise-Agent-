@@ -108,7 +108,9 @@ class CostTracker:
             "total_entries": len(self.entries),
             "provider_costs": self.provider_costs,
             "model_costs": self.model_costs,
-            "average_cost_per_entry": self.total_cost / len(self.entries) if self.entries else 0.0,
+            "average_cost_per_entry": self.total_cost / len(self.entries)
+            if self.entries
+            else 0.0,
         }
 
     def get_entries_by_provider(self, provider: str) -> List[CostEntry]:
