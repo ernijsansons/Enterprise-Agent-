@@ -9,7 +9,7 @@ packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-langgraph = "0.0.28"  # Pinned for stable graph workflows
+langgraph = "0.6.7"  # Pinned for stable graph workflows
 openai = "1.2.0"  # Pinned for GPT-5-Codex support
 anthropic = "0.20.0"  # Pinned for Claude backups
 google-generativeai = "0.7.0"  # Pinned for Gemini
