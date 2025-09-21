@@ -150,6 +150,8 @@ class TestCircuitBreaker:
             return "recovery test"
 
         # First call in half-open should work
+        # Wait a bit to avoid the 1-second throttle in half-open state
+        time.sleep(1.1)
         result = breaker.call(test_function)
         assert result == "recovery test"
 
@@ -176,7 +178,10 @@ class TestCircuitBreaker:
         time.sleep(0.2)
 
         # Successful calls should close circuit
+        # Wait to avoid throttle
+        time.sleep(1.1)
         breaker.call(working_function)  # First success
+        time.sleep(1.1)
         breaker.call(working_function)  # Second success, should close
 
         assert breaker.state == CircuitState.CLOSED
@@ -200,6 +205,8 @@ class TestCircuitBreaker:
         time.sleep(0.2)
 
         # Failure in half-open should reopen circuit
+        # Wait to avoid throttle
+        time.sleep(1.1)
         with pytest.raises(RuntimeError):
             breaker.call(failing_function)
 
