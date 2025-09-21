@@ -20,8 +20,8 @@ requests = "2.31.0"  # Pinned for API calls
 python-dotenv = "1.0.1"  # For .env loading
 docker = "7.1.0"  # Pinned for containerization
 "ruamel.yaml" = "0.18.6"  # Pinned for advanced YAML
-pytest-cov = "^6.0.0"  # Updated for better coverage reporting
-coverage = "^7.4.0"  # Required for pytest-cov 6.0+
+pytest-cov = "^7.0.0"  # Updated for better coverage reporting
+coverage = "^7.4.0"  # Required for pytest-cov 7.0+
 mypy = "1.8.0"  # For type checking
 
 [build-system]
@@ -35,7 +35,7 @@ isort = "5.13.2"
 ruff = "0.8.0"
 bandit = "1.7.5"
 pbr = "6.0.0"
-pytest-cov = "^6.0.0"
+pytest-cov = "^7.0.0"
 mypy = "1.8.0"
 
 [tool.pytest.ini_options]
