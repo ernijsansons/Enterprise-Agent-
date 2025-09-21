@@ -1,0 +1,199 @@
+# Rate Limiting Configuration for Enterprise Agent
+# Optimized for Claude Code Max subscription usage
+
+# Global Rate Limiting Settings
+global:
+  # Enable adaptive rate limiting
+  adaptive_mode: true
+
+  # Monitoring and alerting
+  enable_monitoring: true
+  alert_threshold: 0.8  # Alert when 80% of rate limit used
+
+  # Burst allowance factor (multiplier for max_tokens)
+  burst_factor: 0.5
+
+# Provider-specific Rate Limits
+providers:
+  # Claude Code CLI - Primary provider (Max subscription)
+  claude_code:
+    max_tokens: 20
+    refill_rate: 2.0  # tokens per second
+    burst_allowance: 10
+    window_seconds: 60
+    priority: 1  # Highest priority
+
+    # Circuit breaker settings
+    circuit_breaker:
+      failure_threshold: 3
+      recovery_timeout: 30.0
+      success_threshold: 2
+      timeout: 60.0
+
+    # Cost optimization
+    cost_per_token: 0.0  # Included in subscription
+
+  # OpenAI API - Backup provider (minimize costs)
+  openai_api:
+    max_tokens: 10
+    refill_rate: 1.0
+    burst_allowance: 5
+    window_seconds: 60
+    priority: 3
+
+    circuit_breaker:
+      failure_threshold: 3
+      recovery_timeout: 60.0
+      success_threshold: 2
+      timeout: 30.0
+
+    cost_per_token: 0.002  # Approximate cost per 1k tokens
+
+  # Anthropic API - Emergency backup only
+  anthropic_api:
+    max_tokens: 5
+    refill_rate: 0.5
+    burst_allowance: 2
+    window_seconds: 60
+    priority: 4
+
+    circuit_breaker:
+      failure_threshold: 2
+      recovery_timeout: 120.0
+      success_threshold: 3
+      timeout: 30.0
+
+    cost_per_token: 0.015  # Higher cost, use sparingly
+
+  # Gemini API - Alternative backup
+  gemini_api:
+    max_tokens: 15
+    refill_rate: 1.5
+    burst_allowance: 5
+    window_seconds: 60
+    priority: 2
+
+    circuit_breaker:
+      failure_threshold: 3
+      recovery_timeout: 60.0
+      success_threshold: 2
+      timeout: 30.0
+
+    cost_per_token: 0.001  # Competitive pricing
+
+# Role-based Rate Limits (additional constraints)
+roles:
+  # Planner - Can use more tokens for complex planning
+  planner:
+    token_multiplier: 2.0
+    priority_boost: 1
+
+  # Coder - Primary role, generous limits
+  coder:
+    token_multiplier: 1.5
+    priority_boost: 0
+
+  # Validator - Quick validation, lower limits
+  validator:
+    token_multiplier: 0.8
+    priority_boost: -1
+
+  # Reviewer - Thorough review, moderate limits
+  reviewer:
+    token_multiplier: 1.2
+    priority_boost: 0
+
+  # Reflector - Deep analysis, higher limits
+  reflector:
+    token_multiplier: 1.8
+    priority_boost: 1
+
+# Time-based Rate Limits
+time_windows:
+  # Per-minute limits
+  minute:
+    claude_code: 30
+    openai_api: 15
+    anthropic_api: 5
+    gemini_api: 20
+
+  # Per-hour limits
+  hour:
+    claude_code: 800  # Based on Max plan limits
+    openai_api: 200
+    anthropic_api: 50
+    gemini_api: 300
+
+  # Daily limits (safety net)
+  day:
+    claude_code: 15000
+    openai_api: 2000
+    anthropic_api: 500
+    gemini_api: 5000
+
+# Adaptive Rate Limiting
+adaptive:
+  # Enable automatic adjustment based on success rates
+  enabled: true
+
+  # Adjustment parameters
+  adjustment_interval: 60  # seconds
+  min_samples: 10  # minimum requests before adjusting
+
+  # Success rate thresholds
+  increase_threshold: 0.9  # Increase limits if success rate > 90%
+  decrease_threshold: 0.5  # Decrease limits if success rate < 50%
+
+  # Adjustment factors
+  increase_factor: 1.2  # Increase by 20%
+  decrease_factor: 0.8  # Decrease by 20%
+
+  # Bounds
+  max_increase_factor: 2.0  # Never increase more than 2x
+  min_decrease_factor: 0.5  # Never decrease below 50%
+
+# Emergency Settings
+emergency:
+  # When all providers are failing
+  fallback_mode:
+    enabled: true
+    offline_responses: true
+    cache_only: true
+
+  # Rate limit overrides during emergencies
+  override_limits:
+    enabled: false  # Disabled by default for safety
+    max_override_duration: 300  # 5 minutes maximum
+
+# Monitoring and Logging
+monitoring:
+  # Log rate limit hits
+  log_rate_limits: true
+  log_level: "WARNING"
+
+  # Metrics collection
+  collect_metrics: true
+  metrics_interval: 30  # seconds
+
+  # Alerting
+  alerts:
+    email_enabled: false
+    webhook_enabled: false
+    # webhook_url: "https://your-monitoring-service.com/webhook"
+
+# Cost Management
+cost_management:
+  # Daily cost limits (USD)
+  daily_limit: 50.0
+  warning_threshold: 40.0
+
+  # Provider cost priorities (lower is cheaper)
+  cost_priority:
+    claude_code: 1    # Free with subscription
+    gemini_api: 2     # Cheapest API
+    openai_api: 3     # Moderate cost
+    anthropic_api: 4  # Highest cost
+
+  # Auto-disable expensive providers
+  auto_disable_expensive: true
+  disable_threshold: 0.9  # Disable when 90% of budget used

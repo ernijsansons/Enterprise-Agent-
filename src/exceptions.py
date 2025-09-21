@@ -196,6 +196,25 @@ class GovernanceException(AgentException):
             self.details["metrics"] = metrics
 
 
+class RateLimitExceeded(AgentException):
+    """Exception raised when rate limit is exceeded."""
+
+    def __init__(
+        self,
+        message: str,
+        retry_after: Optional[float] = None,
+        key: Optional[str] = None,
+        **kwargs,
+    ):
+        super().__init__(message, **kwargs)
+        self.retry_after = retry_after
+        self.key = key
+        if retry_after:
+            self.details["retry_after"] = retry_after
+        if key:
+            self.details["key"] = key
+
+
 class RetryableException(AgentException):
     """Base class for exceptions that can be retried."""
 
@@ -253,6 +272,7 @@ __all__ = [
     "SecurityException",
     "MemoryException",
     "GovernanceException",
+    "RateLimitExceeded",
     "RetryableException",
     "handle_exception",
 ]

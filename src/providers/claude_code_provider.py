@@ -11,9 +11,15 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.exceptions import ModelException, ModelTimeoutException
+from src.exceptions import ModelException, ModelTimeoutException, RateLimitExceeded
 from src.utils.cache import get_model_cache
+from src.utils.circuit_breaker import (
+    get_circuit_breaker_registry,
+    CircuitBreakerConfig,
+    CircuitBreakerError,
+)
 from src.utils.notifications import notify_authentication_issue, notify_cli_failure
+from src.utils.rate_limiter import get_rate_limiter, RateLimitConfig
 from src.utils.security_audit import audit_authentication, audit_cli_usage
 from src.utils.usage_monitor import can_make_claude_request, record_claude_usage
 
@@ -37,8 +43,40 @@ class ClaudeCodeProvider:
         self.session_file = Path.home() / ".claude" / "enterprise_sessions.json"
         self._load_persistent_sessions()
 
+        # Initialize rate limiter and circuit breaker
+        self._setup_resilience_patterns()
+
         self.verify_cli_available()
         self.verify_subscription_auth()
+
+    def _setup_resilience_patterns(self) -> None:
+        """Setup rate limiting and circuit breaker for resilience."""
+        # Setup rate limiter
+        rate_limiter = get_rate_limiter()
+        rate_config = RateLimitConfig(
+            max_tokens=self.config.get("rate_limit_max_tokens", 20),
+            refill_rate=self.config.get("rate_limit_refill_rate", 2.0),
+            burst_allowance=self.config.get("rate_limit_burst", 10),
+            window_seconds=60,
+        )
+        rate_limiter.add_limit("claude_code", rate_config)
+
+        # Setup circuit breaker
+        cb_registry = get_circuit_breaker_registry()
+        cb_config = CircuitBreakerConfig(
+            failure_threshold=self.config.get("circuit_breaker_failure_threshold", 3),
+            recovery_timeout=self.config.get("circuit_breaker_recovery_timeout", 30.0),
+            success_threshold=self.config.get("circuit_breaker_success_threshold", 2),
+            timeout=self.config.get("timeout", 60.0),
+            expected_exceptions=(
+                ModelException,
+                ModelTimeoutException,
+                subprocess.TimeoutExpired,
+            ),
+        )
+        self.circuit_breaker = cb_registry.get_breaker("claude_code_cli", cb_config)
+
+        logger.info("Claude Code provider resilience patterns configured")
 
     def verify_cli_available(self) -> bool:
         """Verify Claude Code CLI is installed and available."""
@@ -897,6 +935,26 @@ class ClaudeCodeProvider:
             "estimated_prompts_remaining": "200-800 per 5 hours",
             "note": "Usage tracked through Claude web interface",
         }
+
+    def get_resilience_status(self) -> Dict[str, Any]:
+        """Get current status of resilience patterns.
+
+        Returns:
+            Dictionary with rate limiter and circuit breaker status
+        """
+        rate_limiter = get_rate_limiter()
+
+        return {
+            "rate_limiter": rate_limiter.get_status("claude_code"),
+            "circuit_breaker": self.circuit_breaker.get_stats(),
+        }
+
+    def reset_resilience_patterns(self) -> None:
+        """Reset rate limiter and circuit breaker (for testing/recovery)."""
+        rate_limiter = get_rate_limiter()
+        rate_limiter.reset("claude_code")
+        self.circuit_breaker.reset()
+        logger.info("Reset Claude Code provider resilience patterns")
 
 
 # Singleton instance for reuse
