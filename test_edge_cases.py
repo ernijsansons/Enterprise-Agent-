@@ -4,12 +4,13 @@
 import os
 import sys
 import tempfile
-import time
 import threading
+import time
 from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
+
 
 def test_concurrency_edge_cases():
     """Test concurrency edge cases and error conditions."""
@@ -47,7 +48,9 @@ def test_concurrency_edge_cases():
                     safe_dict[key] = thread_id * 1000 + i
                     retrieved = safe_dict.get(key)
                     if retrieved != thread_id * 1000 + i:
-                        errors.append(f"Mismatch in thread {thread_id}: expected {thread_id * 1000 + i}, got {retrieved}")
+                        errors.append(
+                            f"Mismatch in thread {thread_id}: expected {thread_id * 1000 + i}, got {retrieved}"
+                        )
                 results.append(f"Thread {thread_id} completed")
             except Exception as e:
                 errors.append(f"Thread {thread_id} error: {e}")
@@ -62,10 +65,14 @@ def test_concurrency_edge_cases():
             thread.join(timeout=10)
 
         if errors:
-            print(f"  FAIL: ThreadSafeDict errors: {errors[:5]}...")  # Show first 5 errors
+            print(
+                f"  FAIL: ThreadSafeDict errors: {errors[:5]}..."
+            )  # Show first 5 errors
             return False
 
-        print(f"  PASS: ThreadSafeDict concurrent access test passed ({len(results)} threads)")
+        print(
+            f"  PASS: ThreadSafeDict concurrent access test passed ({len(results)} threads)"
+        )
 
         # Test 3: Timeout handling
         print("  Testing timeout scenarios...")
@@ -77,7 +84,7 @@ def test_concurrency_edge_cases():
         with manager:
             future = manager.submit(slow_function)
             try:
-                result = future.result(timeout=0.5)  # Should timeout
+                future.result(timeout=0.5)  # Should timeout
                 print("  FAIL: Timeout test failed - should have timed out")
                 return False
             except Exception:
@@ -96,12 +103,18 @@ def test_validation_edge_cases():
     print("\nTesting validation edge cases...")
 
     try:
-        from src.utils.validation import StringValidator, NumberValidator, ValidationException
+        from src.utils.validation import (
+            NumberValidator,
+            StringValidator,
+            ValidationException,
+        )
 
         # Test 1: String validator with unicode and edge cases
         print("  Testing string validation edge cases...")
 
-        validator = StringValidator(min_length=5, max_length=20, pattern=r'^[a-zA-Z0-9_]+$')
+        validator = StringValidator(
+            min_length=5, max_length=20, pattern=r"^[a-zA-Z0-9_]+$"
+        )
 
         # Test unicode handling
         try:
@@ -134,7 +147,7 @@ def test_validation_edge_cases():
 
         # Test infinity
         try:
-            num_validator.validate(float('inf'))
+            num_validator.validate(float("inf"))
             print("  FAIL: Should have failed infinity validation")
             return False
         except ValidationException as e:
@@ -142,7 +155,7 @@ def test_validation_edge_cases():
 
         # Test NaN
         try:
-            num_validator.validate(float('nan'))
+            num_validator.validate(float("nan"))
             print("  FAIL: Should have failed NaN validation")
             return False
         except ValidationException as e:
@@ -159,7 +172,9 @@ def test_validation_edge_cases():
             print("  FAIL: Should have failed string validation")
             return False
         except ValidationException as e:
-            print(f"  PASS: Invalid string validation correctly failed: {str(e)[:60]}...")
+            print(
+                f"  PASS: Invalid string validation correctly failed: {str(e)[:60]}..."
+            )
 
         print("SUCCESS: Validation edge cases test passed")
         return True
@@ -174,7 +189,7 @@ def test_caching_edge_cases():
     print("\nTesting caching edge cases...")
 
     try:
-        from src.utils.cache import TTLCache, CacheConfig
+        from src.utils.cache import CacheConfig, TTLCache
 
         # Test 1: Cache with zero TTL
         print("  Testing zero TTL cache...")
@@ -221,7 +236,9 @@ def test_caching_edge_cases():
                     cache.set(key, value)
                     retrieved = cache.get(key)
                     if retrieved != value:
-                        errors.append(f"Worker {worker_id}: expected {value}, got {retrieved}")
+                        errors.append(
+                            f"Worker {worker_id}: expected {value}, got {retrieved}"
+                        )
             except Exception as e:
                 errors.append(f"Worker {worker_id} error: {e}")
 
@@ -272,7 +289,7 @@ def test_error_handling_edge_cases():
     print("\nTesting error handling edge cases...")
 
     try:
-        from src.utils.errors import ErrorHandler, ErrorCode, EnterpriseAgentError
+        from src.utils.errors import EnterpriseAgentError, ErrorCode, ErrorHandler
 
         # Test 1: Error handler with high frequency errors
         print("  Testing high frequency error scenarios...")
@@ -284,26 +301,26 @@ def test_error_handling_edge_cases():
                 raise EnterpriseAgentError(
                     ErrorCode.NETWORK_CONNECTION_FAILED,
                     f"Test error {i}",
-                    context={"test_id": i}
+                    context={"test_id": i},
                 )
             except EnterpriseAgentError as e:
                 handler.handle_error(e.details.code, context=e.details.context)
 
         stats = handler.get_error_statistics()
-        if stats['total_errors'] != 1000:
+        if stats["total_errors"] != 1000:
             print(f"  FAIL: Expected 1000 errors, got {stats['total_errors']}")
             return False
 
-        print(f"  PASS: High frequency error handling works (processed {stats['total_errors']} errors)")
+        print(
+            f"  PASS: High frequency error handling works (processed {stats['total_errors']} errors)"
+        )
 
         # Test 2: Nested error scenarios
         print("  Testing nested error scenarios...")
 
         def nested_function_level_3():
             raise EnterpriseAgentError(
-                ErrorCode.VALIDATION_FAILED,
-                "Level 3 error",
-                context={"level": 3}
+                ErrorCode.VALIDATION_FAILED, "Level 3 error", context={"level": 3}
             )
 
         def nested_function_level_2():
@@ -313,7 +330,7 @@ def test_error_handling_edge_cases():
                 raise EnterpriseAgentError(
                     ErrorCode.OPERATION_FAILED,
                     "Level 2 error",
-                    context={"level": 2, "cause": str(e)}
+                    context={"level": 2, "cause": str(e)},
                 ) from e
 
         def nested_function_level_1():
@@ -323,7 +340,7 @@ def test_error_handling_edge_cases():
                 raise EnterpriseAgentError(
                     ErrorCode.SYSTEM_ERROR,
                     "Level 1 error",
-                    context={"level": 1, "cause": str(e)}
+                    context={"level": 1, "cause": str(e)},
                 ) from e
 
         try:
@@ -352,7 +369,7 @@ def test_error_handling_edge_cases():
                 raise EnterpriseAgentError(
                     ErrorCode.TEMPORARY_FAILURE,
                     f"Attempt {recovery_attempts} failed",
-                    context={"attempt": recovery_attempts}
+                    context={"attempt": recovery_attempts},
                 )
             return f"Success on attempt {recovery_attempts}"
 
@@ -381,7 +398,11 @@ def test_telemetry_privacy_edge_cases():
     print("\nTesting telemetry privacy edge cases...")
 
     try:
-        from src.utils.telemetry import _sanitize_data, set_telemetry_consent, get_telemetry_status
+        from src.utils.telemetry import (
+            _sanitize_data,
+            get_telemetry_status,
+            set_telemetry_consent,
+        )
 
         # Test 1: Complex data sanitization
         print("  Testing complex data sanitization...")
@@ -393,13 +414,13 @@ def test_telemetry_privacy_edge_cases():
             "nested": {
                 "password": "secret123",
                 "file_path": "/home/user/secret/document.txt",
-                "ip_address": "192.168.1.100"
+                "ip_address": "192.168.1.100",
             },
             "list_with_sensitive": [
                 "normal_data",
                 "phone: 555-123-4567",
-                {"inner_secret": "token_abc123xyz"}
-            ]
+                {"inner_secret": "token_abc123xyz"},
+            ],
         }
 
         sanitized = _sanitize_data(sensitive_data)
@@ -486,16 +507,19 @@ def test_configuration_edge_cases():
         # Test 1: Invalid YAML handling
         print("  Testing invalid YAML handling...")
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            f.write("""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(
+                """
 invalid_yaml: [
     missing_closing_bracket
     "unclosed_string
-""")
+"""
+            )
             invalid_config_path = f.name
 
         try:
             from validate_config import ConfigValidator
+
             validator = ConfigValidator()
             result = validator.validate_config(invalid_config_path)
 
@@ -510,8 +534,9 @@ invalid_yaml: [
         # Test 2: Boundary value testing
         print("  Testing configuration boundary values...")
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            f.write("""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(
+                """
 default_model_config:
   timeout: 3601  # Just over maximum
   retry: 11      # Just over maximum
@@ -521,11 +546,13 @@ enterprise_coding_agent:
   caching:
     default_ttl: 86401  # Just over maximum
     max_size: 100001    # Just over maximum
-""")
+"""
+            )
             boundary_config_path = f.name
 
         try:
             from validate_config import ConfigValidator
+
             validator = ConfigValidator()
             result = validator.validate_config(boundary_config_path)
 
@@ -539,7 +566,9 @@ enterprise_coding_agent:
                 print(f"  FAIL: Expected at least 5 boundary errors, got {len(errors)}")
                 return False
 
-            print(f"  PASS: Boundary value validation correctly failed ({len(errors)} errors)")
+            print(
+                f"  PASS: Boundary value validation correctly failed ({len(errors)} errors)"
+            )
         finally:
             os.unlink(boundary_config_path)
 
@@ -557,7 +586,6 @@ def main():
     print("=" * 55)
 
     tests_passed = 0
-    total_tests = 5
 
     # Run all edge case tests
     test_functions = [
@@ -566,7 +594,7 @@ def main():
         test_caching_edge_cases,
         test_error_handling_edge_cases,
         test_telemetry_privacy_edge_cases,
-        #test_configuration_edge_cases,  # Requires validate_config.py to be importable
+        # test_configuration_edge_cases,  # Requires validate_config.py to be importable
     ]
 
     for test_func in test_functions:
@@ -580,10 +608,14 @@ def main():
     print(f"Edge Case Test Results: {tests_passed}/{len(test_functions)} tests passed")
 
     if tests_passed == len(test_functions):
-        print("SUCCESS: All edge case tests passed! System is robust against edge conditions.")
+        print(
+            "SUCCESS: All edge case tests passed! System is robust against edge conditions."
+        )
         return 0
     else:
-        print("FAILED: Some edge case tests failed. Review the system's handling of edge conditions.")
+        print(
+            "FAILED: Some edge case tests failed. Review the system's handling of edge conditions."
+        )
         return 1
 
 

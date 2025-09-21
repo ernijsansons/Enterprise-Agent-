@@ -81,7 +81,7 @@ def test_claude_provider():
         assert provider._map_model_to_cli("claude_opus_4") == "opus"
 
         # Test session management
-        session_id = provider.create_session("test-session")
+        provider.create_session("test-session")
         assert "test-session" in provider.sessions
 
         provider.clear_session("test-session")
@@ -99,7 +99,7 @@ def test_auth_manager():
     original_key = os.environ.get("ANTHROPIC_API_KEY")
     try:
         os.environ["ANTHROPIC_API_KEY"] = "test-key"
-        result = auth.ensure_subscription_mode()
+        auth.ensure_subscription_mode()
         assert "ANTHROPIC_API_KEY" not in os.environ
 
         # Test plan verification
@@ -185,11 +185,11 @@ def test_environment_config():
     # Test USE_CLAUDE_CODE
     os.environ["USE_CLAUDE_CODE"] = "true"
     orch = AgentOrchestrator()
-    assert orch._use_claude_code == True
+    assert orch._use_claude_code is True
 
     os.environ["USE_CLAUDE_CODE"] = "false"
     orch = AgentOrchestrator()
-    assert orch._use_claude_code == False
+    assert orch._use_claude_code is False
 
     return True
 
@@ -326,11 +326,11 @@ def test_hitl():
 
     # Test low risk auto-approval
     result = hitl.check_approval("low_risk_task", risk_level="low")
-    assert result["approved"] == True
+    assert result["approved"] is True
 
     # Test high risk flagging
     result = hitl.check_approval("high_risk_task", risk_level="high")
-    assert result["requires_human"] == True
+    assert result["requires_human"] is True
 
     return hitl
 

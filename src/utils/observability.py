@@ -11,21 +11,22 @@ from __future__ import annotations
 
 import json
 import logging
-import time
 import threading
+import time
 import uuid
 from collections import defaultdict, deque
-from dataclasses import dataclass, asdict
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
-from contextlib import contextmanager
 
 from src.utils.errors import EnterpriseAgentError
 
 
 class TraceLevel(Enum):
     """Trace severity levels."""
+
     DEBUG = "debug"
     INFO = "info"
     WARNING = "warning"
@@ -35,6 +36,7 @@ class TraceLevel(Enum):
 
 class ComponentType(Enum):
     """System component types for tracing."""
+
     ORCHESTRATOR = "orchestrator"
     PLANNER = "planner"
     CODER = "coder"
@@ -50,6 +52,7 @@ class ComponentType(Enum):
 @dataclass
 class TraceEvent:
     """Individual trace event with detailed context."""
+
     id: str
     timestamp: float
     component: ComponentType
@@ -65,14 +68,15 @@ class TraceEvent:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         data = asdict(self)
-        data['component'] = self.component.value
-        data['level'] = self.level.value
+        data["component"] = self.component.value
+        data["level"] = self.level.value
         return data
 
 
 @dataclass
 class ExecutionSpan:
     """Execution span for tracking operation duration and context."""
+
     id: str
     parent_id: Optional[str]
     correlation_id: str
@@ -95,19 +99,20 @@ class ExecutionSpan:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         data = asdict(self)
-        data['component'] = self.component.value
-        data['duration_ms'] = self.duration_ms
+        data["component"] = self.component.value
+        data["duration_ms"] = self.duration_ms
         return data
 
 
 @dataclass
 class PerformanceMetrics:
     """Performance metrics for system monitoring."""
+
     component: ComponentType
     operation: str
     count: int = 0
     total_duration_ms: float = 0.0
-    min_duration_ms: float = float('inf')
+    min_duration_ms: float = float("inf")
     max_duration_ms: float = 0.0
     error_count: int = 0
     success_rate: float = 0.0
@@ -144,7 +149,7 @@ class ObservabilityConfig:
         export_path: Optional[str] = None,
         metrics_enabled: bool = True,
         health_check_enabled: bool = True,
-        detailed_errors: bool = True
+        detailed_errors: bool = True,
     ):
         self.enabled = enabled
         self.trace_level = trace_level
@@ -186,7 +191,7 @@ class ObservabilityCollector:
         operation: str,
         parent_id: Optional[str] = None,
         correlation_id: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Start a new execution span."""
         if not self.config.enabled:
@@ -203,7 +208,7 @@ class ObservabilityCollector:
             operation=operation,
             start_time=time.time(),
             context=context or {},
-            metadata={}
+            metadata={},
         )
 
         with self._lock:
@@ -219,7 +224,7 @@ class ObservabilityCollector:
             level=TraceLevel.DEBUG,
             message=f"Started {operation}",
             context={"span_id": span_id, "correlation_id": correlation_id},
-            correlation_id=correlation_id
+            correlation_id=correlation_id,
         )
 
         return span_id
@@ -229,7 +234,7 @@ class ObservabilityCollector:
         span_id: str,
         success: bool = True,
         error: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """End an execution span."""
         if not self.config.enabled or not span_id:
@@ -259,13 +264,14 @@ class ObservabilityCollector:
             component=span.component,
             operation=span.operation,
             level=TraceLevel.DEBUG if success else TraceLevel.ERROR,
-            message=f"Completed {span.operation}" + (f" with error: {error}" if error else ""),
+            message=f"Completed {span.operation}"
+            + (f" with error: {error}" if error else ""),
             context={
                 "span_id": span_id,
                 "duration_ms": span.duration_ms,
-                "success": success
+                "success": success,
             },
-            correlation_id=span.correlation_id
+            correlation_id=span.correlation_id,
         )
 
     @contextmanager
@@ -275,10 +281,12 @@ class ObservabilityCollector:
         operation: str,
         parent_id: Optional[str] = None,
         correlation_id: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ):
         """Context manager for automatic span management."""
-        span_id = self.start_span(component, operation, parent_id, correlation_id, context)
+        span_id = self.start_span(
+            component, operation, parent_id, correlation_id, context
+        )
         try:
             yield span_id
             self.end_span(span_id, success=True)
@@ -294,7 +302,7 @@ class ObservabilityCollector:
         message: str,
         context: Optional[Dict[str, Any]] = None,
         correlation_id: Optional[str] = None,
-        duration_ms: Optional[float] = None
+        duration_ms: Optional[float] = None,
     ) -> None:
         """Record a trace event."""
         if not self.config.enabled or level.value < self.config.trace_level.value:
@@ -309,7 +317,7 @@ class ObservabilityCollector:
             message=message,
             context=context or {},
             duration_ms=duration_ms,
-            correlation_id=correlation_id
+            correlation_id=correlation_id,
         )
 
         with self._lock:
@@ -321,13 +329,13 @@ class ObservabilityCollector:
             TraceLevel.INFO: logging.INFO,
             TraceLevel.WARNING: logging.WARNING,
             TraceLevel.ERROR: logging.ERROR,
-            TraceLevel.CRITICAL: logging.CRITICAL
+            TraceLevel.CRITICAL: logging.CRITICAL,
         }[level]
 
         self.logger.log(
             log_level,
             f"[{component.value}:{operation}] {message}",
-            extra={"observability_context": context, "correlation_id": correlation_id}
+            extra={"observability_context": context, "correlation_id": correlation_id},
         )
 
     def trace_error(
@@ -336,24 +344,25 @@ class ObservabilityCollector:
         operation: str,
         error: Union[Exception, EnterpriseAgentError],
         context: Optional[Dict[str, Any]] = None,
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
     ) -> None:
         """Record an error trace with enhanced context."""
         error_context = context or {}
 
         if isinstance(error, EnterpriseAgentError):
-            error_context.update({
-                "error_code": error.details.code.name,
-                "error_category": error.details.category.value,
-                "error_severity": error.details.severity.value,
-                "recovery_suggestions": error.details.recovery_suggestions
-            })
+            error_context.update(
+                {
+                    "error_code": error.details.code.name,
+                    "error_category": error.details.category.value,
+                    "error_severity": error.details.severity.value,
+                    "recovery_suggestions": error.details.recovery_suggestions,
+                }
+            )
             message = f"Structured error: {error.details.message}"
         else:
-            error_context.update({
-                "error_type": type(error).__name__,
-                "error_message": str(error)
-            })
+            error_context.update(
+                {"error_type": type(error).__name__, "error_message": str(error)}
+            )
             message = f"Exception: {str(error)}"
 
         self.trace(
@@ -362,7 +371,7 @@ class ObservabilityCollector:
             level=TraceLevel.ERROR,
             message=message,
             context=error_context,
-            correlation_id=correlation_id
+            correlation_id=correlation_id,
         )
 
         # Track error patterns
@@ -379,8 +388,7 @@ class ObservabilityCollector:
 
         if metric_key not in self._metrics:
             self._metrics[metric_key] = PerformanceMetrics(
-                component=span.component,
-                operation=span.operation
+                component=span.component, operation=span.operation
             )
 
         self._metrics[metric_key].update(span.duration_ms, span.success or False)
@@ -395,7 +403,7 @@ class ObservabilityCollector:
                 "successful_calls": 0,
                 "last_success": None,
                 "last_failure": None,
-                "avg_duration_ms": 0.0
+                "avg_duration_ms": 0.0,
             }
 
         operation_health = component_health[span.operation]
@@ -409,8 +417,12 @@ class ObservabilityCollector:
 
         # Update average duration
         if span.duration_ms is not None:
-            total_duration = operation_health["avg_duration_ms"] * (operation_health["total_calls"] - 1)
-            operation_health["avg_duration_ms"] = (total_duration + span.duration_ms) / operation_health["total_calls"]
+            total_duration = operation_health["avg_duration_ms"] * (
+                operation_health["total_calls"] - 1
+            )
+            operation_health["avg_duration_ms"] = (
+                total_duration + span.duration_ms
+            ) / operation_health["total_calls"]
 
     def get_health_status(self) -> Dict[str, Any]:
         """Get current system health status."""
@@ -423,7 +435,11 @@ class ObservabilityCollector:
                 component_status = "healthy"
 
                 for operation, metrics in operations.items():
-                    success_rate = metrics["successful_calls"] / metrics["total_calls"] if metrics["total_calls"] > 0 else 1.0
+                    success_rate = (
+                        metrics["successful_calls"] / metrics["total_calls"]
+                        if metrics["total_calls"] > 0
+                        else 1.0
+                    )
 
                     operation_status = "healthy"
                     if success_rate < 0.8:
@@ -440,18 +456,18 @@ class ObservabilityCollector:
                         "total_calls": metrics["total_calls"],
                         "avg_duration_ms": metrics["avg_duration_ms"],
                         "last_success": metrics["last_success"],
-                        "last_failure": metrics["last_failure"]
+                        "last_failure": metrics["last_failure"],
                     }
 
                 health_summary[component.value] = {
                     "status": component_status,
-                    "operations": component_health
+                    "operations": component_health,
                 }
 
             return {
                 "overall_status": overall_health,
                 "timestamp": time.time(),
-                "components": health_summary
+                "components": health_summary,
             }
 
     def get_metrics_summary(self) -> Dict[str, Any]:
@@ -464,18 +480,20 @@ class ObservabilityCollector:
                     "operation": metrics.operation,
                     "count": metrics.count,
                     "avg_duration_ms": metrics.avg_duration_ms,
-                    "min_duration_ms": metrics.min_duration_ms if metrics.min_duration_ms != float('inf') else 0,
+                    "min_duration_ms": metrics.min_duration_ms
+                    if metrics.min_duration_ms != float("inf")
+                    else 0,
                     "max_duration_ms": metrics.max_duration_ms,
                     "success_rate": metrics.success_rate,
                     "error_count": metrics.error_count,
-                    "last_updated": metrics.last_updated
+                    "last_updated": metrics.last_updated,
                 }
 
             return {
                 "timestamp": time.time(),
                 "metrics": metrics_data,
                 "total_operations": sum(m.count for m in self._metrics.values()),
-                "total_errors": sum(m.error_count for m in self._metrics.values())
+                "total_errors": sum(m.error_count for m in self._metrics.values()),
             }
 
     def get_error_analysis(self) -> Dict[str, Any]:
@@ -483,7 +501,8 @@ class ObservabilityCollector:
         with self._lock:
             recent_cutoff = time.time() - 3600  # Last hour
             recent_errors = [
-                event for event in self._trace_events
+                event
+                for event in self._trace_events
                 if event.level == TraceLevel.ERROR and event.timestamp > recent_cutoff
             ]
 
@@ -501,17 +520,15 @@ class ObservabilityCollector:
                 "errors_by_component": dict(error_by_component),
                 "errors_by_operation": dict(error_by_operation),
                 "top_error_patterns": sorted(
-                    self._error_patterns.items(),
-                    key=lambda x: x[1],
-                    reverse=True
-                )[:10]
+                    self._error_patterns.items(), key=lambda x: x[1], reverse=True
+                )[:10],
             }
 
     def get_trace_summary(
         self,
         correlation_id: Optional[str] = None,
         component: Optional[ComponentType] = None,
-        hours_back: int = 1
+        hours_back: int = 1,
     ) -> Dict[str, Any]:
         """Get trace events summary with optional filtering."""
         cutoff_time = time.time() - (hours_back * 3600)
@@ -544,12 +561,12 @@ class ObservabilityCollector:
             "filter_criteria": {
                 "correlation_id": correlation_id,
                 "component": component.value if component else None,
-                "hours_back": hours_back
+                "hours_back": hours_back,
             },
             "events": [event.to_dict() for event in filtered_events],
             "spans": [span.to_dict() for span in filtered_spans],
             "event_count": len(filtered_events),
-            "span_count": len(filtered_spans)
+            "span_count": len(filtered_spans),
         }
 
     def export_observability_data(self, file_path: Optional[str] = None) -> str:
@@ -557,7 +574,9 @@ class ObservabilityCollector:
         if not self.config.export_enabled:
             return ""
 
-        export_path = file_path or (self.config.export_path / f"observability_{int(time.time())}.json")
+        export_path = file_path or (
+            self.config.export_path / f"observability_{int(time.time())}.json"
+        )
         export_path = Path(export_path)
         export_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -566,15 +585,17 @@ class ObservabilityCollector:
             "config": {
                 "trace_level": self.config.trace_level.value,
                 "retention_hours": self.config.retention_hours,
-                "metrics_enabled": self.config.metrics_enabled
+                "metrics_enabled": self.config.metrics_enabled,
             },
             "health_status": self.get_health_status(),
             "metrics_summary": self.get_metrics_summary(),
             "error_analysis": self.get_error_analysis(),
-            "trace_summary": self.get_trace_summary(hours_back=self.config.retention_hours)
+            "trace_summary": self.get_trace_summary(
+                hours_back=self.config.retention_hours
+            ),
         }
 
-        with open(export_path, 'w') as f:
+        with open(export_path, "w") as f:
             json.dump(export_data, f, indent=2, default=str)
 
         self._last_export = time.time()
@@ -590,13 +611,17 @@ class ObservabilityCollector:
                 self._trace_events.popleft()
 
             # Clean old spans
-            while self._completed_spans and self._completed_spans[0].start_time < cutoff_time:
+            while (
+                self._completed_spans
+                and self._completed_spans[0].start_time < cutoff_time
+            ):
                 self._completed_spans.popleft()
 
             # Clean old correlation contexts
             old_contexts = [
-                cid for cid, ctx in self._correlation_contexts.items()
-                if ctx.get('timestamp', 0) < cutoff_time
+                cid
+                for cid, ctx in self._correlation_contexts.items()
+                if ctx.get("timestamp", 0) < cutoff_time
             ]
             for cid in old_contexts:
                 del self._correlation_contexts[cid]
@@ -606,7 +631,9 @@ class ObservabilityCollector:
 _global_collector: Optional[ObservabilityCollector] = None
 
 
-def get_observability_collector(config: Optional[ObservabilityConfig] = None) -> ObservabilityCollector:
+def get_observability_collector(
+    config: Optional[ObservabilityConfig] = None,
+) -> ObservabilityCollector:
     """Get or create the global observability collector."""
     global _global_collector
     if _global_collector is None:
@@ -627,7 +654,7 @@ def trace_operation(
     message: str,
     level: TraceLevel = TraceLevel.INFO,
     context: Optional[Dict[str, Any]] = None,
-    correlation_id: Optional[str] = None
+    correlation_id: Optional[str] = None,
 ) -> None:
     """Trace an operation with the global collector."""
     collector = get_observability_collector()
@@ -639,7 +666,7 @@ def trace_error(
     operation: str,
     error: Union[Exception, EnterpriseAgentError],
     context: Optional[Dict[str, Any]] = None,
-    correlation_id: Optional[str] = None
+    correlation_id: Optional[str] = None,
 ) -> None:
     """Trace an error with the global collector."""
     collector = get_observability_collector()
@@ -651,11 +678,13 @@ def observe_operation(
     component: ComponentType,
     operation: str,
     context: Optional[Dict[str, Any]] = None,
-    correlation_id: Optional[str] = None
+    correlation_id: Optional[str] = None,
 ):
     """Context manager for observing an operation."""
     collector = get_observability_collector()
-    with collector.span(component, operation, context=context, correlation_id=correlation_id) as span_id:
+    with collector.span(
+        component, operation, context=context, correlation_id=correlation_id
+    ) as span_id:
         yield span_id
 
 
@@ -671,5 +700,5 @@ __all__ = [
     "reset_observability_collector",
     "trace_operation",
     "trace_error",
-    "observe_operation"
+    "observe_operation",
 ]

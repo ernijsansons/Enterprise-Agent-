@@ -13,12 +13,9 @@ from typing import Any, Dict, List, Optional
 
 from src.exceptions import ModelException, ModelTimeoutException
 from src.utils.cache import get_model_cache
-from src.utils.circuit_breaker import (
-    get_circuit_breaker_registry,
-    CircuitBreakerConfig,
-)
+from src.utils.circuit_breaker import CircuitBreakerConfig, get_circuit_breaker_registry
 from src.utils.notifications import notify_authentication_issue, notify_cli_failure
-from src.utils.rate_limiter import get_rate_limiter, RateLimitConfig
+from src.utils.rate_limiter import RateLimitConfig, get_rate_limiter
 from src.utils.security_audit import audit_authentication, audit_cli_usage
 from src.utils.usage_monitor import can_make_claude_request, record_claude_usage
 
@@ -90,11 +87,15 @@ class ClaudeCodeProvider:
                 )
                 return True
             else:
-                audit_cli_usage("version_check", False, {"error": "CLI not responding", "returncode": result.returncode})
+                audit_cli_usage(
+                    "version_check",
+                    False,
+                    {"error": "CLI not responding", "returncode": result.returncode},
+                )
                 raise ModelException(
                     f"Claude Code CLI check failed with return code {result.returncode}. Please ensure CLI is properly installed.",
                     provider="claude_code",
-                    error_code="CLI_CHECK_FAILED"
+                    error_code="CLI_CHECK_FAILED",
                 )
         except FileNotFoundError:
             notify_authentication_issue("cli_not_found")
@@ -102,7 +103,7 @@ class ClaudeCodeProvider:
             raise ModelException(
                 "Claude Code CLI not found. Please install with: npm install -g @anthropic-ai/claude-code",
                 provider="claude_code",
-                error_code="CLI_NOT_FOUND"
+                error_code="CLI_NOT_FOUND",
             )
         except subprocess.TimeoutExpired:
             notify_cli_failure("version_check", "Command timed out")

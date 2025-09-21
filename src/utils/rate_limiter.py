@@ -1,11 +1,11 @@
 """Rate limiter implementation using token bucket algorithm."""
 from __future__ import annotations
 
-import time
+import logging
 import threading
+import time
 from dataclasses import dataclass
 from typing import Dict, Optional
-import logging
 
 logger = logging.getLogger(__name__)
 

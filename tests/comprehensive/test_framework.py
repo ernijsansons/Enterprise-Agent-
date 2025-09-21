@@ -1,23 +1,26 @@
 """Comprehensive test framework for Enterprise Agent."""
 import asyncio
 import logging
+import sys
 import time
 import traceback
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Callable
 from pathlib import Path
-import sys
+from typing import Any, Callable, Dict, List, Optional
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
 class TestStatus(Enum):
     """Test execution status."""
+
     PENDING = "pending"
     RUNNING = "running"
     PASSED = "passed"
@@ -28,16 +31,18 @@ class TestStatus(Enum):
 
 class TestSeverity(Enum):
     """Test failure severity."""
-    CRITICAL = "critical"     # System unusable
-    HIGH = "high"             # Major functionality broken
-    MEDIUM = "medium"         # Important features affected
-    LOW = "low"               # Minor issues or edge cases
-    INFO = "info"             # Informational only
+
+    CRITICAL = "critical"  # System unusable
+    HIGH = "high"  # Major functionality broken
+    MEDIUM = "medium"  # Important features affected
+    LOW = "low"  # Minor issues or edge cases
+    INFO = "info"  # Informational only
 
 
 @dataclass
 class TestResult:
     """Individual test result."""
+
     name: str
     status: TestStatus
     severity: TestSeverity
@@ -51,6 +56,7 @@ class TestResult:
 @dataclass
 class TestSuite:
     """Test suite containing multiple tests."""
+
     name: str
     description: str
     tests: List[Callable] = field(default_factory=list)
@@ -62,6 +68,7 @@ class TestSuite:
 @dataclass
 class TestLayer:
     """Test layer containing multiple test suites."""
+
     name: str
     description: str
     suites: List[TestSuite] = field(default_factory=list)
@@ -92,7 +99,7 @@ class TestFramework:
                 "max_startup_time": 10.0,
                 "max_response_time": 30.0,
                 "max_memory_mb": 1000,
-            }
+            },
         }
 
     def add_layer(self, layer: TestLayer) -> None:
@@ -109,10 +116,16 @@ class TestFramework:
                 return
         raise ValueError(f"Layer '{layer_name}' not found")
 
-    async def run_test(self, test_func: Callable, test_name: str,
-                      severity: TestSeverity = TestSeverity.MEDIUM) -> TestResult:
+    async def run_test(
+        self,
+        test_func: Callable,
+        test_name: str,
+        severity: TestSeverity = TestSeverity.MEDIUM,
+    ) -> TestResult:
         """Run individual test with error handling and timing."""
-        result = TestResult(name=test_name, status=TestStatus.RUNNING, severity=severity)
+        result = TestResult(
+            name=test_name, status=TestStatus.RUNNING, severity=severity
+        )
         start_time = time.time()
 
         try:
@@ -121,8 +134,7 @@ class TestFramework:
             # Handle both sync and async tests
             if asyncio.iscoroutinefunction(test_func):
                 test_result = await asyncio.wait_for(
-                    test_func(),
-                    timeout=self.config["timeout_per_test"]
+                    test_func(), timeout=self.config["timeout_per_test"]
                 )
             else:
                 test_result = test_func()
@@ -133,7 +145,11 @@ class TestFramework:
             if isinstance(test_result, bool):
                 result.status = TestStatus.PASSED if test_result else TestStatus.FAILED
             elif isinstance(test_result, dict):
-                result.status = TestStatus.PASSED if test_result.get("success", True) else TestStatus.FAILED
+                result.status = (
+                    TestStatus.PASSED
+                    if test_result.get("success", True)
+                    else TestStatus.FAILED
+                )
                 result.message = test_result.get("message", "")
                 result.details = test_result.get("details", {})
             else:
@@ -143,7 +159,9 @@ class TestFramework:
             if result.status == TestStatus.PASSED:
                 logger.info(f"✓ {test_name} passed ({result.duration:.2f}s)")
             else:
-                logger.warning(f"✗ {test_name} failed ({result.duration:.2f}s): {result.message}")
+                logger.warning(
+                    f"✗ {test_name} failed ({result.duration:.2f}s): {result.message}"
+                )
 
         except asyncio.TimeoutError:
             result.status = TestStatus.FAILED
@@ -180,17 +198,21 @@ class TestFramework:
                 test_name = f"{suite.name}.{test_func.__name__}"
 
                 # Determine severity from test function attributes
-                severity = getattr(test_func, '_test_severity', TestSeverity.MEDIUM)
+                severity = getattr(test_func, "_test_severity", TestSeverity.MEDIUM)
 
                 result = await self.run_test(test_func, test_name, severity)
                 results.append(result)
                 suite.results.append(result)
 
                 # Stop on critical failure if configured
-                if (result.status in [TestStatus.FAILED, TestStatus.ERROR] and
-                    result.severity == TestSeverity.CRITICAL and
-                    self.config["stop_on_critical"]):
-                    logger.critical(f"Critical test failure in {test_name}, stopping suite")
+                if (
+                    result.status in [TestStatus.FAILED, TestStatus.ERROR]
+                    and result.severity == TestSeverity.CRITICAL
+                    and self.config["stop_on_critical"]
+                ):
+                    logger.critical(
+                        f"Critical test failure in {test_name}, stopping suite"
+                    )
                     break
 
         except Exception as e:
@@ -237,12 +259,17 @@ class TestFramework:
                 self.results.extend(layer_results)
 
                 # Check for critical failures
-                critical_failures = [r for r in layer_results
-                                   if r.status in [TestStatus.FAILED, TestStatus.ERROR]
-                                   and r.severity == TestSeverity.CRITICAL]
+                critical_failures = [
+                    r
+                    for r in layer_results
+                    if r.status in [TestStatus.FAILED, TestStatus.ERROR]
+                    and r.severity == TestSeverity.CRITICAL
+                ]
 
                 if critical_failures and self.config["stop_on_critical"]:
-                    logger.critical(f"Critical failures in {layer.name}, stopping execution")
+                    logger.critical(
+                        f"Critical failures in {layer.name}, stopping execution"
+                    )
                     break
 
         finally:
@@ -268,13 +295,23 @@ class TestFramework:
         skipped = len([r for r in self.results if r.status == TestStatus.SKIPPED])
 
         # Severity breakdown
-        critical_failures = len([r for r in self.results
-                               if r.status in [TestStatus.FAILED, TestStatus.ERROR]
-                               and r.severity == TestSeverity.CRITICAL])
+        critical_failures = len(
+            [
+                r
+                for r in self.results
+                if r.status in [TestStatus.FAILED, TestStatus.ERROR]
+                and r.severity == TestSeverity.CRITICAL
+            ]
+        )
 
-        high_failures = len([r for r in self.results
-                            if r.status in [TestStatus.FAILED, TestStatus.ERROR]
-                            and r.severity == TestSeverity.HIGH])
+        high_failures = len(
+            [
+                r
+                for r in self.results
+                if r.status in [TestStatus.FAILED, TestStatus.ERROR]
+                and r.severity == TestSeverity.HIGH
+            ]
+        )
 
         # Performance metrics
         total_duration = self.end_time - self.start_time
@@ -288,14 +325,16 @@ class TestFramework:
             for suite in layer.suites:
                 layer_tests.extend(suite.results)
 
-            layer_passed = len([r for r in layer_tests if r.status == TestStatus.PASSED])
+            layer_passed = len(
+                [r for r in layer_tests if r.status == TestStatus.PASSED]
+            )
             layer_total = len(layer_tests)
 
             layer_results[layer.name] = {
                 "total": layer_total,
                 "passed": layer_passed,
                 "failed": layer_total - layer_passed,
-                "success_rate": layer_passed / max(layer_total, 1)
+                "success_rate": layer_passed / max(layer_total, 1),
             }
 
         report = {
@@ -308,15 +347,16 @@ class TestFramework:
                 "success_rate": passed / max(total_tests, 1),
                 "critical_failures": critical_failures,
                 "high_failures": high_failures,
-                "overall_status": "PASSED" if critical_failures == 0 and failed == 0 else "FAILED"
+                "overall_status": "PASSED"
+                if critical_failures == 0 and failed == 0
+                else "FAILED",
             },
             "performance": {
                 "total_duration": total_duration,
                 "avg_test_duration": avg_test_duration,
                 "slowest_tests": [
-                    {"name": t.name, "duration": t.duration}
-                    for t in slowest_tests
-                ]
+                    {"name": t.name, "duration": t.duration} for t in slowest_tests
+                ],
             },
             "layer_breakdown": layer_results,
             "failures": [
@@ -324,13 +364,13 @@ class TestFramework:
                     "name": r.name,
                     "severity": r.severity.value,
                     "message": r.message,
-                    "duration": r.duration
+                    "duration": r.duration,
                 }
                 for r in self.results
                 if r.status in [TestStatus.FAILED, TestStatus.ERROR]
             ],
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "config": self.config
+            "config": self.config,
         }
 
         return report
@@ -339,10 +379,14 @@ class TestFramework:
         """Save test report to file."""
         try:
             import json
-            report_path = Path("test_results") / f"comprehensive_test_report_{int(time.time())}.json"
+
+            report_path = (
+                Path("test_results")
+                / f"comprehensive_test_report_{int(time.time())}.json"
+            )
             report_path.parent.mkdir(exist_ok=True)
 
-            with open(report_path, 'w') as f:
+            with open(report_path, "w") as f:
                 json.dump(report, f, indent=2, default=str)
 
             logger.info(f"Test report saved to: {report_path}")
@@ -356,13 +400,15 @@ class TestFramework:
     def _create_summary_report(self, report: Dict[str, Any], path: Path) -> None:
         """Create human-readable summary report."""
         try:
-            with open(path, 'w') as f:
+            with open(path, "w") as f:
                 f.write("ENTERPRISE AGENT COMPREHENSIVE TEST REPORT\n")
                 f.write("=" * 50 + "\n\n")
 
                 summary = report["summary"]
                 f.write(f"Overall Status: {summary['overall_status']}\n")
-                f.write(f"Test Results: {summary['passed']}/{summary['total_tests']} passed ")
+                f.write(
+                    f"Test Results: {summary['passed']}/{summary['total_tests']} passed "
+                )
                 f.write(f"({summary['success_rate']:.1%} success rate)\n")
                 f.write(f"Critical Failures: {summary['critical_failures']}\n")
                 f.write(f"High Priority Failures: {summary['high_failures']}\n\n")
@@ -370,16 +416,22 @@ class TestFramework:
                 f.write("Layer Results:\n")
                 f.write("-" * 20 + "\n")
                 for layer_name, layer_data in report["layer_breakdown"].items():
-                    f.write(f"{layer_name}: {layer_data['passed']}/{layer_data['total']} ")
+                    f.write(
+                        f"{layer_name}: {layer_data['passed']}/{layer_data['total']} "
+                    )
                     f.write(f"({layer_data['success_rate']:.1%})\n")
 
-                f.write(f"\nExecution Time: {report['performance']['total_duration']:.2f} seconds\n")
+                f.write(
+                    f"\nExecution Time: {report['performance']['total_duration']:.2f} seconds\n"
+                )
 
                 if report["failures"]:
                     f.write("\nFailures:\n")
                     f.write("-" * 20 + "\n")
                     for failure in report["failures"]:
-                        f.write(f"[{failure['severity'].upper()}] {failure['name']}: {failure['message']}\n")
+                        f.write(
+                            f"[{failure['severity'].upper()}] {failure['name']}: {failure['message']}\n"
+                        )
 
             logger.info(f"Summary report saved to: {path}")
 
@@ -389,9 +441,11 @@ class TestFramework:
 
 def test_severity(severity: TestSeverity):
     """Decorator to mark test severity."""
+
     def decorator(func):
         func._test_severity = severity
         return func
+
     return decorator
 
 

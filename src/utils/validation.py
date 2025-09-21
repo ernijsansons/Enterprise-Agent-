@@ -66,7 +66,7 @@ class StringValidator(Validator):
                 f"Please provide a longer input.",
                 validation_type="length",
                 provided_value=len(value),
-                expected_range=f">={self.min_length}"
+                expected_range=f">={self.min_length}",
             )
 
         if self.max_length and len(value) > self.max_length:
@@ -75,7 +75,7 @@ class StringValidator(Validator):
                 f"Please shorten your input.",
                 validation_type="length",
                 provided_value=len(value),
-                expected_range=f"<={self.max_length}"
+                expected_range=f"<={self.max_length}",
             )
 
         if self.pattern and not self.pattern.match(value):
@@ -84,7 +84,7 @@ class StringValidator(Validator):
                 f"Please check your input format and try again.",
                 validation_type="pattern",
                 provided_value=value[:50] + "..." if len(value) > 50 else value,
-                expected_pattern=self.pattern.pattern
+                expected_pattern=self.pattern.pattern,
             )
 
         if self.allowed_chars:
@@ -98,7 +98,7 @@ class StringValidator(Validator):
                     f"Only these characters are allowed: {self._format_allowed_chars()}",
                     validation_type="chars",
                     invalid_characters=list(invalid_chars),
-                    allowed_characters=list(self.allowed_chars)
+                    allowed_characters=list(self.allowed_chars),
                 )
 
         return value
@@ -155,7 +155,7 @@ class NumberValidator(Validator):
                         f"Cannot convert '{value}' to a number. Please provide a valid numeric value (e.g., 42, 3.14, -10).",
                         validation_type="conversion",
                         provided_value=value,
-                        expected_type="number"
+                        expected_type="number",
                     )
             else:
                 raise ValidationException(
@@ -163,7 +163,7 @@ class NumberValidator(Validator):
                     f"Please provide a numeric value (integer or decimal).",
                     validation_type="type",
                     provided_type=type(value).__name__,
-                    expected_type="number"
+                    expected_type="number",
                 )
 
         if not self.allow_float and isinstance(value, float) and not value.is_integer():
@@ -172,7 +172,7 @@ class NumberValidator(Validator):
                 f"Received: {value}",
                 validation_type="type",
                 provided_value=value,
-                expected_type="integer"
+                expected_type="integer",
             )
 
         if not self.allow_negative and value < 0:
@@ -181,7 +181,7 @@ class NumberValidator(Validator):
                 f"Received: {value}",
                 validation_type="range",
                 provided_value=value,
-                expected_range=">=0"
+                expected_range=">=0",
             )
 
         if self.min_value is not None and value < self.min_value:
@@ -190,7 +190,7 @@ class NumberValidator(Validator):
                 f"Please provide a larger number.",
                 validation_type="range",
                 provided_value=value,
-                expected_range=f">={self.min_value}"
+                expected_range=f">={self.min_value}",
             )
 
         if self.max_value is not None and value > self.max_value:
@@ -199,7 +199,7 @@ class NumberValidator(Validator):
                 f"Please provide a smaller number.",
                 validation_type="range",
                 provided_value=value,
-                expected_range=f"<={self.max_value}"
+                expected_range=f"<={self.max_value}",
             )
 
         return int(value) if not self.allow_float else value

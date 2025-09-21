@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Simple test for core async functionality without heavy dependencies."""
 import asyncio
-import sys
 import os
+import sys
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -29,14 +29,11 @@ async def test_async_cache():
             prompt="test prompt",
             response="test response",
             max_tokens=100,
-            role="Tester"
+            role="Tester",
         )
 
         cached_response = await model_cache.get_response(
-            model="test_model",
-            prompt="test prompt",
-            max_tokens=100,
-            role="Tester"
+            model="test_model", prompt="test prompt", max_tokens=100, role="Tester"
         )
         assert cached_response == "test response"
 
@@ -84,7 +81,7 @@ async def test_async_memory():
         config = {
             "retention_days": 1,
             "enable_vectors": False,  # Disable to avoid numpy dependency
-            "storage": "memory"
+            "storage": "memory",
         }
         memory = AsyncMemoryStore(config)
 
@@ -151,9 +148,9 @@ def test_main_orchestrator_async_integration():
         # Check if async methods exist
         orch = AgentOrchestrator.__new__(AgentOrchestrator)  # Don't call __init__
 
-        has_async_call = hasattr(orch, '_call_model_async')
-        has_async_run = hasattr(orch, 'run_mode_async')
-        has_async_pipeline = hasattr(orch, '_execute_pipeline_async')
+        has_async_call = hasattr(orch, "_call_model_async")
+        has_async_run = hasattr(orch, "run_mode_async")
+        has_async_pipeline = hasattr(orch, "_execute_pipeline_async")
 
         print(f"   _call_model_async: {'YES' if has_async_call else 'NO'}")
         print(f"   run_mode_async: {'YES' if has_async_run else 'NO'}")

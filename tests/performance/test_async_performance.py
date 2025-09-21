@@ -1,7 +1,8 @@
 """Performance tests for async implementation improvements."""
-import time
-import pytest
 import logging
+import time
+
+import pytest
 
 from src.agent_orchestrator import AgentOrchestrator
 from src.orchestration.async_orchestrator import get_async_orchestrator
@@ -112,9 +113,7 @@ class TestAsyncPerformance:
 
         # Test async version of run_mode
         result = await orchestrator.run_mode_async(
-            domain="coding",
-            task="Create a simple calculator function",
-            vuln_flag=False
+            domain="coding", task="Create a simple calculator function", vuln_flag=False
         )
 
         duration = time.time() - start_time
@@ -197,7 +196,9 @@ class TestAsyncPerformance:
 
         parallel_duration = time.time() - start_time
 
-        logger.info(f"Parallel execution: {len(tasks)} roles in {parallel_duration:.2f}s")
+        logger.info(
+            f"Parallel execution: {len(tasks)} roles in {parallel_duration:.2f}s"
+        )
 
         assert len(results) == len(tasks)
         assert all(result.get("success", False) for result in results.values())
@@ -211,8 +212,7 @@ class TestAsyncPerformance:
 
         # Prepare batch operations
         operations = [
-            ("test_level", f"key_{i}", f"value_{i}", {"index": i})
-            for i in range(100)
+            ("test_level", f"key_{i}", f"value_{i}", {"index": i}) for i in range(100)
         ]
 
         start_time = time.time()
@@ -252,10 +252,7 @@ class TestAsyncPerformance:
             "https://httpbin.org/delay/1",
         ]
 
-        requests = [
-            {"method": "GET", "url": url}
-            for url in urls
-        ]
+        requests = [{"method": "GET", "url": url} for url in urls]
 
         start_time = time.time()
         results = await client.batch_requests(requests, max_concurrent=3)
@@ -263,7 +260,9 @@ class TestAsyncPerformance:
 
         await client.close()
 
-        logger.info(f"Concurrent HTTP: {len(requests)} requests in {concurrent_duration:.2f}s")
+        logger.info(
+            f"Concurrent HTTP: {len(requests)} requests in {concurrent_duration:.2f}s"
+        )
 
         # Should be faster than sequential (3 x 1s = 3s)
         assert concurrent_duration < 2.0  # Allow some overhead

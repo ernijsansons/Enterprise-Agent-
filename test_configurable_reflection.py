@@ -14,7 +14,10 @@ except ImportError:
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-def create_test_config(max_iterations=3, confidence_threshold=0.7, early_termination_enable=True):
+
+def create_test_config(
+    max_iterations=3, confidence_threshold=0.7, early_termination_enable=True
+):
     """Create a test configuration with custom reflection parameters."""
     config = {
         "enterprise_coding_agent": {
@@ -25,20 +28,17 @@ def create_test_config(max_iterations=3, confidence_threshold=0.7, early_termina
                     "enable": early_termination_enable,
                     "stagnation_threshold": 2,
                     "min_iterations": 1,
-                    "progress_threshold": 0.05
-                }
+                    "progress_threshold": 0.05,
+                },
             },
-            "reviewing": {
-                "confidence_threshold": confidence_threshold
-            },
+            "reviewing": {"confidence_threshold": confidence_threshold},
             "memory": {},
-            "orchestration": {
-                "runtime_optimizer": {}
-            },
-            "governance": {}
+            "orchestration": {"runtime_optimizer": {}},
+            "governance": {},
         }
     }
     return config
+
 
 def test_config_loading():
     """Test that configuration is properly loaded."""
@@ -51,7 +51,7 @@ def test_config_loading():
     # Create temporary config file
     test_config = create_test_config(max_iterations=7, confidence_threshold=0.9)
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         yaml.dump(test_config, f)
         config_path = f.name
 
@@ -63,12 +63,20 @@ def test_config_loading():
 
         # Check that configuration is loaded correctly
         reflecting_cfg = orchestrator.agent_cfg.get("reflecting", {})
-        assert reflecting_cfg.get("max_iterations") == 7, f"Expected max_iterations=7, got {reflecting_cfg.get('max_iterations')}"
-        assert reflecting_cfg.get("confidence_threshold") == 0.9, f"Expected confidence_threshold=0.9, got {reflecting_cfg.get('confidence_threshold')}"
+        assert (
+            reflecting_cfg.get("max_iterations") == 7
+        ), f"Expected max_iterations=7, got {reflecting_cfg.get('max_iterations')}"
+        assert (
+            reflecting_cfg.get("confidence_threshold") == 0.9
+        ), f"Expected confidence_threshold=0.9, got {reflecting_cfg.get('confidence_threshold')}"
 
         early_term_cfg = reflecting_cfg.get("early_termination", {})
-        assert early_term_cfg.get("enable") == True, f"Expected early_termination.enable=True, got {early_term_cfg.get('enable')}"
-        assert early_term_cfg.get("stagnation_threshold") == 2, f"Expected stagnation_threshold=2, got {early_term_cfg.get('stagnation_threshold')}"
+        assert (
+            early_term_cfg.get("enable") is True
+        ), f"Expected early_termination.enable=True, got {early_term_cfg.get('enable')}"
+        assert (
+            early_term_cfg.get("stagnation_threshold") == 2
+        ), f"Expected stagnation_threshold=2, got {early_term_cfg.get('stagnation_threshold')}"
 
         print("✅ Configuration loading test passed")
         return True
@@ -80,6 +88,7 @@ def test_config_loading():
     finally:
         # Cleanup
         os.unlink(config_path)
+
 
 def test_environment_variable_override():
     """Test that environment variables can override config values."""
@@ -93,7 +102,7 @@ def test_environment_variable_override():
         # Create test config with different values
         test_config = create_test_config(max_iterations=3, confidence_threshold=0.7)
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(test_config, f)
             config_path = f.name
 
@@ -130,8 +139,9 @@ def test_environment_variable_override():
         # Cleanup environment variables
         os.environ.pop("REFLECTION_MAX_ITERATIONS", None)
         os.environ.pop("REFLECTION_CONFIDENCE_THRESHOLD", None)
-        if 'config_path' in locals():
+        if "config_path" in locals():
             os.unlink(config_path)
+
 
 def test_early_termination_configuration():
     """Test that early termination configuration is properly applied."""
@@ -141,7 +151,7 @@ def test_early_termination_configuration():
         # Create test config with early termination disabled
         test_config = create_test_config(early_termination_enable=False)
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(test_config, f)
             config_path = f.name
 
@@ -153,7 +163,9 @@ def test_early_termination_configuration():
         reflecting_cfg = orchestrator.agent_cfg.get("reflecting", {})
         early_term_cfg = reflecting_cfg.get("early_termination", {})
 
-        assert early_term_cfg.get("enable") == False, f"Expected early_termination.enable=False, got {early_term_cfg.get('enable')}"
+        assert (
+            early_term_cfg.get("enable") is False
+        ), f"Expected early_termination.enable=False, got {early_term_cfg.get('enable')}"
 
         print("✅ Early termination configuration test passed")
         return True
@@ -163,8 +175,9 @@ def test_early_termination_configuration():
         return False
 
     finally:
-        if 'config_path' in locals():
+        if "config_path" in locals():
             os.unlink(config_path)
+
 
 def main():
     """Run all configuration tests."""
@@ -187,11 +200,14 @@ def main():
     print(f"Test Results: {tests_passed}/{total_tests} tests passed")
 
     if tests_passed == total_tests:
-        print("🎉 All tests passed! Configurable reflection parameters are working correctly.")
+        print(
+            "🎉 All tests passed! Configurable reflection parameters are working correctly."
+        )
         return 0
     else:
         print("❌ Some tests failed. Please check the implementation.")
         return 1
+
 
 if __name__ == "__main__":
     exit_code = main()

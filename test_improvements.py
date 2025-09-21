@@ -282,7 +282,7 @@ def test_full_pipeline():
 
         # Test cache hit on second run
         start = time.time()
-        result2 = agent.run_mode(
+        agent.run_mode(
             domain="coding",
             task="Create a function to add two numbers",
             vuln_flag=False,

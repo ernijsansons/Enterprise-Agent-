@@ -7,8 +7,8 @@ import sys
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.orchestration.async_orchestrator import get_async_orchestrator
 from src.agent_orchestrator import AgentOrchestrator
+from src.orchestration.async_orchestrator import get_async_orchestrator
 
 
 async def test_async_orchestrator():
@@ -78,7 +78,7 @@ def test_main_orchestrator_async():
         print("SUCCESS: Main orchestrator created with async support")
 
         # Check async integration
-        if hasattr(orch, '_async_orchestrator') and orch._async_orchestrator:
+        if hasattr(orch, "_async_orchestrator") and orch._async_orchestrator:
             print("SUCCESS: Async orchestrator integrated")
         else:
             print("INFO: Async orchestrator not initialized (may be expected)")
@@ -111,7 +111,7 @@ async def test_async_call_model():
 
         orch = AgentOrchestrator("configs/agent_config_v3.4.yaml")
 
-        if hasattr(orch, '_call_model_async'):
+        if hasattr(orch, "_call_model_async"):
             response = await orch._call_model_async(
                 model="claude_sonnet_4",
                 prompt="Test async call method",

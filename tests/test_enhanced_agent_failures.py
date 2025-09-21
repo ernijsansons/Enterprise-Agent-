@@ -6,27 +6,25 @@ reflection logic issues, and observability for the enhanced agent system.
 from __future__ import annotations
 
 import json
-import pytest
 import tempfile
 import time
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import pytest
+
 from src.agent_orchestrator import AgentOrchestrator, AgentState
+from src.exceptions import ModelException, ModelTimeoutException
 from src.roles.base import BaseRole
-from src.roles.validator import Validator
 from src.roles.reflector import Reflector
+from src.roles.validator import Validator
 from src.utils.errors import (
     EnterpriseAgentError,
     ErrorCode,
-    get_error_handler,
-    create_validation_error,
     create_orchestration_error,
-    handle_error
-)
-from src.exceptions import (
-    ModelException,
-    ModelTimeoutException
+    create_validation_error,
+    get_error_handler,
+    handle_error,
 )
 
 
@@ -37,12 +35,14 @@ class TestAgentInterfaceFailures:
         """Test base role handles invalid model names correctly."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             base_role = BaseRole(orchestrator)
@@ -52,7 +52,10 @@ enterprise_coding_agent:
                 base_role.call_model("", "test prompt", "TestRole", "test")
 
             assert exc_info.value.details.code == ErrorCode.INVALID_PARAMETERS
-            assert "model must be a non-empty string" in exc_info.value.details.message.lower()
+            assert (
+                "model must be a non-empty string"
+                in exc_info.value.details.message.lower()
+            )
 
             # Test None model name
             with pytest.raises(EnterpriseAgentError) as exc_info:
@@ -64,12 +67,14 @@ enterprise_coding_agent:
         """Test base role handles invalid prompts correctly."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             base_role = BaseRole(orchestrator)
@@ -79,18 +84,23 @@ enterprise_coding_agent:
                 base_role.call_model("test-model", "", "TestRole", "test")
 
             assert exc_info.value.details.code == ErrorCode.INVALID_PARAMETERS
-            assert "prompt must be a non-empty string" in exc_info.value.details.message.lower()
+            assert (
+                "prompt must be a non-empty string"
+                in exc_info.value.details.message.lower()
+            )
 
     def test_invalid_domain_in_base_role(self):
         """Test base role handles invalid domains correctly."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             base_role = BaseRole(orchestrator)
@@ -106,12 +116,14 @@ enterprise_coding_agent:
         """Test base role handles JSON parsing failures correctly."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             base_role = BaseRole(orchestrator)
@@ -137,7 +149,8 @@ class TestValidatorFailures:
         """Test validator handles invalid input types correctly."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
@@ -145,7 +158,8 @@ enterprise_coding_agent:
   domains:
     coding:
       coverage_threshold: 0.97
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             validator = Validator(orchestrator)
@@ -168,12 +182,14 @@ enterprise_coding_agent:
         """Test validator handles unknown domains correctly."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             validator = Validator(orchestrator)
@@ -184,19 +200,21 @@ enterprise_coding_agent:
             assert exc_info.value.details.code == ErrorCode.VALIDATION_FAILED
             assert "no validator available" in exc_info.value.details.message.lower()
 
-    @patch('src.roles.validators.validate_coding')
+    @patch("src.roles.validators.validate_coding")
     def test_validator_domain_execution_failure(self, mock_validate_coding):
         """Test validator handles domain validation execution failures."""
         mock_validate_coding.side_effect = Exception("Domain validator crashed")
 
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             validator = Validator(orchestrator)
@@ -211,19 +229,26 @@ enterprise_coding_agent:
         """Test validator handles LLM validation failures gracefully."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             validator = Validator(orchestrator)
 
             # Mock call_model to raise an error
-            with patch.object(validator, 'call_model', side_effect=Exception("LLM error")):
-                with patch('src.roles.validators.validate_coding', return_value={"passes": True}):
+            with patch.object(
+                validator, "call_model", side_effect=Exception("LLM error")
+            ):
+                with patch(
+                    "src.roles.validators.validate_coding",
+                    return_value={"passes": True},
+                ):
                     result = validator.validate("test code", "coding")
 
                     # Should not fail, but return error in llm_insights
@@ -235,26 +260,30 @@ enterprise_coding_agent:
         """Test validator generates actionable feedback for failures."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             validator = Validator(orchestrator)
 
             # Mock validation failure
-            with patch('src.roles.validators.validate_coding') as mock_validate:
+            with patch("src.roles.validators.validate_coding") as mock_validate:
                 mock_validate.return_value = {
                     "passes": False,
                     "tests_passed": False,
                     "coverage": 0.80,
-                    "coverage_threshold": 0.97
+                    "coverage_threshold": 0.97,
                 }
 
-                with patch.object(validator, '_perform_llm_validation', return_value={}):
+                with patch.object(
+                    validator, "_perform_llm_validation", return_value={}
+                ):
                     result = validator.validate("test code", "coding")
 
                     assert "actionable_feedback" in result
@@ -271,12 +300,14 @@ class TestReflectorFailures:
         """Test reflector handles maximum iterations correctly."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             reflector = Reflector(orchestrator)
@@ -292,12 +323,14 @@ enterprise_coding_agent:
         """Test reflector handles invalid validation input."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             reflector = Reflector(orchestrator)
@@ -307,24 +340,29 @@ enterprise_coding_agent:
                 reflector.reflect("invalid", "test output", "coding", 1)
 
             assert exc_info.value.details.code == ErrorCode.INVALID_PARAMETERS
-            assert "validation must be a dictionary" in exc_info.value.details.message.lower()
+            assert (
+                "validation must be a dictionary"
+                in exc_info.value.details.message.lower()
+            )
 
     def test_reflector_json_parsing_failure_fallback(self):
         """Test reflector falls back gracefully on JSON parsing failure."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             reflector = Reflector(orchestrator)
 
             # Mock call_model to return invalid JSON
-            with patch.object(reflector, 'call_model', return_value="invalid json {"):
+            with patch.object(reflector, "call_model", return_value="invalid json {"):
                 validation = {"passes": False}
                 result = reflector.reflect(validation, "test output", "coding", 1)
 
@@ -336,12 +374,14 @@ enterprise_coding_agent:
         """Test reflector processes structured reflection correctly."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             reflector = Reflector(orchestrator)
@@ -351,10 +391,12 @@ enterprise_coding_agent:
                 "confidence": 0.9,
                 "revised_output": "improved code",
                 "fixes": [{"description": "fixed bug", "priority": "high"}],
-                "root_cause_analysis": {"primary_causes": ["logic error"]}
+                "root_cause_analysis": {"primary_causes": ["logic error"]},
             }
 
-            with patch.object(reflector, 'call_model', return_value=json.dumps(structured_response)):
+            with patch.object(
+                reflector, "call_model", return_value=json.dumps(structured_response)
+            ):
                 validation = {"passes": False}
                 result = reflector.reflect(validation, "test output", "coding", 1)
 
@@ -367,12 +409,14 @@ enterprise_coding_agent:
         """Test reflector validates and clamps confidence values."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             reflector = Reflector(orchestrator)
@@ -380,10 +424,12 @@ enterprise_coding_agent:
             # Mock response with invalid confidence
             invalid_response = {
                 "confidence": 1.5,  # Invalid - > 1.0
-                "revised_output": "improved code"
+                "revised_output": "improved code",
             }
 
-            with patch.object(reflector, 'call_model', return_value=json.dumps(invalid_response)):
+            with patch.object(
+                reflector, "call_model", return_value=json.dumps(invalid_response)
+            ):
                 validation = {"passes": False}
                 result = reflector.reflect(validation, "test output", "coding", 1)
 
@@ -394,12 +440,14 @@ enterprise_coding_agent:
         """Test reflector properly analyzes validation issues."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             reflector = Reflector(orchestrator)
@@ -414,10 +462,10 @@ enterprise_coding_agent:
                         {
                             "type": "error",
                             "description": "Logic error in function",
-                            "fix": "Add null check"
+                            "fix": "Add null check",
                         }
                     ]
-                }
+                },
             }
 
             issues_analysis = reflector._analyze_validation_issues(validation)
@@ -437,14 +485,16 @@ class TestConcurrencyFailures:
 
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
-            orchestrator = AgentOrchestrator(str(config_path))
+            AgentOrchestrator(str(config_path))
             errors = []
 
             def access_state():
@@ -453,7 +503,9 @@ enterprise_coding_agent:
                     # Simulate state access patterns
                     for i in range(10):
                         state[f"key_{i}"] = f"value_{i}"
-                        time.sleep(0.001)  # Small delay to increase chance of race conditions
+                        time.sleep(
+                            0.001
+                        )  # Small delay to increase chance of race conditions
                 except Exception as e:
                     errors.append(e)
 
@@ -475,12 +527,14 @@ enterprise_coding_agent:
         """Test memory store handles concurrent access correctly."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
             memory_store = orchestrator.memory
@@ -498,6 +552,7 @@ enterprise_coding_agent:
 
             # Test concurrent operations
             import threading
+
             threads = []
             for _ in range(3):
                 thread = threading.Thread(target=store_and_retrieve)
@@ -513,7 +568,7 @@ enterprise_coding_agent:
 class TestClaudeCodeIntegrationFailures:
     """Test Claude Code client initialization and integration failures."""
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_claude_code_cli_not_found(self, mock_subprocess):
         """Test Claude Code CLI not found error handling."""
         mock_subprocess.side_effect = FileNotFoundError("claude command not found")
@@ -525,10 +580,11 @@ class TestClaudeCodeIntegrationFailures:
 
         assert "CLI not found" in str(exc_info.value)
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_claude_code_cli_timeout(self, mock_subprocess):
         """Test Claude Code CLI timeout handling."""
         import subprocess
+
         mock_subprocess.side_effect = subprocess.TimeoutExpired("claude", 5)
 
         from src.providers.claude_code_provider import ClaudeCodeProvider
@@ -538,7 +594,7 @@ class TestClaudeCodeIntegrationFailures:
 
         assert "timeout" in str(exc_info.value).lower()
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_claude_code_authentication_issues(self, mock_subprocess):
         """Test Claude Code authentication issue handling."""
         # Mock version check success but auth failure
@@ -574,12 +630,12 @@ class TestErrorPropagationAndObservability:
         validation_error = create_validation_error(
             "Test validation failure",
             validation_type="test",
-            error_code=ErrorCode.VALIDATION_FAILED
+            error_code=ErrorCode.VALIDATION_FAILED,
         )
 
         orchestration_error = create_orchestration_error(
             "Test orchestration failure",
-            error_code=ErrorCode.ORCHESTRATION_PIPELINE_FAILED
+            error_code=ErrorCode.ORCHESTRATION_PIPELINE_FAILED,
         )
 
         # Handle the errors
@@ -599,7 +655,7 @@ class TestErrorPropagationAndObservability:
             "Test error with context",
             validation_type="test_type",
             error_code=ErrorCode.VALIDATION_FAILED,
-            context={"test_key": "test_value", "number": 42}
+            context={"test_key": "test_value", "number": 42},
         )
 
         error.add_recovery_suggestion("Try this fix")
@@ -621,7 +677,7 @@ class TestErrorPropagationAndObservability:
         error = create_validation_error(
             "Test error for JSON",
             error_code=ErrorCode.VALIDATION_FAILED,
-            context={"test": True}
+            context={"test": True},
         )
 
         json_str = error.details.to_json()
@@ -635,12 +691,14 @@ class TestErrorPropagationAndObservability:
         """Test errors propagate correctly through the entire pipeline."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
   governance: {}
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
 
@@ -648,7 +706,9 @@ enterprise_coding_agent:
             orchestrator.reset_error_history()
 
             # Try to run with invalid inputs
-            with pytest.raises(ValueError):  # Should be ValueError from run_mode validation
+            with pytest.raises(
+                ValueError
+            ):  # Should be ValueError from run_mode validation
                 orchestrator.run_mode("", "")  # Empty domain and task
 
             # Try with invalid domain
@@ -663,7 +723,8 @@ class TestReflectionLogicEdgeCases:
         """Test various early termination conditions in reflection."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
-            config_path.write_text("""
+            config_path.write_text(
+                """
 enterprise_coding_agent:
   orchestration: {}
   memory: {}
@@ -675,18 +736,21 @@ enterprise_coding_agent:
       stagnation_threshold: 3
       min_iterations: 1
       progress_threshold: 0.1
-""")
+"""
+            )
 
             orchestrator = AgentOrchestrator(str(config_path))
 
             # Test confidence regression termination
-            initial_state = AgentState({
-                "task": "test task",
-                "domain": "coding",
-                "confidence": 0.8,
-                "needs_reflect": True,
-                "validation": {"passes": False}
-            })
+            AgentState(
+                {
+                    "task": "test task",
+                    "domain": "coding",
+                    "confidence": 0.8,
+                    "needs_reflect": True,
+                    "validation": {"passes": False},
+                }
+            )
 
             # This would require mocking the reflection loop execution
             # to simulate confidence regression
@@ -704,7 +768,7 @@ enterprise_coding_agent:
             task="test task",
             initial_confidence=0.5,
             max_iterations=5,
-            configuration={"test": True}
+            configuration={"test": True},
         )
 
         assert session_id is not None
@@ -717,7 +781,7 @@ enterprise_coding_agent:
                 issue_type="test_failure",
                 severity="high",
                 description="Test failed",
-                confidence=0.9
+                confidence=0.9,
             )
         ]
 
@@ -727,7 +791,7 @@ enterprise_coding_agent:
             input_data={"test": "data"},
             output_data={"result": "identified"},
             confidence_before=0.5,
-            issues=issues
+            issues=issues,
         )
 
         # Test session completion
@@ -737,7 +801,7 @@ enterprise_coding_agent:
             session_id,
             ReflectionDecision.EARLY_TERMINATION,
             final_confidence=0.8,
-            outcome={"success": True}
+            outcome={"success": True},
         )
 
 

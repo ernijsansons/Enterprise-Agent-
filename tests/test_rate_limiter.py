@@ -1,23 +1,24 @@
 """Tests for rate limiter functionality."""
-import pytest
-import time
-import threading
-import sys
 import os
+import sys
+import threading
+import time
+
+import pytest
 
 # Add src to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.utils.rate_limiter import (
-    RateLimitConfig,
-    TokenBucket,
-    RateLimiter,
-    AdaptiveRateLimiter,
-    get_rate_limiter,
-    setup_default_limits,
-    rate_limited,
-)
 from src.exceptions import RateLimitExceeded
+from src.utils.rate_limiter import (
+    AdaptiveRateLimiter,
+    RateLimitConfig,
+    RateLimiter,
+    TokenBucket,
+    get_rate_limiter,
+    rate_limited,
+    setup_default_limits,
+)
 
 
 class TestTokenBucket:
@@ -38,19 +39,21 @@ class TestTokenBucket:
         bucket = TokenBucket(config)
 
         # Should be able to acquire tokens
-        assert bucket.acquire(5) == True
+        assert bucket.acquire(5) is True
         assert bucket.tokens == 5.0
 
         # Should be able to acquire remaining tokens
-        assert bucket.acquire(5) == True
+        assert bucket.acquire(5) is True
         assert bucket.tokens == 0.0
 
         # Should not be able to acquire more tokens
-        assert bucket.acquire(1) == False
+        assert bucket.acquire(1) is False
 
     def test_token_refill(self):
         """Test token refill over time."""
-        config = RateLimitConfig(max_tokens=10, refill_rate=10.0)  # 10 tokens per second
+        config = RateLimitConfig(
+            max_tokens=10, refill_rate=10.0
+        )  # 10 tokens per second
         bucket = TokenBucket(config)
 
         # Use all tokens
@@ -95,18 +98,18 @@ class TestRateLimiter:
         limiter.add_limit("test_key", config)
 
         # Should be able to acquire tokens
-        assert limiter.acquire("test_key", 3) == True
-        assert limiter.acquire("test_key", 2) == True
+        assert limiter.acquire("test_key", 3) is True
+        assert limiter.acquire("test_key", 2) is True
 
         # Should be rate limited now
-        assert limiter.acquire("test_key", 1) == False
+        assert limiter.acquire("test_key", 1) is False
 
     def test_acquire_without_limit(self):
         """Test acquiring tokens without configured limit."""
         limiter = RateLimiter()
 
         # Should allow by default
-        assert limiter.acquire("unknown_key", 100) == True
+        assert limiter.acquire("unknown_key", 100) is True
 
     def test_get_status(self):
         """Test getting rate limit status."""
@@ -130,8 +133,8 @@ class TestRateLimiter:
         limiter.acquire("test_key", 5)
 
         # Reset should restore tokens
-        assert limiter.reset("test_key") == True
-        assert limiter.acquire("test_key", 5) == True
+        assert limiter.reset("test_key") is True
+        assert limiter.acquire("test_key", 5) is True
 
     def test_thread_safety(self):
         """Test rate limiter is thread safe."""
@@ -164,8 +167,8 @@ class TestAdaptiveRateLimiter:
     def test_adaptive_initialization(self):
         """Test adaptive rate limiter initializes correctly."""
         limiter = AdaptiveRateLimiter()
-        assert hasattr(limiter, '_success_counts')
-        assert hasattr(limiter, '_failure_counts')
+        assert hasattr(limiter, "_success_counts")
+        assert hasattr(limiter, "_failure_counts")
 
     def test_record_success_failure(self):
         """Test recording success and failure."""
@@ -264,19 +267,21 @@ class TestIntegration:
     def test_rate_limit_recovery(self):
         """Test that rate limits recover over time."""
         limiter = RateLimiter()
-        config = RateLimitConfig(max_tokens=5, refill_rate=10.0)  # Fast refill for testing
+        config = RateLimitConfig(
+            max_tokens=5, refill_rate=10.0
+        )  # Fast refill for testing
         limiter.add_limit("recovery_test", config)
 
         # Use all tokens
-        assert limiter.acquire("recovery_test", 5) == True
-        assert limiter.acquire("recovery_test", 1) == False
+        assert limiter.acquire("recovery_test", 5) is True
+        assert limiter.acquire("recovery_test", 1) is False
 
         # Simulate time passing (0.1 second should refill ~1 token)
         bucket = limiter._buckets["recovery_test"]
         bucket.last_update = time.time() - 0.1
 
         # Should be able to acquire a token now
-        assert limiter.acquire("recovery_test", 1) == True
+        assert limiter.acquire("recovery_test", 1) is True
 
 
 if __name__ == "__main__":

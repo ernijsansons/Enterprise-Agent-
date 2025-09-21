@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """Benchmark script to demonstrate async performance improvements."""
 import asyncio
-import time
 import logging
+import time
 from typing import Dict
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -25,6 +24,7 @@ async def simulate_async_operations():
     # Simulate multiple cache lookups
     cache_tasks = []
     for i in range(10):
+
         async def cache_lookup(key_id=i):
             await asyncio.sleep(0.1)  # Simulate cache lookup
             return f"cached_value_{key_id}"
@@ -43,6 +43,7 @@ async def simulate_async_operations():
 
     http_tasks = []
     for i in range(5):
+
         async def http_request(req_id=i):
             await asyncio.sleep(0.5)  # Simulate HTTP request
             return {"id": req_id, "status": "success", "data": f"response_{req_id}"}
@@ -60,20 +61,23 @@ async def simulate_async_operations():
     start_time = time.time()
 
     model_tasks = []
-    for i, prompt in enumerate([
-        "Plan the architecture",
-        "Write the implementation",
-        "Validate the code",
-        "Review for quality",
-        "Generate documentation"
-    ]):
+    for i, prompt in enumerate(
+        [
+            "Plan the architecture",
+            "Write the implementation",
+            "Validate the code",
+            "Review for quality",
+            "Generate documentation",
+        ]
+    ):
+
         async def model_call(call_id=i, call_prompt=prompt):
             await asyncio.sleep(0.8)  # Simulate model call
             return {
                 "id": call_id,
                 "prompt": call_prompt,
                 "response": f"Model response for: {call_prompt[:20]}...",
-                "tokens": 150 + call_id * 10
+                "tokens": 150 + call_id * 10,
             }
 
         model_tasks.append(model_call())
@@ -91,9 +95,11 @@ async def simulate_async_operations():
     async def batch_operation(batch_size=20):
         tasks = []
         for i in range(batch_size):
+
             async def process_item(item_id=i):
                 await asyncio.sleep(0.05)  # Simulate processing
                 return f"processed_item_{item_id}"
+
             tasks.append(process_item())
 
         return await asyncio.gather(*tasks)
@@ -120,7 +126,7 @@ async def simulate_async_operations():
         "http": {"duration": http_duration, "count": len(http_results)},
         "models": {"duration": model_duration, "count": len(model_results)},
         "batch": {"duration": batch_duration, "count": len(batch_results)},
-        "total_speedup": overall_speedup
+        "total_speedup": overall_speedup,
     }
 
 
@@ -155,13 +161,15 @@ def simulate_sync_operations():
     print("\n🤖 Sequential Model Calls...")
     model_start = time.time()
     model_results = []
-    for i, prompt in enumerate([
-        "Plan the architecture",
-        "Write the implementation",
-        "Validate the code",
-        "Review for quality",
-        "Generate documentation"
-    ]):
+    for i, prompt in enumerate(
+        [
+            "Plan the architecture",
+            "Write the implementation",
+            "Validate the code",
+            "Review for quality",
+            "Generate documentation",
+        ]
+    ):
         time.sleep(0.8)  # Simulate model call
         model_results.append({"id": i, "prompt": prompt})
     model_duration = time.time() - model_start
@@ -186,7 +194,7 @@ def simulate_sync_operations():
         "http": {"duration": http_duration, "count": len(http_results)},
         "models": {"duration": model_duration, "count": len(model_results)},
         "batch": {"duration": batch_duration, "count": len(batch_results)},
-        "total_time": total_sync_time
+        "total_time": total_sync_time,
     }
 
 
@@ -203,14 +211,20 @@ def analyze_performance_gains(sync_results: Dict, async_results: Dict):
         async_time = async_results[operation]["duration"]
         speedup = sync_time / async_time if async_time > 0 else 0
 
-        print(f"{operation.capitalize():>8}: {sync_time:.2f}s → {async_time:.2f}s ({speedup:.1f}x speedup)")
+        print(
+            f"{operation.capitalize():>8}: {sync_time:.2f}s → {async_time:.2f}s ({speedup:.1f}x speedup)"
+        )
 
     # Overall comparison
     sync_total = sync_results["total_time"]
-    async_total = sum(async_results[op]["duration"] for op in ["cache", "http", "models", "batch"])
+    async_total = sum(
+        async_results[op]["duration"] for op in ["cache", "http", "models", "batch"]
+    )
     overall_speedup = sync_total / async_total if async_total > 0 else 0
 
-    print(f"\n{'Overall':>8}: {sync_total:.2f}s → {async_total:.2f}s ({overall_speedup:.1f}x speedup)")
+    print(
+        f"\n{'Overall':>8}: {sync_total:.2f}s → {async_total:.2f}s ({overall_speedup:.1f}x speedup)"
+    )
 
     # Performance benefits
     print("\n🎯 Key Benefits:")
@@ -223,7 +237,7 @@ def analyze_performance_gains(sync_results: Dict, async_results: Dict):
     return {
         "sync_total": sync_total,
         "async_total": async_total,
-        "overall_speedup": overall_speedup
+        "overall_speedup": overall_speedup,
     }
 
 
@@ -251,11 +265,7 @@ async def main():
     print("\n🎉 Benchmark Complete!")
     print(f"Overall Performance Improvement: {analysis['overall_speedup']:.1f}x faster")
 
-    return {
-        "sync": sync_results,
-        "async": async_results,
-        "analysis": analysis
-    }
+    return {"sync": sync_results, "async": async_results, "analysis": analysis}
 
 
 if __name__ == "__main__":

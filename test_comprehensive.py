@@ -75,7 +75,7 @@ def test_basic_imports():
     for name, module_path, class_name in modules_to_test:
         try:
             module = __import__(module_path, fromlist=[class_name])
-            cls = getattr(module, class_name)
+            getattr(module, class_name)
             print_success(f"{name} imported successfully")
         except Exception as e:
             print_fail(f"{name} import failed: {e}")
@@ -136,7 +136,7 @@ def test_auth_manager():
         # Test API key removal
         original_key = os.environ.get("ANTHROPIC_API_KEY")
         os.environ["ANTHROPIC_API_KEY"] = "test-key"
-        result = auth_manager.ensure_subscription_mode()
+        auth_manager.ensure_subscription_mode()
         assert "ANTHROPIC_API_KEY" not in os.environ
         print_success("API key removal works")
 
@@ -391,12 +391,12 @@ def test_environment_configuration():
         # Test USE_CLAUDE_CODE detection
         os.environ["USE_CLAUDE_CODE"] = "true"
         orchestrator = AgentOrchestrator()
-        assert orchestrator._use_claude_code == True
+        assert orchestrator._use_claude_code is True
         print_success("USE_CLAUDE_CODE=true detected")
 
         os.environ["USE_CLAUDE_CODE"] = "false"
         orchestrator = AgentOrchestrator()
-        assert orchestrator._use_claude_code == False
+        assert orchestrator._use_claude_code is False
         print_success("USE_CLAUDE_CODE=false detected")
 
         # Test model configuration from env
@@ -428,7 +428,7 @@ def test_all_roles():
 
         for role_name, role_class in roles:
             try:
-                role = role_class(MagicMock())
+                role_class(MagicMock())
                 print_success(f"{role_name} initialized")
             except Exception as e:
                 print_fail(f"{role_name} failed: {e}")

@@ -8,13 +8,14 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
+
 def check_environment():
     """Check if environment is ready."""
     print("Checking test environment...")
 
     required_files = [
         "src/agent_orchestrator.py",
-        "tests/comprehensive/test_framework.py"
+        "tests/comprehensive/test_framework.py",
     ]
 
     for file_path in required_files:
@@ -25,22 +26,25 @@ def check_environment():
     print("Environment check passed")
     return True
 
+
 async def run_framework_demo():
     """Run a simple framework demonstration."""
     print("Enterprise Agent Comprehensive Test Framework Demo")
     print("=" * 60)
 
     try:
-        from tests.comprehensive.test_framework import TestFramework, TestLayer, TestSuite
+        from tests.comprehensive.test_framework import (
+            TestFramework,
+            TestLayer,
+            TestSuite,
+        )
 
         # Create simple test framework
         framework = TestFramework()
 
         # Create a demo layer
         demo_layer = TestLayer(
-            name="Demo Layer",
-            description="Framework demonstration",
-            enabled=True
+            name="Demo Layer", description="Framework demonstration", enabled=True
         )
 
         # Create demo test functions
@@ -59,7 +63,10 @@ async def run_framework_demo():
 
         def test_intentional_failure():
             """Demo failure test."""
-            return {"success": False, "message": "Intentional failure for demonstration"}
+            return {
+                "success": False,
+                "message": "Intentional failure for demonstration",
+            }
 
         # Create demo suite
         demo_suite = TestSuite(
@@ -69,8 +76,8 @@ async def run_framework_demo():
                 test_basic_functionality,
                 test_error_handling,
                 test_async_functionality,
-                test_intentional_failure
-            ]
+                test_intentional_failure,
+            ],
         )
 
         demo_layer.suites.append(demo_suite)
@@ -102,7 +109,9 @@ async def run_framework_demo():
         print()
         print("Layer Results:")
         for layer_name, layer_data in report.get("layer_breakdown", {}).items():
-            print(f"  {layer_name}: {layer_data['passed']}/{layer_data['total']} passed")
+            print(
+                f"  {layer_name}: {layer_data['passed']}/{layer_data['total']} passed"
+            )
 
         # Show failures
         failures = report.get("failures", [])
@@ -127,6 +136,7 @@ async def run_framework_demo():
         print(f"Demo failed: {e}")
         return False
 
+
 async def run_quick_component_test():
     """Run a quick test of actual components."""
     print()
@@ -139,6 +149,7 @@ async def run_quick_component_test():
 
         # Test async components import
         from src.utils.async_cache import AsyncLRUCache
+
         print("SUCCESS: AsyncLRUCache import")
 
         # Test basic cache functionality
@@ -160,6 +171,7 @@ async def run_quick_component_test():
     except Exception as e:
         print(f"Component test failed: {e}")
         return False
+
 
 async def main():
     """Main demo function."""
@@ -208,6 +220,7 @@ async def main():
     except Exception as e:
         print(f"Demo failed with error: {e}")
         return 1
+
 
 if __name__ == "__main__":
     exit_code = asyncio.run(main())

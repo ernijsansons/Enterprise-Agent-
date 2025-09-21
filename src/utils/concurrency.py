@@ -136,7 +136,9 @@ class ExecutionManager:
                         if j > i and not remaining_future.done():
                             remaining_future.cancel()
                     logger.error(f"Error in parallel execution for item {i}: {exc}")
-                    raise RuntimeError(f"Parallel execution failed on item {i}: {exc}") from exc
+                    raise RuntimeError(
+                        f"Parallel execution failed on item {i}: {exc}"
+                    ) from exc
 
             return results
 
@@ -192,6 +194,7 @@ def synchronized_state(lock: threading.Lock = None):
 
 class ThreadSafeMeta(type):
     """Metaclass to automatically create instance-specific locks."""
+
     def __call__(cls, *args, **kwargs):
         instance = super().__call__(*args, **kwargs)
         instance._instance_lock = threading.RLock()
@@ -204,6 +207,7 @@ def thread_safe(lock_attr: str = None):
     Args:
         lock_attr: Name of the lock attribute on the instance (default: '_instance_lock')
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -211,10 +215,12 @@ def thread_safe(lock_attr: str = None):
             if lock_attr:
                 lock = getattr(self, lock_attr, None)
                 if lock is None:
-                    raise AttributeError(f"Lock attribute '{lock_attr}' not found on instance")
+                    raise AttributeError(
+                        f"Lock attribute '{lock_attr}' not found on instance"
+                    )
             else:
                 # Try to get instance lock, create if doesn't exist
-                if not hasattr(self, '_instance_lock'):
+                if not hasattr(self, "_instance_lock"):
                     self._instance_lock = threading.RLock()
                 lock = self._instance_lock
 

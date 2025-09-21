@@ -13,48 +13,48 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-# Import structured error handling
-from src.utils.errors import (
-    EnterpriseAgentError,
-    ErrorCode,
-    ErrorSeverity,
-    get_error_handler,
-    create_orchestration_error,
-    create_model_error,
-    create_config_error,
-    handle_error
-)
-from src.utils.metrics import (
-    get_metrics_collector,
-    MetricSeverity,
-    record_counter,
-    record_gauge,
-    record_event,
-    timer
-)
-from src.utils.reflection_audit import (
-    get_reflection_auditor,
-    ReflectionPhase,
-    ReflectionDecision,
-    ValidationIssue,
-    start_reflection_session,
-    log_reflection_step,
-    finish_reflection_session
-)
-
 from src.orchestration import build_graph
 from src.orchestration.async_orchestrator import get_async_orchestrator
 from src.providers.auth_manager import get_auth_manager
 from src.providers.claude_code_provider import get_claude_code_provider
 from src.roles import Coder, Planner, Reflector, Reviewer, Validator
 from src.tools import invoke_codex_cli
-from src.utils.cache import get_model_cache, ModelResponseCache, CacheConfig
+from src.utils.cache import CacheConfig, ModelResponseCache, get_model_cache
 from src.utils.concurrency import ExecutionManager
+
+# Import structured error handling
+from src.utils.errors import (
+    EnterpriseAgentError,
+    ErrorCode,
+    ErrorSeverity,
+    create_config_error,
+    create_model_error,
+    create_orchestration_error,
+    get_error_handler,
+    handle_error,
+)
+from src.utils.metrics import (
+    MetricSeverity,
+    get_metrics_collector,
+    record_counter,
+    record_event,
+    record_gauge,
+    timer,
+)
 from src.utils.notifications import notify_cli_failure
+from src.utils.reflection_audit import (
+    ReflectionDecision,
+    ReflectionPhase,
+    ValidationIssue,
+    finish_reflection_session,
+    get_reflection_auditor,
+    log_reflection_step,
+    start_reflection_session,
+)
 from src.utils.retry import retry_on_timeout
 from src.utils.safety import scrub_pii
 from src.utils.secrets import load_secrets
-from src.utils.telemetry import record_event, record_metric
+from src.utils.telemetry import record_metric
 from src.utils.validation import DomainValidator, StringValidator
 
 try:  # Optional dependencies; continue gracefully if missing
@@ -223,7 +223,9 @@ class AgentOrchestrator:
             )
 
             # Initialize Claude Code provider if enabled
-            self._use_claude_code = os.getenv("USE_CLAUDE_CODE", "false").lower() == "true"
+            self._use_claude_code = (
+                os.getenv("USE_CLAUDE_CODE", "false").lower() == "true"
+            )
             self._claude_code_provider = None
             if self._use_claude_code:
                 self._init_claude_code_provider()
@@ -233,15 +235,19 @@ class AgentOrchestrator:
             self._async_orchestrator = None
             if self._async_enabled:
                 try:
-                    self._async_orchestrator = get_async_orchestrator(self._build_async_config())
-                    logger.info("Async orchestrator initialized for performance improvements")
+                    self._async_orchestrator = get_async_orchestrator(
+                        self._build_async_config()
+                    )
+                    logger.info(
+                        "Async orchestrator initialized for performance improvements"
+                    )
                 except Exception as e:
-                    error_details = handle_error(
+                    handle_error(
                         create_orchestration_error(
                             "Failed to initialize async orchestrator",
                             ErrorCode.ORCHESTRATION_INIT_FAILED,
                             context={"async_enabled": True, "error": str(e)},
-                            cause=e
+                            cause=e,
                         )
                     )
                     logger.warning(f"Failed to initialize async orchestrator: {e}")
@@ -251,14 +257,17 @@ class AgentOrchestrator:
             try:
                 self.secrets = load_secrets()
             except Exception as exc:
-                error_details = handle_error(
+                handle_error(
                     EnterpriseAgentError(
                         ErrorCode.AUTH_SETUP_FAILED,
                         "Secret loading degraded; continuing with limited credentials",
                         context={"error": str(exc)},
                         severity=ErrorSeverity.LOW,
-                        recovery_suggestions=["Check secret configuration", "Verify environment variables"],
-                        cause=exc
+                        recovery_suggestions=[
+                            "Check secret configuration",
+                            "Verify environment variables",
+                        ],
+                        cause=exc,
                     )
                 )
                 self.secrets = {}
@@ -277,12 +286,12 @@ class AgentOrchestrator:
             logger.info("AgentOrchestrator initialized successfully")
 
         except Exception as e:
-            error_details = handle_error(
+            handle_error(
                 create_orchestration_error(
                     f"Failed to initialize AgentOrchestrator: {str(e)}",
                     ErrorCode.ORCHESTRATION_INIT_FAILED,
                     context={"config_path": config_path},
-                    cause=e
+                    cause=e,
                 )
             )
             raise
@@ -291,7 +300,9 @@ class AgentOrchestrator:
         """Load and validate configuration with structured error handling."""
         try:
             config_override = os.getenv("ENTERPRISE_AGENT_CONFIG")
-            config_path = Path(config_override) if config_override else Path(config_path)
+            config_path = (
+                Path(config_override) if config_override else Path(config_path)
+            )
 
             if not config_path.is_absolute():
                 candidate = Path(__file__).resolve().parents[1] / config_path
@@ -311,8 +322,8 @@ class AgentOrchestrator:
                     recovery_suggestions=[
                         "Check if the configuration file exists",
                         "Verify the ENTERPRISE_AGENT_CONFIG environment variable",
-                        "Use the default config path: configs/agent_config_v3.4.yaml"
-                    ]
+                        "Use the default config path: configs/agent_config_v3.4.yaml",
+                    ],
                 )
 
             with open(config_path, "r", encoding="utf-8") as handle:
@@ -326,16 +337,16 @@ class AgentOrchestrator:
                 recovery_suggestions=[
                     "Check YAML syntax in configuration file",
                     "Validate configuration structure",
-                    "Use a YAML validator tool"
+                    "Use a YAML validator tool",
                 ],
-                cause=e
+                cause=e,
             )
         except Exception as e:
             raise create_config_error(
                 f"Failed to load configuration: {str(e)}",
                 ErrorCode.CONFIG_VALIDATION_FAILED,
                 context={"config_path": str(config_path)},
-                cause=e
+                cause=e,
             )
 
         # Validate required configuration sections
@@ -343,12 +354,15 @@ class AgentOrchestrator:
             raise create_config_error(
                 "Missing required 'enterprise_coding_agent' section in configuration",
                 ErrorCode.CONFIG_MISSING_REQUIRED_FIELD,
-                context={"config_path": str(config_path), "missing_section": "enterprise_coding_agent"},
+                context={
+                    "config_path": str(config_path),
+                    "missing_section": "enterprise_coding_agent",
+                },
                 recovery_suggestions=[
                     "Add the 'enterprise_coding_agent' section to your configuration",
                     "Use the default configuration template",
-                    "Check configuration documentation"
-                ]
+                    "Check configuration documentation",
+                ],
             )
 
     def _init_components(self) -> None:
@@ -372,7 +386,8 @@ class AgentOrchestrator:
             self.anthropic_client = None
             self.gemini_client = None
             self._codex_available = (
-                bool(shutil.which("codex")) and os.getenv("CODEX_CLI_ENABLED", "0") == "1"
+                bool(shutil.which("codex"))
+                and os.getenv("CODEX_CLI_ENABLED", "0") == "1"
             )
 
         except Exception as e:
@@ -380,7 +395,7 @@ class AgentOrchestrator:
                 f"Failed to initialize core components: {str(e)}",
                 ErrorCode.ORCHESTRATION_INIT_FAILED,
                 context={"component_init": "core_components"},
-                cause=e
+                cause=e,
             )
 
     def _init_cache_system(self) -> None:
@@ -401,27 +416,35 @@ class AgentOrchestrator:
             # Initialize model cache with configuration
             model_cache_config = CacheConfig(
                 enabled=model_cache_cfg.get("enabled", cache_config.enabled),
-                default_ttl=model_cache_cfg.get("default_ttl", 900),  # 15 minutes for models
+                default_ttl=model_cache_cfg.get(
+                    "default_ttl", 900
+                ),  # 15 minutes for models
                 max_size=model_cache_cfg.get("max_size", 500),
                 adaptive_ttl=cache_config.adaptive_ttl,
                 quality_threshold=cache_config.quality_threshold,
-                high_quality_ttl_multiplier=model_cache_cfg.get("high_confidence_ttl_multiplier", 2.0),
+                high_quality_ttl_multiplier=model_cache_cfg.get(
+                    "high_confidence_ttl_multiplier", 2.0
+                ),
                 persistence_enabled=cache_config.persistence_enabled,
                 persistence_path=cache_config.persistence_path,
                 compression_enabled=cache_config.compression_enabled,
                 compression_threshold=cache_config.compression_threshold,
                 eviction_policy=cache_config.eviction_policy,
-                metrics_enabled=cache_config.metrics_enabled
+                metrics_enabled=cache_config.metrics_enabled,
             )
 
             self._model_cache = ModelResponseCache(config=model_cache_config)
             self._cache_config = cache_config
 
             # Store cache multipliers for Claude responses
-            self._claude_ttl_multiplier = model_cache_cfg.get("claude_ttl_multiplier", 1.5)
+            self._claude_ttl_multiplier = model_cache_cfg.get(
+                "claude_ttl_multiplier", 1.5
+            )
 
-            logger.info(f"Initialized configurable cache system: enabled={cache_config.enabled}, "
-                       f"adaptive_ttl={cache_config.adaptive_ttl}, eviction_policy={cache_config.eviction_policy}")
+            logger.info(
+                f"Initialized configurable cache system: enabled={cache_config.enabled}, "
+                f"adaptive_ttl={cache_config.adaptive_ttl}, eviction_policy={cache_config.eviction_policy}"
+            )
 
         except Exception as e:
             logger.warning(f"Failed to initialize cache system: {e}, using defaults")
@@ -1106,7 +1129,7 @@ class AgentOrchestrator:
                 "operation": operation,
                 "provider": provider,
                 "prompt_length": len(prompt),
-                "max_tokens": max_tokens
+                "max_tokens": max_tokens,
             }
 
             # Determine specific error code based on exception type
@@ -1125,7 +1148,7 @@ class AgentOrchestrator:
                 model=resolved_model,
                 error_code=error_code,
                 context=error_context,
-                cause=exc
+                cause=exc,
             )
 
             # Add recovery suggestions based on error type
@@ -1227,7 +1250,9 @@ class AgentOrchestrator:
         # Store current state for role context access
         self._current_state = state
 
-        with timer("planner_execution", tags={"domain": state.get("domain", "unknown")}):
+        with timer(
+            "planner_execution", tags={"domain": state.get("domain", "unknown")}
+        ):
             plan = self.planner_role.decompose(
                 state.get("task", ""), state.get("domain", "")
             )
@@ -1239,8 +1264,12 @@ class AgentOrchestrator:
         # Record metrics
         record_counter("planner_executions", tags={"domain": state.get("domain")})
         record_gauge("plan_epics_count", len(state["plan_epics"]))
-        record_event("planner_completed", MetricSeverity.INFO,
-                    domain=state.get("domain"), epics=len(state["plan_epics"]))
+        record_event(
+            "planner_completed",
+            MetricSeverity.INFO,
+            domain=state.get("domain"),
+            epics=len(state["plan_epics"]),
+        )
 
         self._emit_event(
             "planner.completed",
@@ -1265,8 +1294,12 @@ class AgentOrchestrator:
         # Record metrics
         record_counter("coder_executions", tags={"domain": state.get("domain")})
         record_gauge("code_length", len(state["code"]))
-        record_event("coder_completed", MetricSeverity.INFO,
-                    domain=state.get("domain"), source=state.get("code_source"))
+        record_event(
+            "coder_completed",
+            MetricSeverity.INFO,
+            domain=state.get("domain"),
+            source=state.get("code_source"),
+        )
 
         self._emit_event(
             "coder.completed",
@@ -1339,7 +1372,9 @@ class AgentOrchestrator:
         # Get configurable max iterations and confidence threshold
         reflection_cfg = self.agent_cfg.get("reflecting", {})
         max_iterations = reflection_cfg.get("max_iterations", 5)
-        confidence_threshold = self.agent_cfg.get("reviewing", {}).get("confidence_threshold", 0.8)
+        confidence_threshold = self.agent_cfg.get("reviewing", {}).get(
+            "confidence_threshold", 0.8
+        )
 
         # Support environment variable overrides
         env_max_iterations = os.getenv("REFLECTION_MAX_ITERATIONS")
@@ -1438,9 +1473,13 @@ class AgentOrchestrator:
         if env_max_iterations:
             try:
                 max_iterations = int(env_max_iterations)
-                logger.info(f"Using reflection max_iterations from environment: {max_iterations}")
+                logger.info(
+                    f"Using reflection max_iterations from environment: {max_iterations}"
+                )
             except ValueError:
-                logger.warning(f"Invalid REFLECTION_MAX_ITERATIONS value: {env_max_iterations}, using config default: {max_iterations}")
+                logger.warning(
+                    f"Invalid REFLECTION_MAX_ITERATIONS value: {env_max_iterations}, using config default: {max_iterations}"
+                )
 
         try:
             # Pass planner context to coder for better reasoning
@@ -1487,8 +1526,8 @@ class AgentOrchestrator:
             configuration={
                 "early_termination_enabled": True,
                 "domain": domain,
-                "validation_issues": state.get("validation", {})
-            }
+                "validation_issues": state.get("validation", {}),
+            },
         )
 
         # Get early termination configuration
@@ -1504,7 +1543,9 @@ class AgentOrchestrator:
         confidence_history = []
         stagnation_count = 0
 
-        logger.info(f"Starting reflection loop: max_iterations={max_iterations}, early_termination={enable_early_termination}")
+        logger.info(
+            f"Starting reflection loop: max_iterations={max_iterations}, early_termination={enable_early_termination}"
+        )
 
         # Log initial validation analysis
         validation_issues = self._analyze_validation_issues(state.get("validation", {}))
@@ -1514,7 +1555,7 @@ class AgentOrchestrator:
             input_data={"validation": state.get("validation", {})},
             output_data={"issues_identified": len(validation_issues)},
             confidence_before=initial_confidence,
-            issues=validation_issues
+            issues=validation_issues,
         )
 
         final_decision = ReflectionDecision.CONTINUE_REFLECTION
@@ -1528,9 +1569,12 @@ class AgentOrchestrator:
                 log_reflection_step(
                     audit_session_id,
                     ReflectionPhase.ISSUE_IDENTIFICATION,
-                    input_data={"iteration": iteration, "confidence": previous_confidence},
+                    input_data={
+                        "iteration": iteration,
+                        "confidence": previous_confidence,
+                    },
                     confidence_before=previous_confidence,
-                    iteration=iteration
+                    iteration=iteration,
                 )
 
                 # Pass validation context to reflector
@@ -1546,8 +1590,16 @@ class AgentOrchestrator:
 
                 # Log reflection results
                 reflection_analysis = state.get("reflection_analysis", {})
-                fixes_generated = reflection_analysis.get("fixes", []) if isinstance(reflection_analysis, dict) else []
-                selected_fix = reflection_analysis.get("selected_fix") if isinstance(reflection_analysis, dict) else None
+                fixes_generated = (
+                    reflection_analysis.get("fixes", [])
+                    if isinstance(reflection_analysis, dict)
+                    else []
+                )
+                selected_fix = (
+                    reflection_analysis.get("selected_fix")
+                    if isinstance(reflection_analysis, dict)
+                    else None
+                )
 
                 log_reflection_step(
                     audit_session_id,
@@ -1556,23 +1608,29 @@ class AgentOrchestrator:
                     output_data={
                         "confidence": current_confidence,
                         "fixes_count": len(fixes_generated),
-                        "selected_fix_index": selected_fix
+                        "selected_fix_index": selected_fix,
                     },
                     confidence_before=previous_confidence,
                     confidence_after=current_confidence,
                     fixes=fixes_generated,
-                    selected_fix=str(selected_fix) if selected_fix is not None else None,
+                    selected_fix=str(selected_fix)
+                    if selected_fix is not None
+                    else None,
                     duration=reflection_duration,
-                    iteration=iteration
+                    iteration=iteration,
                 )
 
-                logger.debug(f"Reflection iteration {iteration}: confidence {previous_confidence:.3f} -> {current_confidence:.3f}")
+                logger.debug(
+                    f"Reflection iteration {iteration}: confidence {previous_confidence:.3f} -> {current_confidence:.3f}"
+                )
 
                 # Check if reflection indicates halt
                 if not state.get("needs_reflect"):
                     final_decision = ReflectionDecision.HALT_REFLECTION
                     termination_reason = "reflector_decision"
-                    logger.info(f"Reflection loop halted by reflector after {iteration + 1} iterations")
+                    logger.info(
+                        f"Reflection loop halted by reflector after {iteration + 1} iterations"
+                    )
                     break
 
                 # Early termination checks
@@ -1588,16 +1646,24 @@ class AgentOrchestrator:
                     if stagnation_count >= stagnation_threshold:
                         final_decision = ReflectionDecision.EARLY_TERMINATION
                         termination_reason = "stagnation"
-                        logger.info(f"Early termination due to stagnation after {iteration + 1} iterations (stagnation_count={stagnation_count})")
+                        logger.info(
+                            f"Early termination due to stagnation after {iteration + 1} iterations (stagnation_count={stagnation_count})"
+                        )
 
                         log_reflection_step(
                             audit_session_id,
                             ReflectionPhase.TERMINATION_DECISION,
-                            input_data={"stagnation_count": stagnation_count, "threshold": stagnation_threshold},
-                            output_data={"decision": "early_termination", "reason": "stagnation"},
+                            input_data={
+                                "stagnation_count": stagnation_count,
+                                "threshold": stagnation_threshold,
+                            },
+                            output_data={
+                                "decision": "early_termination",
+                                "reason": "stagnation",
+                            },
                             confidence_after=current_confidence,
                             decisions=["early_termination"],
-                            stagnation_count=stagnation_count
+                            stagnation_count=stagnation_count,
                         )
 
                         state["early_termination_reason"] = "stagnation"
@@ -1610,16 +1676,21 @@ class AgentOrchestrator:
                         if recent_trend < -0.2:  # Significant regression
                             final_decision = ReflectionDecision.EARLY_TERMINATION
                             termination_reason = "regression"
-                            logger.info(f"Early termination due to confidence regression after {iteration + 1} iterations")
+                            logger.info(
+                                f"Early termination due to confidence regression after {iteration + 1} iterations"
+                            )
 
                             log_reflection_step(
                                 audit_session_id,
                                 ReflectionPhase.TERMINATION_DECISION,
                                 input_data={"confidence_trend": recent_trend},
-                                output_data={"decision": "early_termination", "reason": "regression"},
+                                output_data={
+                                    "decision": "early_termination",
+                                    "reason": "regression",
+                                },
                                 confidence_after=current_confidence,
                                 decisions=["early_termination"],
-                                confidence_trend=recent_trend
+                                confidence_trend=recent_trend,
                             )
 
                             state["early_termination_reason"] = "regression"
@@ -1632,7 +1703,7 @@ class AgentOrchestrator:
                     iteration + 1,
                     current_confidence,
                     state.get("needs_reflect", False),
-                    termination_reason
+                    termination_reason,
                 )
 
                 # Pass reflection context back to coder
@@ -1655,12 +1726,12 @@ class AgentOrchestrator:
                     output_data={
                         "code_length": len(state.get("code", "")),
                         "coder_duration": coder_duration,
-                        "validator_duration": validator_duration
+                        "validator_duration": validator_duration,
                     },
                     confidence_after=state.get("confidence", current_confidence),
                     iteration=iteration,
                     coder_duration=coder_duration,
-                    validator_duration=validator_duration
+                    validator_duration=validator_duration,
                 )
 
             except Exception as e:
@@ -1672,14 +1743,14 @@ class AgentOrchestrator:
                         "iteration": iteration,
                         "max_iterations": max_iterations,
                         "current_confidence": state.get("confidence", 0.0),
-                        "needs_reflect": state.get("needs_reflect", False)
+                        "needs_reflect": state.get("needs_reflect", False),
                     },
                     recovery_suggestions=[
                         "Check validation results for issues",
                         "Review reflection configuration",
-                        "Consider reducing max_iterations"
+                        "Consider reducing max_iterations",
                     ],
-                    cause=e
+                    cause=e,
                 )
 
                 handle_error(reflection_error)
@@ -1693,7 +1764,7 @@ class AgentOrchestrator:
                     error=str(e),
                     confidence_after=state.get("confidence", 0.0),
                     decisions=["error_termination"],
-                    iteration=iteration
+                    iteration=iteration,
                 )
 
                 state["reflection_error"] = reflection_error.details.to_dict()
@@ -1703,7 +1774,10 @@ class AgentOrchestrator:
                 break
 
         # Handle max iterations reached
-        if len(confidence_history) >= max_iterations and final_decision == ReflectionDecision.CONTINUE_REFLECTION:
+        if (
+            len(confidence_history) >= max_iterations
+            and final_decision == ReflectionDecision.CONTINUE_REFLECTION
+        ):
             final_decision = ReflectionDecision.MAX_ITERATIONS_REACHED
             termination_reason = "max_iterations"
 
@@ -1720,7 +1794,7 @@ class AgentOrchestrator:
             "confidence_history": confidence_history,
             "early_termination": state.get("early_termination_reason") is not None,
             "termination_reason": state.get("early_termination_reason", "completed"),
-            "audit_session_id": audit_session_id
+            "audit_session_id": audit_session_id,
         }
 
         # Finish audit session
@@ -1732,15 +1806,19 @@ class AgentOrchestrator:
                 "iterations_completed": len(confidence_history),
                 "confidence_gain": confidence_gain,
                 "termination_reason": termination_reason,
-                "success": confidence_gain > 0
-            }
+                "success": confidence_gain > 0,
+            },
         )
 
-        logger.info(f"Reflection loop completed: {len(confidence_history)} iterations, confidence {initial_confidence:.3f} -> {final_confidence:.3f} (gain: {confidence_gain:+.3f})")
+        logger.info(
+            f"Reflection loop completed: {len(confidence_history)} iterations, confidence {initial_confidence:.3f} -> {final_confidence:.3f} (gain: {confidence_gain:+.3f})"
+        )
 
         return state
 
-    def _analyze_validation_issues(self, validation_data: Dict[str, Any]) -> List[ValidationIssue]:
+    def _analyze_validation_issues(
+        self, validation_data: Dict[str, Any]
+    ) -> List[ValidationIssue]:
         """Analyze validation data to extract issues for audit logging.
 
         Args:
@@ -1756,33 +1834,39 @@ class AgentOrchestrator:
 
         # Extract general validation failures
         if not validation_data.get("passes", True):
-            issues.append(ValidationIssue(
-                issue_type="validation_failure",
-                severity="high",
-                description="General validation failure",
-                confidence=1.0 - validation_data.get("coverage", 0.0)
-            ))
+            issues.append(
+                ValidationIssue(
+                    issue_type="validation_failure",
+                    severity="high",
+                    description="General validation failure",
+                    confidence=1.0 - validation_data.get("coverage", 0.0),
+                )
+            )
 
         # Extract coverage issues
         coverage = validation_data.get("coverage", 1.0)
         if coverage < 0.8:
-            issues.append(ValidationIssue(
-                issue_type="low_coverage",
-                severity="medium" if coverage > 0.5 else "high",
-                description=f"Low test coverage: {coverage:.1%}",
-                confidence=1.0 - coverage
-            ))
+            issues.append(
+                ValidationIssue(
+                    issue_type="low_coverage",
+                    severity="medium" if coverage > 0.5 else "high",
+                    description=f"Low test coverage: {coverage:.1%}",
+                    confidence=1.0 - coverage,
+                )
+            )
 
         # Extract specific errors or warnings if available
         errors = validation_data.get("errors", [])
         if isinstance(errors, list):
             for error in errors[:5]:  # Limit to first 5 errors
-                issues.append(ValidationIssue(
-                    issue_type="validation_error",
-                    severity="high",
-                    description=str(error)[:200],  # Truncate long descriptions
-                    confidence=0.9
-                ))
+                issues.append(
+                    ValidationIssue(
+                        issue_type="validation_error",
+                        severity="high",
+                        description=str(error)[:200],  # Truncate long descriptions
+                        confidence=0.9,
+                    )
+                )
 
         return issues
 
@@ -1918,31 +2002,37 @@ class AgentOrchestrator:
 
                 if results and not results[0].startswith("Error:"):
                     # Build initial state with planning result
-                    initial = AgentState({
-                        "task": task,
-                        "domain": domain,
-                        "iterations": 0,
-                        "confidence": 0.0,
-                        "vuln_flag": vuln_flag,
-                        "plan": results[0],
-                    })
+                    initial = AgentState(
+                        {
+                            "task": task,
+                            "domain": domain,
+                            "iterations": 0,
+                            "confidence": 0.0,
+                            "vuln_flag": vuln_flag,
+                            "plan": results[0],
+                        }
+                    )
                 else:
                     # Fallback to sync planning
-                    initial = AgentState({
+                    initial = AgentState(
+                        {
+                            "task": task,
+                            "domain": domain,
+                            "iterations": 0,
+                            "confidence": 0.0,
+                            "vuln_flag": vuln_flag,
+                        }
+                    )
+            else:
+                initial = AgentState(
+                    {
                         "task": task,
                         "domain": domain,
                         "iterations": 0,
                         "confidence": 0.0,
                         "vuln_flag": vuln_flag,
-                    })
-            else:
-                initial = AgentState({
-                    "task": task,
-                    "domain": domain,
-                    "iterations": 0,
-                    "confidence": 0.0,
-                    "vuln_flag": vuln_flag,
-                })
+                    }
+                )
 
             # Execute pipeline (mix of async and sync based on capabilities)
             result = await self._execute_pipeline_async(initial)
@@ -1977,7 +2067,11 @@ class AgentOrchestrator:
                 if not initial.get("plan"):
                     # Execute planning with async orchestrator
                     plan_result = await self._async_orchestrator.call_model(
-                        model=self.route_to_model(initial["task"], initial["domain"], initial.get("vuln_flag", False)),
+                        model=self.route_to_model(
+                            initial["task"],
+                            initial["domain"],
+                            initial.get("vuln_flag", False),
+                        ),
                         prompt=f"Create a detailed plan for: {initial['task']} in domain: {initial['domain']}",
                         role="Planner",
                         operation="decompose",

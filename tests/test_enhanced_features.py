@@ -39,7 +39,8 @@ class TestEnhancedAuthManager:
 
         # Clean up environment variables
         import os
-        for key in ['ANTHROPIC_API_KEY', 'USE_CLAUDE_CODE']:
+
+        for key in ["ANTHROPIC_API_KEY", "USE_CLAUDE_CODE"]:
             if key in os.environ:
                 del os.environ[key]
 
@@ -121,6 +122,7 @@ class TestNotificationSystem:
         """Clean up test environment."""
         # Reset global notification state
         from src.utils.notifications import reset_notification_manager
+
         reset_notification_manager()
 
     def test_notification_creation(self):
@@ -203,7 +205,9 @@ class TestNotificationSystem:
         notify_cli_failure("test_operation", "Connection failed", fallback_used=True)
 
         notifications = get_notifications()
-        cli_notifications = [n for n in notifications if n.type == NotificationType.CLI_FAILURE]
+        cli_notifications = [
+            n for n in notifications if n.type == NotificationType.CLI_FAILURE
+        ]
         assert len(cli_notifications) == 1
         assert "test_operation" in cli_notifications[0].title
         assert "API fallback" in str(cli_notifications[0].recommendations)
@@ -216,9 +220,13 @@ class TestNotificationSystem:
         notify_authentication_issue("not_logged_in")
 
         notifications = get_notifications()
-        auth_notifications = [n for n in notifications if n.type == NotificationType.AUTHENTICATION]
+        auth_notifications = [
+            n for n in notifications if n.type == NotificationType.AUTHENTICATION
+        ]
         assert len(auth_notifications) == 1
-        assert any("claude login" in rec for rec in auth_notifications[0].recommendations)
+        assert any(
+            "claude login" in rec for rec in auth_notifications[0].recommendations
+        )
 
 
 class TestUsageMonitor:
@@ -241,15 +249,16 @@ class TestUsageMonitor:
     def teardown_method(self):
         """Clean up test environment."""
         # Reset global usage monitor state
-        from src.utils.usage_monitor import reset_usage_monitor
         from src.utils.notifications import reset_notification_manager
+        from src.utils.usage_monitor import reset_usage_monitor
 
         reset_usage_monitor()
         reset_notification_manager()
 
         # Clean up temp directory
         import shutil
-        if hasattr(self, 'temp_dir'):
+
+        if hasattr(self, "temp_dir"):
             shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_usage_window_creation(self):
@@ -336,9 +345,9 @@ class TestConfigValidator:
     def teardown_method(self):
         """Clean up test environment."""
         # Reset global state
+        from src.providers.auth_manager import reset_auth_manager
         from src.utils.notifications import reset_notification_manager
         from src.utils.usage_monitor import reset_usage_monitor
-        from src.providers.auth_manager import reset_auth_manager
 
         reset_notification_manager()
         reset_usage_monitor()
@@ -346,12 +355,14 @@ class TestConfigValidator:
 
         # Clean up temp directory
         import shutil
-        if hasattr(self, 'temp_dir'):
+
+        if hasattr(self, "temp_dir"):
             shutil.rmtree(self.temp_dir, ignore_errors=True)
 
         # Clean up environment variables
         import os
-        for key in ['ANTHROPIC_API_KEY', 'USE_CLAUDE_CODE']:
+
+        for key in ["ANTHROPIC_API_KEY", "USE_CLAUDE_CODE"]:
             if key in os.environ:
                 del os.environ[key]
 
@@ -461,9 +472,12 @@ class TestIntegration:
     def setup_method(self):
         """Setup test environment."""
         # Reset global state before each test
-        from src.utils.notifications import reset_notification_manager, clear_notifications
-        from src.utils.usage_monitor import reset_usage_monitor
         from src.providers.auth_manager import reset_auth_manager
+        from src.utils.notifications import (
+            clear_notifications,
+            reset_notification_manager,
+        )
+        from src.utils.usage_monitor import reset_usage_monitor
 
         reset_notification_manager()
         reset_usage_monitor()
@@ -473,9 +487,9 @@ class TestIntegration:
     def teardown_method(self):
         """Clean up test environment."""
         # Reset global state after each test
+        from src.providers.auth_manager import reset_auth_manager
         from src.utils.notifications import reset_notification_manager
         from src.utils.usage_monitor import reset_usage_monitor
-        from src.providers.auth_manager import reset_auth_manager
 
         reset_notification_manager()
         reset_usage_monitor()
@@ -488,8 +502,8 @@ class TestIntegration:
         mock_run.side_effect = FileNotFoundError
 
         # Try to create a ClaudeCodeProvider which should trigger the notification
-        from src.providers.claude_code_provider import ClaudeCodeProvider
         from src.exceptions import ModelException
+        from src.providers.claude_code_provider import ClaudeCodeProvider
 
         try:
             ClaudeCodeProvider({})

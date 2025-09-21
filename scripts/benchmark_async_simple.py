@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Simple benchmark script to demonstrate async performance improvements."""
 import asyncio
-import time
 import logging
+import time
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -57,7 +59,7 @@ async def simulate_async_operations():
         "Write the implementation",
         "Validate the code",
         "Review for quality",
-        "Generate documentation"
+        "Generate documentation",
     ]
 
     model_tasks = [model_call(i, prompt) for i, prompt in enumerate(prompts)]
@@ -98,7 +100,7 @@ async def simulate_async_operations():
         "http": {"duration": http_duration, "count": len(http_results)},
         "models": {"duration": model_duration, "count": len(model_results)},
         "batch": {"duration": batch_duration, "count": len(batch_results)},
-        "total_speedup": overall_speedup
+        "total_speedup": overall_speedup,
     }
 
 
@@ -138,7 +140,7 @@ def simulate_sync_operations():
         "Write the implementation",
         "Validate the code",
         "Review for quality",
-        "Generate documentation"
+        "Generate documentation",
     ]
     for i, prompt in enumerate(prompts):
         time.sleep(0.8)  # Simulate model call
@@ -164,7 +166,7 @@ def simulate_sync_operations():
         "http": {"duration": http_duration, "count": len(http_results)},
         "models": {"duration": model_duration, "count": len(model_results)},
         "batch": {"duration": batch_duration, "count": len(batch_results)},
-        "total_time": total_sync_time
+        "total_time": total_sync_time,
     }
 
 
@@ -181,14 +183,20 @@ def analyze_performance_gains(sync_results, async_results):
         async_time = async_results[operation]["duration"]
         speedup = sync_time / async_time if async_time > 0 else 0
 
-        print(f"{operation.capitalize():>8}: {sync_time:.2f}s -> {async_time:.2f}s ({speedup:.1f}x speedup)")
+        print(
+            f"{operation.capitalize():>8}: {sync_time:.2f}s -> {async_time:.2f}s ({speedup:.1f}x speedup)"
+        )
 
     # Overall comparison
     sync_total = sync_results["total_time"]
-    async_total = sum(async_results[op]["duration"] for op in ["cache", "http", "models", "batch"])
+    async_total = sum(
+        async_results[op]["duration"] for op in ["cache", "http", "models", "batch"]
+    )
     overall_speedup = sync_total / async_total if async_total > 0 else 0
 
-    print(f"\n{'Overall':>8}: {sync_total:.2f}s -> {async_total:.2f}s ({overall_speedup:.1f}x speedup)")
+    print(
+        f"\n{'Overall':>8}: {sync_total:.2f}s -> {async_total:.2f}s ({overall_speedup:.1f}x speedup)"
+    )
 
     # Performance benefits
     print("\nKey Benefits:")
@@ -201,7 +209,7 @@ def analyze_performance_gains(sync_results, async_results):
     return {
         "sync_total": sync_total,
         "async_total": async_total,
-        "overall_speedup": overall_speedup
+        "overall_speedup": overall_speedup,
     }
 
 
@@ -229,11 +237,7 @@ async def main():
     print("\nBenchmark Complete!")
     print(f"Overall Performance Improvement: {analysis['overall_speedup']:.1f}x faster")
 
-    return {
-        "sync": sync_results,
-        "async": async_results,
-        "analysis": analysis
-    }
+    return {"sync": sync_results, "async": async_results, "analysis": analysis}
 
 
 if __name__ == "__main__":

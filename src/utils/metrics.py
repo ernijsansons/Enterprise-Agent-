@@ -11,15 +11,16 @@ import os
 import threading
 import time
 from collections import defaultdict, deque
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
-from datetime import datetime
 
 
 class MetricType(Enum):
     """Types of metrics that can be collected."""
+
     COUNTER = "counter"
     GAUGE = "gauge"
     HISTOGRAM = "histogram"
@@ -29,6 +30,7 @@ class MetricType(Enum):
 
 class MetricSeverity(Enum):
     """Severity levels for metrics and events."""
+
     DEBUG = "debug"
     INFO = "info"
     WARNING = "warning"
@@ -39,6 +41,7 @@ class MetricSeverity(Enum):
 @dataclass
 class MetricPoint:
     """A single metric data point."""
+
     name: str
     value: Union[float, int, str]
     metric_type: MetricType
@@ -54,6 +57,7 @@ class MetricPoint:
 @dataclass
 class PerformanceEvent:
     """Performance event with timing and context."""
+
     name: str
     start_time: float
     end_time: Optional[float] = None
@@ -82,7 +86,7 @@ class MetricsCollector:
         enabled: bool = True,
         buffer_size: int = 10000,
         flush_interval: float = 60.0,
-        export_path: Optional[Path] = None
+        export_path: Optional[Path] = None,
     ):
         """Initialize metrics collector.
 
@@ -123,7 +127,7 @@ class MetricsCollector:
         name: str,
         value: Union[float, int] = 1,
         tags: Optional[Dict[str, str]] = None,
-        **metadata: Any
+        **metadata: Any,
     ) -> None:
         """Record a counter metric.
 
@@ -143,7 +147,7 @@ class MetricsCollector:
                 value=value,
                 metric_type=MetricType.COUNTER,
                 tags=tags or {},
-                metadata=metadata
+                metadata=metadata,
             )
             self._metrics_buffer.append(metric)
             self._maybe_flush()
@@ -153,7 +157,7 @@ class MetricsCollector:
         name: str,
         value: Union[float, int],
         tags: Optional[Dict[str, str]] = None,
-        **metadata: Any
+        **metadata: Any,
     ) -> None:
         """Record a gauge metric.
 
@@ -173,7 +177,7 @@ class MetricsCollector:
                 value=value,
                 metric_type=MetricType.GAUGE,
                 tags=tags or {},
-                metadata=metadata
+                metadata=metadata,
             )
             self._metrics_buffer.append(metric)
             self._maybe_flush()
@@ -183,7 +187,7 @@ class MetricsCollector:
         name: str,
         value: Union[float, int],
         tags: Optional[Dict[str, str]] = None,
-        **metadata: Any
+        **metadata: Any,
     ) -> None:
         """Record a histogram metric.
 
@@ -207,7 +211,7 @@ class MetricsCollector:
                 value=value,
                 metric_type=MetricType.HISTOGRAM,
                 tags=tags or {},
-                metadata=metadata
+                metadata=metadata,
             )
             self._metrics_buffer.append(metric)
             self._maybe_flush()
@@ -217,7 +221,7 @@ class MetricsCollector:
         name: str,
         duration: float,
         tags: Optional[Dict[str, str]] = None,
-        **metadata: Any
+        **metadata: Any,
     ) -> None:
         """Record a timer metric.
 
@@ -241,7 +245,7 @@ class MetricsCollector:
                 value=duration,
                 metric_type=MetricType.TIMER,
                 tags=tags or {},
-                metadata=metadata
+                metadata=metadata,
             )
             self._metrics_buffer.append(metric)
             self._maybe_flush()
@@ -252,7 +256,7 @@ class MetricsCollector:
         severity: MetricSeverity = MetricSeverity.INFO,
         message: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
-        **metadata: Any
+        **metadata: Any,
     ) -> None:
         """Record an event.
 
@@ -272,7 +276,7 @@ class MetricsCollector:
             "message": message,
             "timestamp": time.time(),
             "tags": tags or {},
-            "metadata": metadata
+            "metadata": metadata,
         }
 
         with self._lock:
@@ -280,9 +284,7 @@ class MetricsCollector:
             self._maybe_flush()
 
     def start_performance_event(
-        self,
-        name: str,
-        context: Optional[Dict[str, Any]] = None
+        self, name: str, context: Optional[Dict[str, Any]] = None
     ) -> str:
         """Start a performance event.
 
@@ -298,9 +300,7 @@ class MetricsCollector:
 
         event_id = f"{name}_{int(time.time() * 1000000)}"
         event = PerformanceEvent(
-            name=name,
-            start_time=time.time(),
-            context=context or {}
+            name=name, start_time=time.time(), context=context or {}
         )
 
         with self._lock:
@@ -309,10 +309,7 @@ class MetricsCollector:
         return event_id
 
     def finish_performance_event(
-        self,
-        event_id: str,
-        error: Optional[str] = None,
-        **additional_context: Any
+        self, event_id: str, error: Optional[str] = None, **additional_context: Any
     ) -> Optional[PerformanceEvent]:
         """Finish a performance event.
 
@@ -340,7 +337,7 @@ class MetricsCollector:
                     event.duration or 0,
                     tags={"success": str(event.success)},
                     event_name=event.name,
-                    error=error
+                    error=error,
                 )
 
                 return event
@@ -374,7 +371,7 @@ class MetricsCollector:
                 "buffer_size": len(self._metrics_buffer),
                 "events_count": len(self._events_buffer),
                 "active_events": len(self._active_events),
-                "completed_events": len(self._completed_events)
+                "completed_events": len(self._completed_events),
             }
 
             # Add histogram statistics
@@ -388,7 +385,7 @@ class MetricsCollector:
                         "mean": sum(values) / len(values),
                         "p50": self._percentile(values, 0.5),
                         "p95": self._percentile(values, 0.95),
-                        "p99": self._percentile(values, 0.99)
+                        "p99": self._percentile(values, 0.99),
                     }
             summary["histograms"] = histogram_stats
 
@@ -403,7 +400,7 @@ class MetricsCollector:
                         "mean": sum(values) / len(values),
                         "p50": self._percentile(values, 0.5),
                         "p95": self._percentile(values, 0.95),
-                        "p99": self._percentile(values, 0.99)
+                        "p99": self._percentile(values, 0.99),
                     }
             summary["timers"] = timer_stats
 
@@ -463,7 +460,9 @@ class MetricsCollector:
 
             # Export performance events
             if self._completed_events:
-                perf_file = self.export_path / f"performance_{date_str}_{hour_str}.jsonl"
+                perf_file = (
+                    self.export_path / f"performance_{date_str}_{hour_str}.jsonl"
+                )
                 with perf_file.open("a") as f:
                     for event in self._completed_events:
                         f.write(json.dumps(event.to_dict()) + "\n")
@@ -514,7 +513,7 @@ class TimerContext:
         self,
         collector: MetricsCollector,
         name: str,
-        tags: Optional[Dict[str, str]] = None
+        tags: Optional[Dict[str, str]] = None,
     ):
         self.collector = collector
         self.name = name
@@ -525,8 +524,7 @@ class TimerContext:
     def __enter__(self):
         self.start_time = time.time()
         self.event_id = self.collector.start_performance_event(
-            self.name,
-            {"tags": self.tags} if self.tags else None
+            self.name, {"tags": self.tags} if self.tags else None
         )
         return self
 
@@ -540,14 +538,11 @@ class TimerContext:
                 duration,
                 tags=self.tags,
                 error=error,
-                success=exc_type is None
+                success=exc_type is None,
             )
 
             if self.event_id:
-                self.collector.finish_performance_event(
-                    self.event_id,
-                    error=error
-                )
+                self.collector.finish_performance_event(self.event_id, error=error)
 
 
 class MetricsConfig:
@@ -561,7 +556,7 @@ class MetricsConfig:
         export_path: Optional[str] = None,
         collect_system_metrics: bool = True,
         collect_performance_metrics: bool = True,
-        collect_error_metrics: bool = True
+        collect_error_metrics: bool = True,
     ):
         self.enabled = enabled
         self.buffer_size = buffer_size
@@ -572,20 +567,25 @@ class MetricsConfig:
         self.collect_error_metrics = collect_error_metrics
 
     @classmethod
-    def from_env(cls) -> 'MetricsConfig':
+    def from_env(cls) -> "MetricsConfig":
         """Create configuration from environment variables."""
         return cls(
             enabled=os.getenv("METRICS_ENABLED", "true").lower() == "true",
             buffer_size=int(os.getenv("METRICS_BUFFER_SIZE", "10000")),
             flush_interval=float(os.getenv("METRICS_FLUSH_INTERVAL", "60.0")),
             export_path=os.getenv("METRICS_EXPORT_PATH"),
-            collect_system_metrics=os.getenv("METRICS_COLLECT_SYSTEM", "true").lower() == "true",
-            collect_performance_metrics=os.getenv("METRICS_COLLECT_PERFORMANCE", "true").lower() == "true",
-            collect_error_metrics=os.getenv("METRICS_COLLECT_ERRORS", "true").lower() == "true"
+            collect_system_metrics=os.getenv("METRICS_COLLECT_SYSTEM", "true").lower()
+            == "true",
+            collect_performance_metrics=os.getenv(
+                "METRICS_COLLECT_PERFORMANCE", "true"
+            ).lower()
+            == "true",
+            collect_error_metrics=os.getenv("METRICS_COLLECT_ERRORS", "true").lower()
+            == "true",
         )
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> 'MetricsConfig':
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "MetricsConfig":
         """Create configuration from dictionary."""
         return cls(**{k: v for k, v in config_dict.items() if hasattr(cls, k)})
 
@@ -603,7 +603,7 @@ def get_metrics_collector() -> MetricsCollector:
             enabled=config.enabled,
             buffer_size=config.buffer_size,
             flush_interval=config.flush_interval,
-            export_path=config.export_path
+            export_path=config.export_path,
         )
     return _global_metrics_collector
 
@@ -623,7 +623,7 @@ def initialize_metrics(config: Optional[MetricsConfig] = None) -> MetricsCollect
         enabled=config.enabled,
         buffer_size=config.buffer_size,
         flush_interval=config.flush_interval,
-        export_path=config.export_path
+        export_path=config.export_path,
     )
     return _global_metrics_collector
 
@@ -644,7 +644,9 @@ def record_timer(name: str, duration: float, **kwargs) -> None:
     get_metrics_collector().record_timer(name, duration, **kwargs)
 
 
-def record_event(name: str, severity: MetricSeverity = MetricSeverity.INFO, **kwargs) -> None:
+def record_event(
+    name: str, severity: MetricSeverity = MetricSeverity.INFO, **kwargs
+) -> None:
     """Record an event."""
     get_metrics_collector().record_event(name, severity, **kwargs)
 
@@ -668,5 +670,5 @@ __all__ = [
     "record_gauge",
     "record_timer",
     "record_event",
-    "timer"
+    "timer",
 ]

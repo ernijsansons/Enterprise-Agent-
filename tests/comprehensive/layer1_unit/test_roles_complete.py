@@ -6,7 +6,13 @@ from unittest.mock import Mock
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from tests.comprehensive.test_framework import critical_test, high_priority_test, medium_priority_test, low_priority_test
+from tests.comprehensive.test_framework import (
+    critical_test,
+    high_priority_test,
+    low_priority_test,
+    medium_priority_test,
+)
+
 
 class TestRolesComplete:
     """Complete test suite for all role components."""
@@ -30,8 +36,7 @@ class TestRolesComplete:
 
             # Test decompose method
             result = planner.decompose(
-                task="Create a web application",
-                domain="web_development"
+                task="Create a web application", domain="web_development"
             )
 
             # Verify result structure
@@ -44,7 +49,7 @@ class TestRolesComplete:
             return {
                 "success": True,
                 "message": "Planner role functionality verified",
-                "details": {"result_keys": list(result.keys())}
+                "details": {"result_keys": list(result.keys())},
             }
 
         except Exception as e:
@@ -61,7 +66,7 @@ class TestRolesComplete:
             # Test generate method
             result = coder.generate(
                 plan="1. Create function\n2. Add parameters\n3. Return result",
-                domain="coding"
+                domain="coding",
             )
 
             # Verify result structure
@@ -74,7 +79,7 @@ class TestRolesComplete:
             return {
                 "success": True,
                 "message": "Coder role functionality verified",
-                "details": {"result_keys": list(result.keys())}
+                "details": {"result_keys": list(result.keys())},
             }
 
         except Exception as e:
@@ -92,13 +97,12 @@ class TestRolesComplete:
             self.mock_orchestrator._parse_json.return_value = {
                 "passes": True,
                 "coverage": 0.95,
-                "issues": []
+                "issues": [],
             }
 
             # Test validate method
             result = validator.validate(
-                code="def hello(): return 'world'",
-                domain="coding"
+                code="def hello(): return 'world'", domain="coding"
             )
 
             # Verify result structure
@@ -114,8 +118,8 @@ class TestRolesComplete:
                 "message": "Validator role functionality verified",
                 "details": {
                     "result_keys": list(result.keys()),
-                    "validation_result": parsed
-                }
+                    "validation_result": parsed,
+                },
             }
 
         except Exception as e:
@@ -135,7 +139,7 @@ class TestRolesComplete:
                 "fixes": ["Add error handling", "Improve naming"],
                 "selected_fix": 0,
                 "revised_output": "def improved_hello(): return 'world'",
-                "confidence": 0.8
+                "confidence": 0.8,
             }
 
             # Test reflect method
@@ -147,7 +151,7 @@ class TestRolesComplete:
                 code=code,
                 domain="coding",
                 iterations=1,
-                vuln_flag=False
+                vuln_flag=False,
             )
 
             # Verify result structure
@@ -157,7 +161,7 @@ class TestRolesComplete:
             return {
                 "success": True,
                 "message": "Reflector role functionality verified",
-                "details": {"result_keys": list(result.keys())}
+                "details": {"result_keys": list(result.keys())},
             }
 
         except Exception as e:
@@ -174,14 +178,12 @@ class TestRolesComplete:
             # Mock JSON parsing for review result
             self.mock_orchestrator._parse_json.return_value = {
                 "score": 0.85,
-                "rationale": "Good code quality with minor improvements needed"
+                "rationale": "Good code quality with minor improvements needed",
             }
 
             # Test review method
             result = reviewer.review(
-                code="def hello(): return 'world'",
-                domain="coding",
-                vuln_flag=False
+                code="def hello(): return 'world'", domain="coding", vuln_flag=False
             )
 
             # Verify result structure
@@ -191,7 +193,7 @@ class TestRolesComplete:
             return {
                 "success": True,
                 "message": "Reviewer role functionality verified",
-                "details": {"result_keys": list(result.keys())}
+                "details": {"result_keys": list(result.keys())},
             }
 
         except Exception as e:
@@ -202,8 +204,8 @@ class TestRolesComplete:
         """Test role inheritance from base class."""
         try:
             from src.roles.base import BaseRole
-            from src.roles.planner import Planner
             from src.roles.coder import Coder
+            from src.roles.planner import Planner
             from src.roles.validator import Validator
 
             # Test inheritance
@@ -217,14 +219,14 @@ class TestRolesComplete:
             assert isinstance(validator, BaseRole)
 
             # Test base functionality
-            assert hasattr(planner, 'orchestrator')
-            assert hasattr(coder, 'orchestrator')
-            assert hasattr(validator, 'orchestrator')
+            assert hasattr(planner, "orchestrator")
+            assert hasattr(coder, "orchestrator")
+            assert hasattr(validator, "orchestrator")
 
             return {
                 "success": True,
                 "message": "Role inheritance verified",
-                "details": {"all_inherit_base": True}
+                "details": {"all_inherit_base": True},
             }
 
         except Exception as e:
@@ -239,19 +241,18 @@ class TestRolesComplete:
             planner = Planner(self.mock_orchestrator)
 
             # Test with prompt enhancement
-            self.mock_orchestrator._enhance_prompt.return_value = "Enhanced: Create a web app"
+            self.mock_orchestrator._enhance_prompt.return_value = (
+                "Enhanced: Create a web app"
+            )
 
-            result = planner.decompose("Create a web app", "web")
+            planner.decompose("Create a web app", "web")
 
             # Verify enhancement was called
             assert self.mock_orchestrator._enhance_prompt.called
             call_args = self.mock_orchestrator._enhance_prompt.call_args
             assert call_args[0][1] == "Planner"  # Role name passed correctly
 
-            return {
-                "success": True,
-                "message": "Prompt enhancement verified"
-            }
+            return {"success": True, "message": "Prompt enhancement verified"}
 
         except Exception as e:
             return {"success": False, "message": f"Prompt enhancement test failed: {e}"}
@@ -269,7 +270,7 @@ class TestRolesComplete:
 
             # This should handle the error gracefully
             try:
-                result = coder.generate("test plan", "coding")
+                coder.generate("test plan", "coding")
                 error_handled = True
             except Exception:
                 error_handled = False
@@ -277,7 +278,7 @@ class TestRolesComplete:
             return {
                 "success": True,  # We test that it doesn't crash the test
                 "message": "Role error handling tested",
-                "details": {"graceful_handling": error_handled}
+                "details": {"graceful_handling": error_handled},
             }
 
         except Exception as e:
@@ -287,8 +288,8 @@ class TestRolesComplete:
     def test_role_configuration_parameters(self):
         """Test role configuration and parameters."""
         try:
-            from src.roles.planner import Planner
             from src.roles.coder import Coder
+            from src.roles.planner import Planner
 
             planner = Planner(self.mock_orchestrator)
             coder = Coder(self.mock_orchestrator)
@@ -304,17 +305,19 @@ class TestRolesComplete:
             results = []
             for method, args in test_cases:
                 try:
-                    result = method(*args)
+                    method(*args)
                     results.append({"success": True, "method": method.__name__})
                 except Exception as e:
-                    results.append({"success": False, "method": method.__name__, "error": str(e)})
+                    results.append(
+                        {"success": False, "method": method.__name__, "error": str(e)}
+                    )
 
             success_count = sum(1 for r in results if r["success"])
 
             return {
                 "success": success_count >= len(test_cases) // 2,
                 "message": f"Role parameters: {success_count}/{len(test_cases)} tests passed",
-                "details": {"test_results": results}
+                "details": {"test_results": results},
             }
 
         except Exception as e:
@@ -338,11 +341,13 @@ class TestRolesComplete:
                 self.mock_orchestrator.route_to_model.return_value = expected_pattern
                 planner = Planner(self.mock_orchestrator)
 
-                result = planner.decompose(task, domain)
+                planner.decompose(task, domain)
 
                 # Verify model routing was called
                 route_called = self.mock_orchestrator.route_to_model.called
-                results.append({"scenario": f"{task}_{domain}", "route_called": route_called})
+                results.append(
+                    {"scenario": f"{task}_{domain}", "route_called": route_called}
+                )
 
                 # Reset mock
                 self.mock_orchestrator.route_to_model.reset_mock()
@@ -352,7 +357,7 @@ class TestRolesComplete:
             return {
                 "success": success_count >= len(model_scenarios) // 2,
                 "message": f"Model selection: {success_count}/{len(model_scenarios)} scenarios passed",
-                "details": {"scenario_results": results}
+                "details": {"scenario_results": results},
             }
 
         except Exception as e:
@@ -362,21 +367,24 @@ class TestRolesComplete:
     def test_all_roles_importable(self):
         """Test that all roles can be imported and instantiated."""
         try:
-            from src.roles import Planner, Coder, Validator, Reflector, Reviewer
+            from src.roles import Coder, Planner, Reflector, Reviewer, Validator
 
             roles = {
                 "Planner": Planner,
                 "Coder": Coder,
                 "Validator": Validator,
                 "Reflector": Reflector,
-                "Reviewer": Reviewer
+                "Reviewer": Reviewer,
             }
 
             instantiated_roles = {}
             for name, role_class in roles.items():
                 try:
                     role_instance = role_class(self.mock_orchestrator)
-                    instantiated_roles[name] = {"success": True, "instance": role_instance}
+                    instantiated_roles[name] = {
+                        "success": True,
+                        "instance": role_instance,
+                    }
                 except Exception as e:
                     instantiated_roles[name] = {"success": False, "error": str(e)}
 
@@ -385,7 +393,11 @@ class TestRolesComplete:
             return {
                 "success": success_count == len(roles),
                 "message": f"Role imports: {success_count}/{len(roles)} successful",
-                "details": {"role_status": {k: v["success"] for k, v in instantiated_roles.items()}}
+                "details": {
+                    "role_status": {
+                        k: v["success"] for k, v in instantiated_roles.items()
+                    }
+                },
             }
 
         except Exception as e:
@@ -398,7 +410,7 @@ def get_roles_tests():
     test_methods = []
 
     for attr_name in dir(test_class):
-        if attr_name.startswith('test_') and callable(getattr(test_class, attr_name)):
+        if attr_name.startswith("test_") and callable(getattr(test_class, attr_name)):
             method = getattr(test_class, attr_name)
             test_methods.append(method)
 

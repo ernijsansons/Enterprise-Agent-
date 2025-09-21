@@ -34,21 +34,27 @@ class BaseRole:
         """
         # Input validation
         if not isinstance(model, str) or not model.strip():
-            from src.utils.errors import create_validation_error, ErrorCode
+            from src.utils.errors import ErrorCode, create_validation_error
+
             raise create_validation_error(
                 "Model must be a non-empty string",
                 validation_type="model_name",
                 error_code=ErrorCode.INVALID_PARAMETERS,
-                context={"model": model, "role": role, "operation": operation}
+                context={"model": model, "role": role, "operation": operation},
             )
 
         if not isinstance(prompt, str) or not prompt.strip():
-            from src.utils.errors import create_validation_error, ErrorCode
+            from src.utils.errors import ErrorCode, create_validation_error
+
             raise create_validation_error(
                 "Prompt must be a non-empty string",
                 validation_type="prompt",
                 error_code=ErrorCode.INVALID_PARAMETERS,
-                context={"prompt_length": len(prompt) if prompt else 0, "role": role, "operation": operation}
+                context={
+                    "prompt_length": len(prompt) if prompt else 0,
+                    "role": role,
+                    "operation": operation,
+                },
             )
 
         try:
@@ -74,21 +80,26 @@ class BaseRole:
                     prompt = enhanced_prompt
 
             return self.orchestrator._call_model(
-                model, prompt, role, operation, project_context=project_context, **kwargs
+                model,
+                prompt,
+                role,
+                operation,
+                project_context=project_context,
+                **kwargs,
             )
         except Exception as e:
             # Enhance error with role context
-            from src.utils.errors import handle_error, create_model_error, ErrorCode
+            from src.utils.errors import ErrorCode, create_model_error, handle_error
 
             error_context = {
                 "role": role,
                 "operation": operation,
                 "model": model,
                 "prompt_length": len(prompt),
-                "has_project_context": project_context is not None
+                "has_project_context": project_context is not None,
             }
 
-            if hasattr(e, 'details'):
+            if hasattr(e, "details"):
                 # Already a structured error, add context
                 e.add_context("role_call_context", error_context)
                 raise
@@ -98,7 +109,7 @@ class BaseRole:
                     f"Model call failed in {role}/{operation}: {str(e)}",
                     model=model,
                     context=error_context,
-                    cause=e
+                    cause=e,
                 )
                 handle_error(model_error)
                 raise model_error
@@ -152,23 +163,25 @@ class BaseRole:
             EnterpriseAgentError: If domain is invalid
         """
         if not isinstance(domain, str) or not domain.strip():
-            from src.utils.errors import create_validation_error, ErrorCode
+            from src.utils.errors import ErrorCode, create_validation_error
+
             raise create_validation_error(
                 "Domain must be a non-empty string",
                 validation_type="domain",
                 error_code=ErrorCode.INVALID_DOMAIN,
-                context={"domain": domain}
+                context={"domain": domain},
             )
 
-        domain_packs = getattr(self.orchestrator, 'domain_packs', {})
+        domain_packs = getattr(self.orchestrator, "domain_packs", {})
         if domain not in domain_packs:
-            from src.utils.errors import create_validation_error, ErrorCode
+            from src.utils.errors import ErrorCode, create_validation_error
+
             available_domains = list(domain_packs.keys())
             raise create_validation_error(
                 f"Unknown domain '{domain}'. Available domains: {available_domains}",
                 validation_type="domain",
                 error_code=ErrorCode.INVALID_DOMAIN,
-                context={"domain": domain, "available_domains": available_domains}
+                context={"domain": domain, "available_domains": available_domains},
             )
 
         return domain_packs.get(domain, {})
@@ -189,24 +202,29 @@ class BaseRole:
             EnterpriseAgentError: On parsing failures
         """
         if not isinstance(text, str):
-            from src.utils.errors import create_validation_error, ErrorCode
+            from src.utils.errors import ErrorCode, create_validation_error
+
             raise create_validation_error(
                 f"Expected string for JSON parsing, got {type(text).__name__}",
                 validation_type="json_input",
                 error_code=ErrorCode.VALIDATION_PARSE_ERROR,
-                context={"input_type": type(text).__name__, "input_value": str(text)[:100]}
+                context={
+                    "input_type": type(text).__name__,
+                    "input_value": str(text)[:100],
+                },
             )
 
         try:
             return self.orchestrator._parse_json(text)
         except Exception as e:
-            from src.utils.errors import create_validation_error, ErrorCode
+            from src.utils.errors import ErrorCode, create_validation_error
+
             raise create_validation_error(
                 f"JSON parsing failed: {str(e)}",
                 validation_type="json_parse",
                 error_code=ErrorCode.VALIDATION_PARSE_ERROR,
                 context={"text_length": len(text), "text_preview": text[:200]},
-                cause=e
+                cause=e,
             )
 
     def store_memory(self, scope: str, key: str, value: Any) -> None:

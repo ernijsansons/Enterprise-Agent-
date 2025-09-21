@@ -1,21 +1,22 @@
 """Tests for circuit breaker functionality."""
-import pytest
-import time
-import threading
-import sys
 import os
+import sys
+import threading
+import time
+
+import pytest
 
 # Add src to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.utils.circuit_breaker import (
-    CircuitState,
+    CircuitBreaker,
     CircuitBreakerConfig,
     CircuitBreakerError,
-    CircuitBreaker,
     CircuitBreakerRegistry,
-    get_circuit_breaker_registry,
+    CircuitState,
     circuit_breaker,
+    get_circuit_breaker_registry,
     setup_default_circuit_breakers,
 )
 
@@ -129,8 +130,7 @@ class TestCircuitBreaker:
     def test_half_open_state(self):
         """Test circuit moves to half-open after recovery timeout."""
         config = CircuitBreakerConfig(
-            failure_threshold=1,
-            recovery_timeout=0.1  # Very short for testing
+            failure_threshold=1, recovery_timeout=0.1  # Very short for testing
         )
         breaker = CircuitBreaker("test", config)
 
@@ -158,9 +158,7 @@ class TestCircuitBreaker:
     def test_half_open_to_closed(self):
         """Test circuit moves from half-open to closed after successful calls."""
         config = CircuitBreakerConfig(
-            failure_threshold=1,
-            recovery_timeout=0.1,
-            success_threshold=2
+            failure_threshold=1, recovery_timeout=0.1, success_threshold=2
         )
         breaker = CircuitBreaker("test", config)
 
@@ -188,10 +186,7 @@ class TestCircuitBreaker:
 
     def test_half_open_to_open_on_failure(self):
         """Test circuit moves from half-open back to open on failure."""
-        config = CircuitBreakerConfig(
-            failure_threshold=1,
-            recovery_timeout=0.1
-        )
+        config = CircuitBreakerConfig(failure_threshold=1, recovery_timeout=0.1)
         breaker = CircuitBreaker("test", config)
 
         def failing_function():
@@ -318,11 +313,11 @@ class TestCircuitBreakerRegistry:
         config = CircuitBreakerConfig()
 
         registry.get_breaker("test_service", config)
-        assert registry.remove_breaker("test_service") == True
+        assert registry.remove_breaker("test_service") is True
         assert "test_service" not in registry._breakers
 
         # Removing non-existent breaker should return False
-        assert registry.remove_breaker("nonexistent") == False
+        assert registry.remove_breaker("nonexistent") is False
 
     def test_get_all_stats(self):
         """Test getting all circuit breaker stats."""
@@ -368,7 +363,7 @@ class TestCircuitBreakerRegistry:
         config = CircuitBreakerConfig(failure_threshold=1)
 
         breaker1 = registry.get_breaker("service1", config)
-        breaker2 = registry.get_breaker("service2", config)
+        registry.get_breaker("service2", config)
 
         # Open one circuit
         def failing_function():
@@ -387,6 +382,7 @@ class TestCircuitBreakerDecorator:
 
     def test_decorator_basic(self):
         """Test basic decorator functionality."""
+
         @circuit_breaker("test_service", failure_threshold=2)
         def test_function(should_fail=False):
             if should_fail:
@@ -409,6 +405,7 @@ class TestCircuitBreakerDecorator:
 
     def test_decorator_preserves_function_metadata(self):
         """Test decorator preserves function name and docstring."""
+
         @circuit_breaker("metadata_test")
         def test_function():
             """Test docstring."""
@@ -419,11 +416,12 @@ class TestCircuitBreakerDecorator:
 
     def test_decorator_access_to_breaker(self):
         """Test decorator provides access to underlying circuit breaker."""
+
         @circuit_breaker("breaker_access_test")
         def test_function():
             return "test"
 
-        assert hasattr(test_function, '_circuit_breaker')
+        assert hasattr(test_function, "_circuit_breaker")
         assert test_function._circuit_breaker.name == "breaker_access_test"
 
 
@@ -443,7 +441,7 @@ class TestDefaultCircuitBreakers:
             "claude_code_cli",
             "openai_api",
             "anthropic_api",
-            "gemini_api"
+            "gemini_api",
         ]
 
         for breaker_name in expected_breakers:
@@ -456,9 +454,7 @@ class TestCircuitBreakerIntegration:
     def test_realistic_service_failure_scenario(self):
         """Test realistic service failure and recovery scenario."""
         config = CircuitBreakerConfig(
-            failure_threshold=3,
-            recovery_timeout=0.1,
-            success_threshold=2
+            failure_threshold=3, recovery_timeout=0.1, success_threshold=2
         )
         breaker = CircuitBreaker("integration_test", config)
 

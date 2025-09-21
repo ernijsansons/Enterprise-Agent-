@@ -2,14 +2,15 @@
 """Validate all YAML configuration files."""
 
 import sys
-import yaml
 from pathlib import Path
+
+import yaml
 
 
 def validate_yaml_file(file_path):
     """Validate a single YAML file."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
 
         if config is None:
@@ -30,7 +31,9 @@ def main():
     # Also check CI/CD workflows
     github_dir = Path(".github")
     if github_dir.exists():
-        yaml_files.extend(list(github_dir.rglob("*.yaml")) + list(github_dir.rglob("*.yml")))
+        yaml_files.extend(
+            list(github_dir.rglob("*.yaml")) + list(github_dir.rglob("*.yml"))
+        )
 
     print(f"Validating {len(yaml_files)} YAML files...\n")
 

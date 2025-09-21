@@ -8,6 +8,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
+
 def test_cache_config():
     """Test cache configuration from environment and dict."""
     print("Testing cache configuration...")
@@ -17,9 +18,9 @@ def test_cache_config():
 
         # Test default configuration
         default_config = CacheConfig()
-        assert default_config.enabled == True
+        assert default_config.enabled is True
         assert default_config.default_ttl == 300
-        assert default_config.adaptive_ttl == False
+        assert default_config.adaptive_ttl is False
 
         # Test environment configuration
         os.environ["CACHE_ENABLED"] = "false"
@@ -27,18 +28,20 @@ def test_cache_config():
         os.environ["CACHE_ADAPTIVE_TTL"] = "true"
 
         env_config = CacheConfig.from_env()
-        assert env_config.enabled == False
+        assert env_config.enabled is False
         assert env_config.default_ttl == 600.0
-        assert env_config.adaptive_ttl == True
+        assert env_config.adaptive_ttl is True
 
         # Test dict configuration
-        dict_config = CacheConfig.from_dict({
-            "enabled": True,
-            "default_ttl": 450,
-            "max_size": 2000,
-            "eviction_policy": "lfu"
-        })
-        assert dict_config.enabled == True
+        dict_config = CacheConfig.from_dict(
+            {
+                "enabled": True,
+                "default_ttl": 450,
+                "max_size": 2000,
+                "eviction_policy": "lfu",
+            }
+        )
+        assert dict_config.enabled is True
         assert dict_config.default_ttl == 450
         assert dict_config.max_size == 2000
         assert dict_config.eviction_policy == "lfu"
@@ -56,12 +59,13 @@ def test_cache_config():
         os.environ.pop("CACHE_DEFAULT_TTL", None)
         os.environ.pop("CACHE_ADAPTIVE_TTL", None)
 
+
 def test_adaptive_ttl():
     """Test adaptive TTL based on quality scores."""
     print("\nTesting adaptive TTL...")
 
     try:
-        from src.utils.cache import TTLCache, CacheConfig
+        from src.utils.cache import CacheConfig, TTLCache
 
         # Create cache with adaptive TTL enabled
         config = CacheConfig(
@@ -69,7 +73,7 @@ def test_adaptive_ttl():
             quality_threshold=0.8,
             high_quality_ttl_multiplier=2.0,
             low_quality_ttl_multiplier=0.5,
-            default_ttl=100
+            default_ttl=100,
         )
 
         cache = TTLCache(config=config)
@@ -96,12 +100,13 @@ def test_adaptive_ttl():
         print(f"❌ Adaptive TTL test failed: {e}")
         return False
 
+
 def test_eviction_policies():
     """Test different eviction policies."""
     print("\nTesting eviction policies...")
 
     try:
-        from src.utils.cache import TTLCache, CacheConfig
+        from src.utils.cache import CacheConfig, TTLCache
 
         # Test LRU eviction
         lru_config = CacheConfig(max_size=3, eviction_policy="lru")
@@ -150,17 +155,18 @@ def test_eviction_policies():
         print(f"❌ Eviction policies test failed: {e}")
         return False
 
+
 def test_compression():
     """Test compression functionality."""
     print("\nTesting compression...")
 
     try:
-        from src.utils.cache import TTLCache, CacheConfig
+        from src.utils.cache import CacheConfig, TTLCache
 
         # Create cache with compression enabled
         config = CacheConfig(
             compression_enabled=True,
-            compression_threshold=50  # Small threshold for testing
+            compression_threshold=50,  # Small threshold for testing
         )
 
         cache = TTLCache(config=config)
@@ -187,19 +193,20 @@ def test_compression():
         print(f"❌ Compression test failed: {e}")
         return False
 
+
 def test_persistence():
     """Test persistence functionality."""
     print("\nTesting persistence...")
 
     try:
-        from src.utils.cache import TTLCache, CacheConfig
+        from src.utils.cache import CacheConfig, TTLCache
 
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create cache with persistence enabled
             config = CacheConfig(
                 persistence_enabled=True,
                 persistence_path=temp_dir,
-                default_ttl=3600  # Long TTL to avoid expiration during test
+                default_ttl=3600,  # Long TTL to avoid expiration during test
             )
 
             # Create first cache instance and add data
@@ -218,12 +225,13 @@ def test_persistence():
         print(f"❌ Persistence test failed: {e}")
         return False
 
+
 def test_cache_disabled():
     """Test cache behavior when disabled."""
     print("\nTesting cache disabled behavior...")
 
     try:
-        from src.utils.cache import TTLCache, CacheConfig
+        from src.utils.cache import CacheConfig, TTLCache
 
         # Create cache with caching disabled
         config = CacheConfig(enabled=False)
@@ -243,18 +251,19 @@ def test_cache_disabled():
         print(f"❌ Cache disabled test failed: {e}")
         return False
 
+
 def test_enhanced_model_cache():
     """Test enhanced model response cache."""
     print("\nTesting enhanced model cache...")
 
     try:
-        from src.utils.cache import ModelResponseCache, CacheConfig
+        from src.utils.cache import CacheConfig, ModelResponseCache
 
         config = CacheConfig(
             adaptive_ttl=True,
             quality_threshold=0.8,
             high_quality_ttl_multiplier=2.0,
-            default_ttl=100
+            default_ttl=100,
         )
 
         model_cache = ModelResponseCache(config=config)
@@ -264,7 +273,7 @@ def test_enhanced_model_cache():
             model="claude-3",
             prompt="Test prompt",
             response="High quality response",
-            ttl=100
+            ttl=100,
         )
 
         # Update quality score (should extend TTL if adaptive)
@@ -281,6 +290,7 @@ def test_enhanced_model_cache():
     except Exception as e:
         print(f"❌ Enhanced model cache test failed: {e}")
         return False
+
 
 def main():
     """Run all enhanced caching tests."""
@@ -315,11 +325,14 @@ def main():
     print(f"Test Results: {tests_passed}/{total_tests} tests passed")
 
     if tests_passed == total_tests:
-        print("🎉 All enhanced caching tests passed! Configurable controls are working correctly.")
+        print(
+            "🎉 All enhanced caching tests passed! Configurable controls are working correctly."
+        )
         return 0
     else:
         print("❌ Some tests failed. Please check the caching implementation.")
         return 1
+
 
 if __name__ == "__main__":
     exit_code = main()

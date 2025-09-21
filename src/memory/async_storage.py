@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 try:
     import numpy as np
+
     NUMPY_AVAILABLE = True
 except ImportError:
     NUMPY_AVAILABLE = False
@@ -16,6 +17,7 @@ except ImportError:
 
 try:
     import pinecone
+
     PINECONE_AVAILABLE = True
 except ImportError:
     PINECONE_AVAILABLE = False
@@ -29,6 +31,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AsyncMemoryRecord:
     """Memory record with async support."""
+
     value: Any
     timestamp: datetime = field(default_factory=datetime.utcnow)
     vector: Optional[List[float]] = None
@@ -56,7 +59,9 @@ class AsyncMemoryRecord:
             vector=data.get("vector"),
             metadata=data.get("metadata", {}),
             access_count=data.get("access_count", 0),
-            last_access=datetime.fromisoformat(data.get("last_access", data["timestamp"])),
+            last_access=datetime.fromisoformat(
+                data.get("last_access", data["timestamp"])
+            ),
         )
 
 
@@ -89,7 +94,10 @@ class AsyncMemoryStore:
 
         # Pinecone setup
         self.pinecone_index = None
-        if self.config.get("storage", "memory").startswith("hybrid") and PINECONE_AVAILABLE:
+        if (
+            self.config.get("storage", "memory").startswith("hybrid")
+            and PINECONE_AVAILABLE
+        ):
             self._init_pinecone()
 
         logger.info("Async memory store initialized")
@@ -98,9 +106,11 @@ class AsyncMemoryStore:
         """Initialize Pinecone vector database."""
         try:
             import os
+
             api_key = os.getenv("PINECONE_API_KEY")
             if api_key:
                 from pinecone import Pinecone
+
                 pc = Pinecone(api_key=api_key)
                 index_name = self.config.get("pinecone_index", "memory-index")
                 self.pinecone_index = pc.Index(index_name)
@@ -365,22 +375,23 @@ class AsyncMemoryStore:
             upsert_data = []
             for level, key, record in operations:
                 if record.vector:
-                    upsert_data.append({
-                        "id": f"{level}:{key}",
-                        "values": record.vector,
-                        "metadata": {
-                            "level": level,
-                            "key": key,
-                            "value": str(record.value)[:1000],  # Truncate for metadata
-                            "timestamp": record.timestamp.isoformat(),
-                        },
-                    })
+                    upsert_data.append(
+                        {
+                            "id": f"{level}:{key}",
+                            "values": record.vector,
+                            "metadata": {
+                                "level": level,
+                                "key": key,
+                                "value": str(record.value)[
+                                    :1000
+                                ],  # Truncate for metadata
+                                "timestamp": record.timestamp.isoformat(),
+                            },
+                        }
+                    )
 
             if upsert_data:
-                self.pinecone_index.upsert(
-                    vectors=upsert_data,
-                    namespace="memory"
-                )
+                self.pinecone_index.upsert(vectors=upsert_data, namespace="memory")
                 logger.debug(f"Batch upserted {len(upsert_data)} vectors")
 
         except Exception as e:

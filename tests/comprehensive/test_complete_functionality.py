@@ -16,16 +16,24 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from tests.comprehensive.test_framework import (
-    TestFramework, TestLayer, TestSuite, critical_test, high_priority_test, medium_priority_test, low_priority_test
-)
+from tests.comprehensive.layer1_unit.test_async_complete import get_async_tests
 
 # Import Layer 1 tests
-from tests.comprehensive.layer1_unit.test_orchestrator_complete import get_orchestrator_tests
-from tests.comprehensive.layer1_unit.test_roles_complete import get_roles_tests
+from tests.comprehensive.layer1_unit.test_orchestrator_complete import (
+    get_orchestrator_tests,
+)
 from tests.comprehensive.layer1_unit.test_providers_complete import get_providers_tests
-from tests.comprehensive.layer1_unit.test_async_complete import get_async_tests
+from tests.comprehensive.layer1_unit.test_roles_complete import get_roles_tests
 from tests.comprehensive.layer1_unit.test_security_complete import get_security_tests
+from tests.comprehensive.test_framework import (
+    TestFramework,
+    TestLayer,
+    TestSuite,
+    critical_test,
+    high_priority_test,
+    low_priority_test,
+    medium_priority_test,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +52,7 @@ class ComprehensiveTestRunner:
         layer1 = TestLayer(
             name="Layer 1: Component Unit Tests",
             description="Individual module functionality validation",
-            enabled=True
+            enabled=True,
         )
 
         # Add Layer 1 test suites
@@ -55,7 +63,7 @@ class ComprehensiveTestRunner:
         layer2 = TestLayer(
             name="Layer 2: Integration Tests",
             description="Component interactions and workflows",
-            enabled=True
+            enabled=True,
         )
         self._add_layer2_suites(layer2)
         self.framework.add_layer(layer2)
@@ -64,7 +72,7 @@ class ComprehensiveTestRunner:
         layer3 = TestLayer(
             name="Layer 3: End-to-End Functional Tests",
             description="Complete user workflows",
-            enabled=True
+            enabled=True,
         )
         self._add_layer3_suites(layer3)
         self.framework.add_layer(layer3)
@@ -73,7 +81,7 @@ class ComprehensiveTestRunner:
         layer4 = TestLayer(
             name="Layer 4: Performance & Scalability Tests",
             description="System performance under load",
-            enabled=True
+            enabled=True,
         )
         self._add_layer4_suites(layer4)
         self.framework.add_layer(layer4)
@@ -82,7 +90,7 @@ class ComprehensiveTestRunner:
         layer5 = TestLayer(
             name="Layer 5: Security & Resilience Tests",
             description="Security hardening and fault tolerance",
-            enabled=True
+            enabled=True,
         )
         self._add_layer5_suites(layer5)
         self.framework.add_layer(layer5)
@@ -91,7 +99,7 @@ class ComprehensiveTestRunner:
         layer6 = TestLayer(
             name="Layer 6: Environment & Configuration Tests",
             description="Deployment and configuration scenarios",
-            enabled=False  # Disable for demo
+            enabled=False,  # Disable for demo
         )
         self._add_layer6_suites(layer6)
         self.framework.add_layer(layer6)
@@ -100,7 +108,7 @@ class ComprehensiveTestRunner:
         layer7 = TestLayer(
             name="Layer 7: Real-World Scenario Tests",
             description="Production-like usage patterns",
-            enabled=False  # Disable for demo
+            enabled=False,  # Disable for demo
         )
         self._add_layer7_suites(layer7)
         self.framework.add_layer(layer7)
@@ -114,7 +122,7 @@ class ComprehensiveTestRunner:
             description="Complete AgentOrchestrator functionality validation",
             tests=orch_tests,
             setup=orch_setup,
-            teardown=orch_teardown
+            teardown=orch_teardown,
         )
         layer.suites.append(orchestrator_suite)
 
@@ -125,7 +133,7 @@ class ComprehensiveTestRunner:
             description="All role components functionality validation",
             tests=roles_tests,
             setup=roles_setup,
-            teardown=roles_teardown
+            teardown=roles_teardown,
         )
         layer.suites.append(roles_suite)
 
@@ -136,7 +144,7 @@ class ComprehensiveTestRunner:
             description="Provider integrations functionality validation",
             tests=providers_tests,
             setup=providers_setup,
-            teardown=providers_teardown
+            teardown=providers_teardown,
         )
         layer.suites.append(providers_suite)
 
@@ -147,7 +155,7 @@ class ComprehensiveTestRunner:
             description="Async components functionality validation",
             tests=async_tests,
             setup=async_setup,
-            teardown=async_teardown
+            teardown=async_teardown,
         )
         layer.suites.append(async_suite)
 
@@ -158,7 +166,7 @@ class ComprehensiveTestRunner:
             description="Security features functionality validation",
             tests=security_tests,
             setup=security_setup,
-            teardown=security_teardown
+            teardown=security_teardown,
         )
         layer.suites.append(security_suite)
 
@@ -168,14 +176,14 @@ class ComprehensiveTestRunner:
         integration_suite = TestSuite(
             name="Role Workflow Integration",
             description="Test role interactions and workflows",
-            tests=[self._test_role_workflow_integration]
+            tests=[self._test_role_workflow_integration],
         )
         layer.suites.append(integration_suite)
 
         cache_integration_suite = TestSuite(
             name="Cache Integration Tests",
             description="Test cache integration across components",
-            tests=[self._test_cache_integration]
+            tests=[self._test_cache_integration],
         )
         layer.suites.append(cache_integration_suite)
 
@@ -184,7 +192,7 @@ class ComprehensiveTestRunner:
         e2e_suite = TestSuite(
             name="End-to-End Coding Workflow",
             description="Complete coding task workflow validation",
-            tests=[self._test_e2e_coding_workflow]
+            tests=[self._test_e2e_coding_workflow],
         )
         layer.suites.append(e2e_suite)
 
@@ -193,7 +201,7 @@ class ComprehensiveTestRunner:
         perf_suite = TestSuite(
             name="Performance Benchmarks",
             description="System performance validation",
-            tests=[self._test_performance_benchmarks]
+            tests=[self._test_performance_benchmarks],
         )
         layer.suites.append(perf_suite)
 
@@ -202,7 +210,7 @@ class ComprehensiveTestRunner:
         security_suite = TestSuite(
             name="Security Hardening Tests",
             description="Security validation and penetration testing",
-            tests=[self._test_security_hardening]
+            tests=[self._test_security_hardening],
         )
         layer.suites.append(security_suite)
 
@@ -211,7 +219,7 @@ class ComprehensiveTestRunner:
         env_suite = TestSuite(
             name="Multi-Environment Tests",
             description="Cross-platform and environment validation",
-            tests=[self._test_multi_environment]
+            tests=[self._test_multi_environment],
         )
         layer.suites.append(env_suite)
 
@@ -220,7 +228,7 @@ class ComprehensiveTestRunner:
         real_world_suite = TestSuite(
             name="Production Scenario Tests",
             description="Real-world usage pattern validation",
-            tests=[self._test_production_scenarios]
+            tests=[self._test_production_scenarios],
         )
         layer.suites.append(real_world_suite)
 
@@ -233,7 +241,7 @@ class ComprehensiveTestRunner:
             return {
                 "success": True,
                 "message": "Role workflow integration test (placeholder)",
-                "details": {"status": "placeholder_implementation"}
+                "details": {"status": "placeholder_implementation"},
             }
         except Exception as e:
             return {"success": False, "message": f"Integration test failed: {e}"}
@@ -246,7 +254,7 @@ class ComprehensiveTestRunner:
             return {
                 "success": True,
                 "message": "Cache integration test (placeholder)",
-                "details": {"status": "placeholder_implementation"}
+                "details": {"status": "placeholder_implementation"},
             }
         except Exception as e:
             return {"success": False, "message": f"Cache integration test failed: {e}"}
@@ -260,7 +268,7 @@ class ComprehensiveTestRunner:
             return {
                 "success": True,
                 "message": "E2E coding workflow test (placeholder)",
-                "details": {"status": "placeholder_implementation"}
+                "details": {"status": "placeholder_implementation"},
             }
         except Exception as e:
             return {"success": False, "message": f"E2E test failed: {e}"}
@@ -277,7 +285,10 @@ class ComprehensiveTestRunner:
             return {
                 "success": duration < 1.0,  # Should be fast
                 "message": f"Performance benchmark test (duration: {duration:.3f}s)",
-                "details": {"duration": duration, "status": "placeholder_implementation"}
+                "details": {
+                    "duration": duration,
+                    "status": "placeholder_implementation",
+                },
             }
         except Exception as e:
             return {"success": False, "message": f"Performance test failed: {e}"}
@@ -290,7 +301,7 @@ class ComprehensiveTestRunner:
             return {
                 "success": True,
                 "message": "Security hardening test (placeholder)",
-                "details": {"status": "placeholder_implementation"}
+                "details": {"status": "placeholder_implementation"},
             }
         except Exception as e:
             return {"success": False, "message": f"Security test failed: {e}"}
@@ -301,10 +312,14 @@ class ComprehensiveTestRunner:
         try:
             # Placeholder for environment test
             import platform
+
             return {
                 "success": True,
                 "message": f"Multi-environment test on {platform.system()} (placeholder)",
-                "details": {"platform": platform.system(), "status": "placeholder_implementation"}
+                "details": {
+                    "platform": platform.system(),
+                    "status": "placeholder_implementation",
+                },
             }
         except Exception as e:
             return {"success": False, "message": f"Environment test failed: {e}"}
@@ -317,10 +332,13 @@ class ComprehensiveTestRunner:
             return {
                 "success": True,
                 "message": "Production scenario test (placeholder)",
-                "details": {"status": "placeholder_implementation"}
+                "details": {"status": "placeholder_implementation"},
             }
         except Exception as e:
-            return {"success": False, "message": f"Production scenario test failed: {e}"}
+            return {
+                "success": False,
+                "message": f"Production scenario test failed: {e}",
+            }
 
     async def run_comprehensive_tests(self) -> dict:
         """Run the complete comprehensive test suite."""
@@ -356,20 +374,24 @@ class ComprehensiveTestRunner:
         print(f"Errors: {summary.get('errors', 0)}")
         print(f"Success Rate: {summary.get('success_rate', 0):.1%}")
 
-        if summary.get('critical_failures', 0) > 0:
+        if summary.get("critical_failures", 0) > 0:
             print(f"⚠️  CRITICAL FAILURES: {summary['critical_failures']}")
 
-        if summary.get('high_failures', 0) > 0:
+        if summary.get("high_failures", 0) > 0:
             print(f"⚠️  HIGH PRIORITY FAILURES: {summary['high_failures']}")
 
-        print(f"\nExecution Time: {report.get('performance', {}).get('total_duration', 0):.2f} seconds")
+        print(
+            f"\nExecution Time: {report.get('performance', {}).get('total_duration', 0):.2f} seconds"
+        )
 
         # Layer breakdown
         print("\nLayer Results:")
         print("-" * 30)
         for layer_name, layer_data in report.get("layer_breakdown", {}).items():
             status = "✅" if layer_data["success_rate"] >= 0.8 else "❌"
-            print(f"{status} {layer_name}: {layer_data['passed']}/{layer_data['total']} ({layer_data['success_rate']:.1%})")
+            print(
+                f"{status} {layer_name}: {layer_data['passed']}/{layer_data['total']} ({layer_data['success_rate']:.1%})"
+            )
 
         # Show failures
         failures = report.get("failures", [])
@@ -377,8 +399,15 @@ class ComprehensiveTestRunner:
             print(f"\nFailures ({len(failures)}):")
             print("-" * 30)
             for failure in failures[:5]:  # Show first 5
-                severity_emoji = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🔵"}.get(failure["severity"], "⚪")
-                print(f"{severity_emoji} [{failure['severity'].upper()}] {failure['name']}: {failure['message']}")
+                severity_emoji = {
+                    "critical": "🔴",
+                    "high": "🟠",
+                    "medium": "🟡",
+                    "low": "🔵",
+                }.get(failure["severity"], "⚪")
+                print(
+                    f"{severity_emoji} [{failure['severity'].upper()}] {failure['name']}: {failure['message']}"
+                )
 
             if len(failures) > 5:
                 print(f"... and {len(failures) - 5} more failures")
@@ -406,6 +435,7 @@ async def main():
 
 if __name__ == "__main__":
     import sys
+
     try:
         exit_code = asyncio.run(main())
         sys.exit(exit_code)

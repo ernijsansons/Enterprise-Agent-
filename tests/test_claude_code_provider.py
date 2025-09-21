@@ -120,7 +120,7 @@ class TestClaudeCodeProvider(unittest.TestCase):
     def test_call_model_success(self, mock_can_make_request, mock_run):
         """Test successful model call."""
         mock_can_make_request.return_value = True
-        
+
         mock_run.side_effect = [
             Mock(returncode=0, stdout="claude version 1.0.0", stderr=""),  # version
             Mock(returncode=0, stdout="", stderr=""),  # auth

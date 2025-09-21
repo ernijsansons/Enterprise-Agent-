@@ -3,18 +3,19 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, Dict, List, Optional, Union
 import logging
+from typing import Any, Dict, List, Optional, Union
 
 try:
     import aiohttp
+
     AIOHTTP_AVAILABLE = True
 except ImportError:
     AIOHTTP_AVAILABLE = False
     aiohttp = None
 
-from src.utils.circuit_breaker import get_circuit_breaker_registry, CircuitBreakerError
-from src.utils.rate_limiter import get_rate_limiter, RateLimitExceeded
+from src.utils.circuit_breaker import CircuitBreakerError, get_circuit_breaker_registry
+from src.utils.rate_limiter import RateLimitExceeded, get_rate_limiter
 
 logger = logging.getLogger(__name__)
 

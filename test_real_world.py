@@ -6,14 +6,14 @@ import sys
 import time
 from pathlib import Path
 
-# Set UTF-8 encoding for Windows
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
-
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.agent_orchestrator import AgentOrchestrator
+
+# Set UTF-8 encoding for Windows
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
 
 def test_coding_task():
@@ -82,7 +82,7 @@ def test_coding_task():
     print("Testing Cache Effectiveness...")
 
     start_time = time.time()
-    result2 = agent.run_mode("coding", task)
+    agent.run_mode("coding", task)
     elapsed2 = time.time() - start_time
 
     print(f"First run: {elapsed:.2f}s")
@@ -188,7 +188,7 @@ def test_error_recovery():
     for task, description in test_cases:
         print(f"\nTesting {description}...")
         try:
-            result = agent.run_mode("coding", task)
+            agent.run_mode("coding", task)
             print(f"  ✓ Handled {description} successfully")
         except Exception as e:
             print(f"  ✗ Failed on {description}: {e}")

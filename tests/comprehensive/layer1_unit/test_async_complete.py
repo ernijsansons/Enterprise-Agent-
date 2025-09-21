@@ -7,7 +7,13 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from tests.comprehensive.test_framework import critical_test, high_priority_test, medium_priority_test, low_priority_test
+from tests.comprehensive.test_framework import (
+    critical_test,
+    high_priority_test,
+    low_priority_test,
+    medium_priority_test,
+)
+
 
 class TestAsyncComplete:
     """Complete test suite for all async components."""
@@ -30,14 +36,14 @@ class TestAsyncComplete:
             orchestrator = AsyncAgentOrchestrator(self.test_config)
 
             # Verify core components
-            assert hasattr(orchestrator, 'config')
-            assert hasattr(orchestrator, 'memory')
-            assert hasattr(orchestrator, 'cache')
-            assert hasattr(orchestrator, 'cost_estimator')
+            assert hasattr(orchestrator, "config")
+            assert hasattr(orchestrator, "memory")
+            assert hasattr(orchestrator, "cache")
+            assert hasattr(orchestrator, "cost_estimator")
 
             return {
                 "success": True,
-                "message": "Async orchestrator initialized successfully"
+                "message": "Async orchestrator initialized successfully",
             }
 
         except Exception as e:
@@ -71,7 +77,7 @@ class TestAsyncComplete:
             return {
                 "success": True,
                 "message": "Async cache functionality verified",
-                "details": {"cache_stats": stats}
+                "details": {"cache_stats": stats},
             }
 
         except Exception as e:
@@ -83,11 +89,13 @@ class TestAsyncComplete:
         try:
             from src.memory.async_storage import AsyncMemoryStore
 
-            memory = AsyncMemoryStore({
-                "retention_days": 1,
-                "enable_vectors": False,  # Disable to avoid numpy dependency
-                "storage": "memory"
-            })
+            memory = AsyncMemoryStore(
+                {
+                    "retention_days": 1,
+                    "enable_vectors": False,  # Disable to avoid numpy dependency
+                    "storage": "memory",
+                }
+            )
 
             # Test basic operations
             await memory.store("test_level", "key1", "value1")
@@ -114,7 +122,7 @@ class TestAsyncComplete:
             return {
                 "success": True,
                 "message": "Async memory store functionality verified",
-                "details": {"memory_stats": stats}
+                "details": {"memory_stats": stats},
             }
 
         except Exception as e:
@@ -129,7 +137,7 @@ class TestAsyncComplete:
             if not AIOHTTP_AVAILABLE:
                 return {
                     "success": True,
-                    "message": "Async HTTP client skipped (aiohttp not available)"
+                    "message": "Async HTTP client skipped (aiohttp not available)",
                 }
 
             from src.utils.async_http import AsyncHTTPClient
@@ -137,15 +145,15 @@ class TestAsyncComplete:
             client = AsyncHTTPClient(timeout=10.0)
 
             # Verify client creation
-            assert hasattr(client, 'timeout')
-            assert hasattr(client, 'max_retries')
+            assert hasattr(client, "timeout")
+            assert hasattr(client, "max_retries")
 
             # Test client cleanup
             await client.close()
 
             return {
                 "success": True,
-                "message": "Async HTTP client functionality verified"
+                "message": "Async HTTP client functionality verified",
             }
 
         except Exception as e:
@@ -165,7 +173,7 @@ class TestAsyncComplete:
                 prompt="Test prompt",
                 role="Tester",
                 operation="test_call",
-                max_tokens=100
+                max_tokens=100,
             )
 
             assert isinstance(response, str)
@@ -174,7 +182,7 @@ class TestAsyncComplete:
             return {
                 "success": True,
                 "message": "Async orchestrator call_model verified",
-                "details": {"response_length": len(response)}
+                "details": {"response_length": len(response)},
             }
 
         except Exception as e:
@@ -195,7 +203,7 @@ class TestAsyncComplete:
                     "prompt": f"Test prompt {i}",
                     "role": "Tester",
                     "operation": f"batch_test_{i}",
-                    "max_tokens": 50
+                    "max_tokens": 50,
                 }
                 for i in range(3)
             ]
@@ -208,7 +216,7 @@ class TestAsyncComplete:
             return {
                 "success": True,
                 "message": "Async batch calls verified",
-                "details": {"batch_size": len(responses)}
+                "details": {"batch_size": len(responses)},
             }
 
         except Exception as e:
@@ -227,7 +235,7 @@ class TestAsyncComplete:
                 model="claude_sonnet_4",
                 prompt="Stats test",
                 role="Tester",
-                operation="stats_test"
+                operation="stats_test",
             )
 
             # Get performance stats
@@ -242,7 +250,7 @@ class TestAsyncComplete:
             return {
                 "success": True,
                 "message": "Async performance stats verified",
-                "details": {"stats_keys": list(stats.keys())}
+                "details": {"stats_keys": list(stats.keys())},
             }
 
         except Exception as e:
@@ -269,11 +277,14 @@ class TestAsyncComplete:
             return {
                 "success": True,
                 "message": "Async cache memory management verified",
-                "details": {"final_stats": stats}
+                "details": {"final_stats": stats},
             }
 
         except Exception as e:
-            return {"success": False, "message": f"Cache memory management test failed: {e}"}
+            return {
+                "success": False,
+                "message": f"Cache memory management test failed: {e}",
+            }
 
     @medium_priority_test
     async def test_async_memory_search_functionality(self):
@@ -281,16 +292,18 @@ class TestAsyncComplete:
         try:
             from src.memory.async_storage import AsyncMemoryStore
 
-            memory = AsyncMemoryStore({
-                "retention_days": 1,
-                "enable_vectors": False,
-                "storage": "memory"
-            })
+            memory = AsyncMemoryStore(
+                {"retention_days": 1, "enable_vectors": False, "storage": "memory"}
+            )
 
             # Store test data
             test_data = [
                 ("search_test", "python_code", "def hello(): return 'world'"),
-                ("search_test", "javascript_code", "function hello() { return 'world'; }"),
+                (
+                    "search_test",
+                    "javascript_code",
+                    "function hello() { return 'world'; }",
+                ),
                 ("search_test", "documentation", "This is a hello world function"),
             ]
 
@@ -301,12 +314,14 @@ class TestAsyncComplete:
             results = await memory.search("search_test", "hello", limit=5)
 
             assert len(results) > 0
-            assert all(len(result) == 3 for result in results)  # (key, value, score) tuples
+            assert all(
+                len(result) == 3 for result in results
+            )  # (key, value, score) tuples
 
             return {
                 "success": True,
                 "message": "Async memory search verified",
-                "details": {"search_results_count": len(results)}
+                "details": {"search_results_count": len(results)},
             }
 
         except Exception as e:
@@ -337,7 +352,9 @@ class TestAsyncComplete:
             ]
 
             start_time = time.time()
-            results = await orchestrator.parallel_roles_execution(tasks, max_concurrent=2)
+            results = await orchestrator.parallel_roles_execution(
+                tasks, max_concurrent=2
+            )
             duration = time.time() - start_time
 
             assert len(results) == len(tasks)
@@ -346,14 +363,14 @@ class TestAsyncComplete:
             return {
                 "success": True,
                 "message": "Async parallel role execution verified",
-                "details": {
-                    "execution_time": duration,
-                    "results_count": len(results)
-                }
+                "details": {"execution_time": duration, "results_count": len(results)},
             }
 
         except Exception as e:
-            return {"success": False, "message": f"Parallel role execution test failed: {e}"}
+            return {
+                "success": False,
+                "message": f"Parallel role execution test failed: {e}",
+            }
 
     @low_priority_test
     async def test_async_cache_warming(self):
@@ -386,7 +403,7 @@ class TestAsyncComplete:
             return {
                 "success": success_count >= 2,  # At least 2 should be warmed
                 "message": f"Cache warming: {success_count}/3 items warmed",
-                "details": {"warming_success": warmed_values}
+                "details": {"warming_success": warmed_values},
             }
 
         except Exception as e:
@@ -396,9 +413,9 @@ class TestAsyncComplete:
     async def test_async_component_cleanup(self):
         """Test async component cleanup and resource management."""
         try:
+            from src.memory.async_storage import AsyncMemoryStore
             from src.orchestration.async_orchestrator import AsyncAgentOrchestrator
             from src.utils.async_cache import AsyncLRUCache
-            from src.memory.async_storage import AsyncMemoryStore
 
             # Create components
             orchestrator = AsyncAgentOrchestrator(self.test_config)
@@ -431,7 +448,7 @@ class TestAsyncComplete:
             return {
                 "success": success_count >= 2,
                 "message": f"Component cleanup: {success_count}/3 successful",
-                "details": {"cleanup_results": cleanup_results}
+                "details": {"cleanup_results": cleanup_results},
             }
 
         except Exception as e:
@@ -448,14 +465,14 @@ class TestAsyncComplete:
             # Test timeout handling
             try:
                 # This should complete quickly with stubbed response
-                response = await asyncio.wait_for(
+                await asyncio.wait_for(
                     orchestrator.call_model(
                         model="claude_sonnet_4",
                         prompt="Timeout test",
                         role="Tester",
-                        operation="timeout_test"
+                        operation="timeout_test",
                     ),
-                    timeout=5.0
+                    timeout=5.0,
                 )
                 timeout_handled = True
             except asyncio.TimeoutError:
@@ -466,10 +483,7 @@ class TestAsyncComplete:
             try:
                 # Invalid parameters should be handled gracefully
                 await orchestrator.call_model(
-                    model="",
-                    prompt="",
-                    role="",
-                    operation=""
+                    model="", prompt="", role="", operation=""
                 )
             except Exception:
                 # Should handle errors gracefully
@@ -480,8 +494,8 @@ class TestAsyncComplete:
                 "message": "Async error handling and timeouts verified",
                 "details": {
                     "timeout_handling": timeout_handled,
-                    "error_handling": error_handled
-                }
+                    "error_handling": error_handled,
+                },
             }
 
         except Exception as e:
@@ -494,7 +508,7 @@ def get_async_tests():
     test_methods = []
 
     for attr_name in dir(test_class):
-        if attr_name.startswith('test_') and callable(getattr(test_class, attr_name)):
+        if attr_name.startswith("test_") and callable(getattr(test_class, attr_name)):
             method = getattr(test_class, attr_name)
             test_methods.append(method)
 

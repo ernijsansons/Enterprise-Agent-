@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from src.exceptions import ModelException, ModelTimeoutException, RateLimitExceeded
 from src.utils.async_cache import get_async_model_cache
-from src.utils.circuit_breaker import get_circuit_breaker_registry, CircuitBreakerError
+from src.utils.circuit_breaker import CircuitBreakerError, get_circuit_breaker_registry
 from src.utils.notifications import notify_cli_failure
 from src.utils.rate_limiter import get_rate_limiter
 
@@ -83,7 +83,9 @@ class AsyncClaudeCodeProvider:
 
         # Check cache first
         if use_cache:
-            cached = await self.cache.get_response(model, prompt, max_tokens or 8192, role)
+            cached = await self.cache.get_response(
+                model, prompt, max_tokens or 8192, role
+            )
             if cached:
                 logger.debug(f"Async cache hit for {role}/{operation}")
                 return cached
@@ -150,7 +152,9 @@ class AsyncClaudeCodeProvider:
                 model=cli_model,
             ) from e
 
-    async def _execute_claude_cli_async(self, cmd: List[str]) -> asyncio.subprocess.Process:
+    async def _execute_claude_cli_async(
+        self, cmd: List[str]
+    ) -> asyncio.subprocess.Process:
         """Execute Claude CLI command asynchronously.
 
         Args:
@@ -276,7 +280,7 @@ class AsyncClaudeCodeProvider:
             # Simulate streaming by chunking the response
             chunk_size = 50
             for i in range(0, len(response), chunk_size):
-                chunk = response[i:i + chunk_size]
+                chunk = response[i : i + chunk_size]
                 await callback(chunk)
                 await asyncio.sleep(0.01)  # Small delay to simulate streaming
 
@@ -331,8 +335,12 @@ class AsyncClaudeCodeProvider:
         # Create cache warming tasks
         warming_tasks = []
         for prompt_config in common_prompts:
-            cache_key = f"{prompt_config.get('model', 'sonnet')}:{prompt_config['prompt'][:50]}"
-            warming_tasks.append((cache_key, lambda pc=prompt_config: generate_response(pc)))
+            cache_key = (
+                f"{prompt_config.get('model', 'sonnet')}:{prompt_config['prompt'][:50]}"
+            )
+            warming_tasks.append(
+                (cache_key, lambda pc=prompt_config: generate_response(pc))
+            )
 
         # Use cache warming functionality
         await self.cache.cache.warm_cache(warming_tasks)

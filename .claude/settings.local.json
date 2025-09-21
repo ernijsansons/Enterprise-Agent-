@@ -39,7 +39,9 @@
       "Bash(gh pr list:*)",
       "Bash(gh auth:*)",
       "WebFetch(domain:api.github.com)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(poetry show:*)"
     ],
     "deny": [],
     "ask": []

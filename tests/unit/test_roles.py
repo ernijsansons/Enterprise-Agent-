@@ -28,7 +28,14 @@ class StubOrchestrator:
             return self.route_models.pop(0)
         return "stub-model"
 
-    def _call_model(self, model: str, prompt: str, role: str, operation: str, project_context: str = None) -> str:
+    def _call_model(
+        self,
+        model: str,
+        prompt: str,
+        role: str,
+        operation: str,
+        project_context: str = None,
+    ) -> str:
         if not self.responses:
             raise AssertionError("No stub response set for _call_model")
         return self.responses.pop(0)

@@ -6,12 +6,16 @@ import logging
 import time
 from typing import Any, Dict, List, Optional
 
+from src.governance import GovernanceChecker
 from src.memory.async_storage import get_async_memory_store
 from src.providers.async_claude_provider import get_async_claude_provider
 from src.utils.async_cache import get_async_model_cache
-from src.utils.async_http import AsyncOpenAIClient, AsyncAnthropicClient, AIOHTTP_AVAILABLE
+from src.utils.async_http import (
+    AIOHTTP_AVAILABLE,
+    AsyncAnthropicClient,
+    AsyncOpenAIClient,
+)
 from src.utils.costs import CostEstimator
-from src.governance import GovernanceChecker
 from src.utils.safety import scrub_pii
 from src.utils.secrets import load_secrets
 
@@ -158,7 +162,9 @@ class AsyncAgentOrchestrator:
 
         finally:
             duration = time.time() - start_time
-            logger.debug(f"Async model call took {duration:.2f}s for {role}/{operation}")
+            logger.debug(
+                f"Async model call took {duration:.2f}s for {role}/{operation}"
+            )
 
     async def _call_openai_async(
         self,
@@ -336,7 +342,9 @@ class AsyncAgentOrchestrator:
         if role == "Planner":
             return "1. Analyze requirements\n2. Create implementation plan\n3. Validate approach"
         elif role == "Coder":
-            return "# Implementation based on requirements\npass  # Stubbed implementation"
+            return (
+                "# Implementation based on requirements\npass  # Stubbed implementation"
+            )
         elif role == "Validator":
             return '{"passes": true, "coverage": 0.95, "issues": []}'
         elif role == "Reviewer":
@@ -381,6 +389,7 @@ class AsyncAgentOrchestrator:
         # Warm model response cache
         cache_warming_tasks = []
         for prompt_config in common_prompts:
+
             async def generate_response(config=prompt_config):
                 return await self.call_model(**config)
 

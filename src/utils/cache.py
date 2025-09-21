@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CacheConfig:
     """Configuration for cache behavior."""
+
     enabled: bool = True
     default_ttl: float = 300  # 5 minutes
     max_size: Optional[int] = 1000
@@ -36,29 +37,38 @@ class CacheConfig:
     metrics_enabled: bool = True  # Enable detailed metrics collection
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> 'CacheConfig':
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "CacheConfig":
         """Create CacheConfig from dictionary."""
         return cls(**{k: v for k, v in config_dict.items() if hasattr(cls, k)})
 
     @classmethod
-    def from_env(cls) -> 'CacheConfig':
+    def from_env(cls) -> "CacheConfig":
         """Create CacheConfig from environment variables."""
         return cls(
             enabled=os.getenv("CACHE_ENABLED", "true").lower() == "true",
             default_ttl=float(os.getenv("CACHE_DEFAULT_TTL", "300")),
-            max_size=int(os.getenv("CACHE_MAX_SIZE", "1000")) if os.getenv("CACHE_MAX_SIZE") else None,
+            max_size=int(os.getenv("CACHE_MAX_SIZE", "1000"))
+            if os.getenv("CACHE_MAX_SIZE")
+            else None,
             cleanup_interval=float(os.getenv("CACHE_CLEANUP_INTERVAL", "60")),
             adaptive_ttl=os.getenv("CACHE_ADAPTIVE_TTL", "false").lower() == "true",
             quality_threshold=float(os.getenv("CACHE_QUALITY_THRESHOLD", "0.8")),
-            high_quality_ttl_multiplier=float(os.getenv("CACHE_HIGH_QUALITY_TTL_MULTIPLIER", "2.0")),
-            low_quality_ttl_multiplier=float(os.getenv("CACHE_LOW_QUALITY_TTL_MULTIPLIER", "0.5")),
-            persistence_enabled=os.getenv("CACHE_PERSISTENCE_ENABLED", "false").lower() == "true",
+            high_quality_ttl_multiplier=float(
+                os.getenv("CACHE_HIGH_QUALITY_TTL_MULTIPLIER", "2.0")
+            ),
+            low_quality_ttl_multiplier=float(
+                os.getenv("CACHE_LOW_QUALITY_TTL_MULTIPLIER", "0.5")
+            ),
+            persistence_enabled=os.getenv("CACHE_PERSISTENCE_ENABLED", "false").lower()
+            == "true",
             persistence_path=os.getenv("CACHE_PERSISTENCE_PATH", ".cache"),
-            compression_enabled=os.getenv("CACHE_COMPRESSION_ENABLED", "false").lower() == "true",
+            compression_enabled=os.getenv("CACHE_COMPRESSION_ENABLED", "false").lower()
+            == "true",
             compression_threshold=int(os.getenv("CACHE_COMPRESSION_THRESHOLD", "1024")),
             warmup_enabled=os.getenv("CACHE_WARMUP_ENABLED", "false").lower() == "true",
             eviction_policy=os.getenv("CACHE_EVICTION_POLICY", "lru").lower(),
-            metrics_enabled=os.getenv("CACHE_METRICS_ENABLED", "true").lower() == "true"
+            metrics_enabled=os.getenv("CACHE_METRICS_ENABLED", "true").lower()
+            == "true",
         )
 
 
@@ -141,6 +151,7 @@ class TTLCache:
         if self.config.compression_enabled:
             try:
                 import zlib
+
                 self._compression = zlib
             except ImportError:
                 logger.warning("zlib not available, disabling compression")
@@ -178,13 +189,19 @@ class TTLCache:
             value = entry.access()
             if self.config.compression_enabled and isinstance(value, bytes):
                 try:
-                    value = self._compression.decompress(value).decode('utf-8')
+                    value = self._compression.decompress(value).decode("utf-8")
                 except Exception:
                     pass  # Return compressed value if decompression fails
 
             return value
 
-    def set(self, key: str, value: Any, ttl: Optional[float] = None, quality_score: Optional[float] = None) -> None:
+    def set(
+        self,
+        key: str,
+        value: Any,
+        ttl: Optional[float] = None,
+        quality_score: Optional[float] = None,
+    ) -> None:
         """Set value in cache with configurable behavior."""
         if not self.config.enabled:
             return
@@ -197,12 +214,14 @@ class TTLCache:
             # Calculate adaptive TTL if enabled
             effective_ttl = ttl if ttl is not None else self.config.default_ttl
             if self.config.adaptive_ttl and quality_score is not None:
-                effective_ttl = self._calculate_adaptive_ttl(effective_ttl, quality_score)
+                effective_ttl = self._calculate_adaptive_ttl(
+                    effective_ttl, quality_score
+                )
 
             # Compress value if enabled and meets threshold
             stored_value = value
             if self.config.compression_enabled and isinstance(value, str):
-                value_bytes = value.encode('utf-8')
+                value_bytes = value.encode("utf-8")
                 if len(value_bytes) > self.config.compression_threshold:
                     try:
                         stored_value = self._compression.compress(value_bytes)
@@ -311,7 +330,9 @@ class TTLCache:
         if not self._access_frequency:
             return
 
-        lfu_key = min(self._access_frequency.keys(), key=lambda k: self._access_frequency[k])
+        lfu_key = min(
+            self._access_frequency.keys(), key=lambda k: self._access_frequency[k]
+        )
         self._remove_entry(lfu_key)
         if self.config.metrics_enabled:
             self._stats["evictions"] += 1
@@ -324,7 +345,8 @@ class TTLCache:
         current_time = time.time()
         ttl_key = min(
             self._cache.keys(),
-            key=lambda k: (self._cache[k].timestamp + (self._cache[k].ttl or 0)) - current_time
+            key=lambda k: (self._cache[k].timestamp + (self._cache[k].ttl or 0))
+            - current_time,
         )
         self._remove_entry(ttl_key)
         if self.config.metrics_enabled:
@@ -333,8 +355,11 @@ class TTLCache:
     def _persist_entry(self, key: str, entry: CacheEntry) -> None:
         """Persist cache entry to disk."""
         try:
-            persist_path = self._persistence_path / f"{hashlib.sha256(key.encode()).hexdigest()}.cache"
-            with open(persist_path, 'wb') as f:
+            persist_path = (
+                self._persistence_path
+                / f"{hashlib.sha256(key.encode()).hexdigest()}.cache"
+            )
+            with open(persist_path, "wb") as f:
                 pickle.dump({"key": key, "entry": entry}, f)
             if self.config.metrics_enabled:
                 self._stats["persistence_ops"] += 1
@@ -346,7 +371,7 @@ class TTLCache:
         try:
             for cache_file in self._persistence_path.glob("*.cache"):
                 try:
-                    with open(cache_file, 'rb') as f:
+                    with open(cache_file, "rb") as f:
                         data = pickle.load(f)
                         key = data["key"]
                         entry = data["entry"]

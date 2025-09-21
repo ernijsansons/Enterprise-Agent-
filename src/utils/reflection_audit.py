@@ -10,15 +10,16 @@ import json
 import logging
 import os
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from datetime import datetime
 
 
 class ReflectionPhase(Enum):
     """Phases of the reflection process."""
+
     VALIDATION_ANALYSIS = "validation_analysis"
     ISSUE_IDENTIFICATION = "issue_identification"
     FIX_GENERATION = "fix_generation"
@@ -30,6 +31,7 @@ class ReflectionPhase(Enum):
 
 class ReflectionDecision(Enum):
     """Types of decisions made during reflection."""
+
     CONTINUE_REFLECTION = "continue_reflection"
     HALT_REFLECTION = "halt_reflection"
     EARLY_TERMINATION = "early_termination"
@@ -40,6 +42,7 @@ class ReflectionDecision(Enum):
 @dataclass
 class ValidationIssue:
     """Individual validation issue identified during reflection."""
+
     issue_type: str
     severity: str
     description: str
@@ -55,6 +58,7 @@ class ValidationIssue:
 @dataclass
 class ReflectionStep:
     """A single step in the reflection process."""
+
     step_id: str
     phase: ReflectionPhase
     timestamp: float
@@ -75,13 +79,14 @@ class ReflectionStep:
         return {
             **asdict(self),
             "phase": self.phase.value,
-            "issues_identified": [issue.to_dict() for issue in self.issues_identified]
+            "issues_identified": [issue.to_dict() for issue in self.issues_identified],
         }
 
 
 @dataclass
 class ReflectionSession:
     """Complete reflection session audit trail."""
+
     session_id: str
     domain: str
     task: str
@@ -103,7 +108,7 @@ class ReflectionSession:
         self,
         final_decision: ReflectionDecision,
         final_confidence: float,
-        outcome: Optional[Dict[str, Any]] = None
+        outcome: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Finish the reflection session."""
         self.end_time = time.time()
@@ -121,8 +126,10 @@ class ReflectionSession:
         """Convert to dictionary for serialization."""
         return {
             **asdict(self),
-            "final_decision": self.final_decision.value if self.final_decision else None,
-            "steps": [step.to_dict() for step in self.steps]
+            "final_decision": self.final_decision.value
+            if self.final_decision
+            else None,
+            "steps": [step.to_dict() for step in self.steps],
         }
 
 
@@ -135,7 +142,7 @@ class ReflectionAuditor:
         log_level: str = "INFO",
         audit_path: Optional[Path] = None,
         max_sessions: int = 1000,
-        auto_export: bool = True
+        auto_export: bool = True,
     ):
         """Initialize reflection auditor.
 
@@ -169,7 +176,7 @@ class ReflectionAuditor:
         log_file = self.audit_path / "reflection_audit.log"
         handler = logging.FileHandler(log_file)
         formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
@@ -180,7 +187,7 @@ class ReflectionAuditor:
         task: str,
         initial_confidence: float = 0.0,
         max_iterations: int = 5,
-        configuration: Optional[Dict[str, Any]] = None
+        configuration: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Start a new reflection session.
 
@@ -205,12 +212,14 @@ class ReflectionAuditor:
             start_time=time.time(),
             initial_confidence=initial_confidence,
             max_iterations=max_iterations,
-            configuration=configuration or {}
+            configuration=configuration or {},
         )
 
         self._active_sessions[session_id] = session
 
-        self.logger.info(f"Started reflection session {session_id} for domain '{domain}'")
+        self.logger.info(
+            f"Started reflection session {session_id} for domain '{domain}'"
+        )
 
         return session_id
 
@@ -227,7 +236,7 @@ class ReflectionAuditor:
         fixes: Optional[List[str]] = None,
         selected_fix: Optional[str] = None,
         error: Optional[str] = None,
-        **metadata: Any
+        **metadata: Any,
     ) -> str:
         """Log a reflection step.
 
@@ -265,7 +274,7 @@ class ReflectionAuditor:
             fixes_generated=fixes or [],
             selected_fix=selected_fix,
             error=error,
-            metadata=metadata
+            metadata=metadata,
         )
 
         self._active_sessions[session_id].add_step(step)
@@ -288,7 +297,7 @@ class ReflectionAuditor:
         iteration: int,
         confidence: float,
         needs_continue: bool,
-        termination_reason: Optional[str] = None
+        termination_reason: Optional[str] = None,
     ) -> None:
         """Log completion of a reflection iteration.
 
@@ -321,7 +330,7 @@ class ReflectionAuditor:
             confidence_after=confidence,
             decisions=[decision],
             iteration=iteration,
-            termination_reason=termination_reason
+            termination_reason=termination_reason,
         )
 
     def finish_session(
@@ -329,7 +338,7 @@ class ReflectionAuditor:
         session_id: str,
         final_decision: ReflectionDecision,
         final_confidence: float,
-        outcome: Optional[Dict[str, Any]] = None
+        outcome: Optional[Dict[str, Any]] = None,
     ) -> Optional[ReflectionSession]:
         """Finish a reflection session.
 
@@ -352,7 +361,9 @@ class ReflectionAuditor:
 
         # Trim sessions if needed
         if len(self._completed_sessions) > self.max_sessions:
-            self._completed_sessions = self._completed_sessions[-self.max_sessions//2:]
+            self._completed_sessions = self._completed_sessions[
+                -self.max_sessions // 2 :
+            ]
 
         self.logger.info(
             f"Finished reflection session {session_id} - "
@@ -399,7 +410,9 @@ class ReflectionAuditor:
             "confidence_improvement": session.confidence_improvement,
             "steps_count": len(session.steps),
             "duration": session.total_duration,
-            "final_decision": session.final_decision.value if session.final_decision else None
+            "final_decision": session.final_decision.value
+            if session.final_decision
+            else None,
         }
 
     def get_recent_sessions(self, limit: int = 10) -> List[Dict[str, Any]]:
@@ -453,7 +466,9 @@ class ReflectionAuditor:
         decisions = {}
         for session in sessions:
             if session.final_decision:
-                decisions[session.final_decision.value] = decisions.get(session.final_decision.value, 0) + 1
+                decisions[session.final_decision.value] = (
+                    decisions.get(session.final_decision.value, 0) + 1
+                )
 
         # Domain breakdown
         domains = {}
@@ -463,13 +478,15 @@ class ReflectionAuditor:
         return {
             "total_sessions": total_sessions,
             "successful_sessions": successful_sessions,
-            "success_rate": successful_sessions / total_sessions if total_sessions > 0 else 0,
+            "success_rate": successful_sessions / total_sessions
+            if total_sessions > 0
+            else 0,
             "average_confidence_improvement": avg_improvement,
             "average_iterations": avg_iterations,
             "average_duration": avg_duration,
             "decision_breakdown": decisions,
             "domain_breakdown": domains,
-            "recent_sessions": self.get_recent_sessions(5)
+            "recent_sessions": self.get_recent_sessions(5),
         }
 
     def _export_session(self, session: ReflectionSession) -> None:
@@ -480,7 +497,9 @@ class ReflectionAuditor:
         """
         try:
             date_str = datetime.fromtimestamp(session.start_time).strftime("%Y%m%d")
-            export_file = self.audit_path / f"session_{date_str}_{session.session_id}.json"
+            export_file = (
+                self.audit_path / f"session_{date_str}_{session.session_id}.json"
+            )
 
             with export_file.open("w") as f:
                 json.dump(session.to_dict(), f, indent=2)
@@ -497,7 +516,9 @@ class ReflectionAuditor:
         Returns:
             Path to exported file
         """
-        output_path = output_path or (self.audit_path / f"analytics_{int(time.time())}.json")
+        output_path = output_path or (
+            self.audit_path / f"analytics_{int(time.time())}.json"
+        )
 
         analytics = self.get_reflection_analytics()
         with output_path.open("w") as f:
@@ -517,16 +538,13 @@ def get_reflection_auditor() -> ReflectionAuditor:
         enabled = os.getenv("REFLECTION_AUDIT_ENABLED", "true").lower() == "true"
         audit_path = os.getenv("REFLECTION_AUDIT_PATH")
         _global_auditor = ReflectionAuditor(
-            enabled=enabled,
-            audit_path=Path(audit_path) if audit_path else None
+            enabled=enabled, audit_path=Path(audit_path) if audit_path else None
         )
     return _global_auditor
 
 
 def initialize_auditor(
-    enabled: bool = True,
-    audit_path: Optional[Path] = None,
-    **kwargs
+    enabled: bool = True, audit_path: Optional[Path] = None, **kwargs
 ) -> ReflectionAuditor:
     """Initialize the global reflection auditor.
 
@@ -540,9 +558,7 @@ def initialize_auditor(
     """
     global _global_auditor
     _global_auditor = ReflectionAuditor(
-        enabled=enabled,
-        audit_path=audit_path,
-        **kwargs
+        enabled=enabled, audit_path=audit_path, **kwargs
     )
     return _global_auditor
 
@@ -558,7 +574,9 @@ def log_reflection_step(session_id: str, phase: ReflectionPhase, **kwargs) -> st
     return get_reflection_auditor().log_step(session_id, phase, **kwargs)
 
 
-def finish_reflection_session(session_id: str, decision: ReflectionDecision, **kwargs) -> Optional[ReflectionSession]:
+def finish_reflection_session(
+    session_id: str, decision: ReflectionDecision, **kwargs
+) -> Optional[ReflectionSession]:
     """Finish a reflection session."""
     return get_reflection_auditor().finish_session(session_id, decision, **kwargs)
 
@@ -574,5 +592,5 @@ __all__ = [
     "initialize_auditor",
     "start_reflection_session",
     "log_reflection_step",
-    "finish_reflection_session"
+    "finish_reflection_session",
 ]

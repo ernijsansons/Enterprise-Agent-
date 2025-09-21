@@ -9,6 +9,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
+
 def test_metrics_collector():
     """Test basic metrics collector functionality."""
     print("Testing metrics collector...")
@@ -21,7 +22,7 @@ def test_metrics_collector():
                 enabled=True,
                 buffer_size=100,
                 flush_interval=5.0,
-                export_path=Path(temp_dir)
+                export_path=Path(temp_dir),
             )
 
             # Test counter metrics
@@ -39,7 +40,9 @@ def test_metrics_collector():
             collector.record_timer("test_timer", 1.234, tags={"operation": "test"})
 
             # Test events
-            collector.record_event("test_event", MetricSeverity.INFO, message="Test event")
+            collector.record_event(
+                "test_event", MetricSeverity.INFO, message="Test event"
+            )
 
             # Test summary
             summary = collector.get_summary()
@@ -54,6 +57,7 @@ def test_metrics_collector():
     except Exception as e:
         print(f"❌ Metrics collector test failed: {e}")
         return False
+
 
 def test_timer_context():
     """Test timer context manager."""
@@ -88,6 +92,7 @@ def test_timer_context():
         print(f"❌ Timer context manager test failed: {e}")
         return False
 
+
 def test_performance_events():
     """Test performance event tracking."""
     print("\nTesting performance events...")
@@ -100,33 +105,29 @@ def test_performance_events():
 
             # Start performance event
             event_id = collector.start_performance_event(
-                "model_call",
-                context={"model": "claude-3", "domain": "coding"}
+                "model_call", context={"model": "claude-3", "domain": "coding"}
             )
 
             time.sleep(0.1)
 
             # Finish performance event
             event = collector.finish_performance_event(
-                event_id,
-                model_response="Test response",
-                tokens=100
+                event_id, model_response="Test response", tokens=100
             )
 
             assert event is not None
             assert event.name == "model_call"
             assert event.duration > 0
-            assert event.success == True
+            assert event.success is True
             assert event.context["model"] == "claude-3"
 
             # Test error event
             error_event_id = collector.start_performance_event("error_operation")
             error_event = collector.finish_performance_event(
-                error_event_id,
-                error="Test error occurred"
+                error_event_id, error="Test error occurred"
             )
 
-            assert error_event.success == False
+            assert error_event.success is False
             assert error_event.error == "Test error occurred"
 
             print("✅ Performance events test passed")
@@ -135,6 +136,7 @@ def test_performance_events():
     except Exception as e:
         print(f"❌ Performance events test failed: {e}")
         return False
+
 
 def test_metrics_config():
     """Test metrics configuration."""
@@ -149,17 +151,15 @@ def test_metrics_config():
         os.environ["METRICS_FLUSH_INTERVAL"] = "30.0"
 
         env_config = MetricsConfig.from_env()
-        assert env_config.enabled == False
+        assert env_config.enabled is False
         assert env_config.buffer_size == 5000
         assert env_config.flush_interval == 30.0
 
         # Test dictionary configuration
-        dict_config = MetricsConfig.from_dict({
-            "enabled": True,
-            "buffer_size": 8000,
-            "export_path": "/tmp/metrics"
-        })
-        assert dict_config.enabled == True
+        dict_config = MetricsConfig.from_dict(
+            {"enabled": True, "buffer_size": 8000, "export_path": "/tmp/metrics"}
+        )
+        assert dict_config.enabled is True
         assert dict_config.buffer_size == 8000
         assert str(dict_config.export_path) == "/tmp/metrics"
 
@@ -176,6 +176,7 @@ def test_metrics_config():
         os.environ.pop("METRICS_BUFFER_SIZE", None)
         os.environ.pop("METRICS_FLUSH_INTERVAL", None)
 
+
 def test_metrics_export():
     """Test metrics export functionality."""
     print("\nTesting metrics export...")
@@ -187,7 +188,7 @@ def test_metrics_export():
             collector = MetricsCollector(
                 enabled=True,
                 export_path=Path(temp_dir),
-                flush_interval=1.0  # Short interval for testing
+                flush_interval=1.0,  # Short interval for testing
             )
 
             # Add some metrics
@@ -207,6 +208,7 @@ def test_metrics_export():
 
             # Check file contents
             import json
+
             with summary_files[0].open() as f:
                 summary_data = json.load(f)
                 assert "counters" in summary_data
@@ -220,14 +222,19 @@ def test_metrics_export():
         print(f"❌ Metrics export test failed: {e}")
         return False
 
+
 def test_global_metrics_functions():
     """Test global convenience functions."""
     print("\nTesting global metrics functions...")
 
     try:
         from src.utils.metrics import (
-            record_counter, record_gauge, record_timer, record_event,
-            get_metrics_collector, MetricSeverity
+            MetricSeverity,
+            get_metrics_collector,
+            record_counter,
+            record_event,
+            record_gauge,
+            record_timer,
         )
 
         # Test global functions
@@ -250,6 +257,7 @@ def test_global_metrics_functions():
         print(f"❌ Global metrics functions test failed: {e}")
         return False
 
+
 def test_metrics_with_orchestrator():
     """Test metrics integration with orchestrator (basic import test)."""
     print("\nTesting metrics with orchestrator integration...")
@@ -268,6 +276,7 @@ def test_metrics_with_orchestrator():
     except Exception as e:
         print(f"❌ Metrics orchestrator integration test failed: {e}")
         return False
+
 
 def main():
     """Run all metrics system tests."""
@@ -307,6 +316,7 @@ def main():
     else:
         print("❌ Some tests failed. Please check the metrics implementation.")
         return 1
+
 
 if __name__ == "__main__":
     exit_code = main()

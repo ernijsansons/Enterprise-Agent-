@@ -35,7 +35,9 @@ class ClaudeAuthManager:
             )
             # Remove from current environment
             del os.environ["ANTHROPIC_API_KEY"]
-            logger.info("ANTHROPIC_API_KEY removed from environment. Now using subscription mode.")
+            logger.info(
+                "ANTHROPIC_API_KEY removed from environment. Now using subscription mode."
+            )
 
             # Also check and update .env files
             self._remove_api_key_from_env_files()
@@ -49,28 +51,32 @@ class ClaudeAuthManager:
         for env_file in env_files:
             if env_file.exists():
                 try:
-                    content = env_file.read_text(encoding='utf-8')
+                    content = env_file.read_text(encoding="utf-8")
                     modified_content = self._comment_out_api_key(content)
                     if modified_content != content:
-                        env_file.write_text(modified_content, encoding='utf-8')
+                        env_file.write_text(modified_content, encoding="utf-8")
                         logger.info(f"Commented out ANTHROPIC_API_KEY in {env_file}")
                 except Exception as e:
                     logger.warning(f"Could not modify {env_file}: {e}")
 
     def _comment_out_api_key(self, content: str) -> str:
         """Comment out ANTHROPIC_API_KEY lines in env file content."""
-        lines = content.split('\n')
+        lines = content.split("\n")
         modified_lines = []
 
         for line in lines:
             stripped = line.strip()
-            if stripped.startswith('ANTHROPIC_API_KEY=') and not stripped.startswith('#'):
+            if stripped.startswith("ANTHROPIC_API_KEY=") and not stripped.startswith(
+                "#"
+            ):
                 # Comment out the line
-                modified_lines.append(f"# {line}  # Disabled for Claude Code subscription mode")
+                modified_lines.append(
+                    f"# {line}  # Disabled for Claude Code subscription mode"
+                )
             else:
                 modified_lines.append(line)
 
-        return '\n'.join(modified_lines)
+        return "\n".join(modified_lines)
 
     def check_env_file_for_api_key(self, env_file: Path) -> bool:
         """Check if ANTHROPIC_API_KEY is present in .env file.

@@ -8,7 +8,13 @@ from unittest.mock import Mock, patch
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from tests.comprehensive.test_framework import critical_test, high_priority_test, medium_priority_test, low_priority_test
+from tests.comprehensive.test_framework import (
+    critical_test,
+    high_priority_test,
+    low_priority_test,
+    medium_priority_test,
+)
+
 
 class TestProvidersComplete:
     """Complete test suite for all provider components."""
@@ -30,17 +36,20 @@ class TestProvidersComplete:
             provider = ClaudeCodeProvider(self.test_config)
 
             # Verify basic attributes
-            assert hasattr(provider, 'config')
-            assert hasattr(provider, 'sessions')
+            assert hasattr(provider, "config")
+            assert hasattr(provider, "sessions")
             assert provider.config == self.test_config
 
             return {
                 "success": True,
-                "message": "Claude Code provider initialized successfully"
+                "message": "Claude Code provider initialized successfully",
             }
 
         except Exception as e:
-            return {"success": False, "message": f"Claude Code provider init failed: {e}"}
+            return {
+                "success": False,
+                "message": f"Claude Code provider init failed: {e}",
+            }
 
     @critical_test
     def test_auth_manager_functionality(self):
@@ -51,8 +60,8 @@ class TestProvidersComplete:
             auth_manager = AuthManager()
 
             # Test basic functionality (without requiring actual CLI)
-            assert hasattr(auth_manager, 'validate_setup')
-            assert hasattr(auth_manager, 'ensure_subscription_mode')
+            assert hasattr(auth_manager, "validate_setup")
+            assert hasattr(auth_manager, "ensure_subscription_mode")
 
             # Test setup validation (should not crash)
             try:
@@ -64,7 +73,7 @@ class TestProvidersComplete:
             return {
                 "success": True,
                 "message": "Auth manager functionality verified",
-                "details": {"validation_callable": validation_works}
+                "details": {"validation_callable": validation_works},
             }
 
         except Exception as e:
@@ -79,9 +88,9 @@ class TestProvidersComplete:
             provider = AsyncClaudeCodeProvider(self.test_config)
 
             # Verify async methods exist
-            assert hasattr(provider, 'call_model')
-            assert hasattr(provider, 'batch_call_models')
-            assert hasattr(provider, 'stream_response')
+            assert hasattr(provider, "call_model")
+            assert hasattr(provider, "batch_call_models")
+            assert hasattr(provider, "stream_response")
 
             # Verify it's actually async
             assert asyncio.iscoroutinefunction(provider.call_model)
@@ -89,11 +98,14 @@ class TestProvidersComplete:
 
             return {
                 "success": True,
-                "message": "Async Claude provider functionality verified"
+                "message": "Async Claude provider functionality verified",
             }
 
         except Exception as e:
-            return {"success": False, "message": f"Async Claude provider test failed: {e}"}
+            return {
+                "success": False,
+                "message": f"Async Claude provider test failed: {e}",
+            }
 
     @high_priority_test
     async def test_async_claude_provider_call_model(self):
@@ -104,7 +116,7 @@ class TestProvidersComplete:
             provider = AsyncClaudeCodeProvider(self.test_config)
 
             # Mock the CLI execution to avoid requiring actual Claude CLI
-            with patch.object(provider, '_execute_claude_cli_async') as mock_execute:
+            with patch.object(provider, "_execute_claude_cli_async") as mock_execute:
                 # Mock successful response
                 mock_result = Mock()
                 mock_result.returncode = 0
@@ -118,7 +130,7 @@ class TestProvidersComplete:
                     model="claude_sonnet_4",
                     role="Tester",
                     operation="test",
-                    use_cache=False  # Disable cache for testing
+                    use_cache=False,  # Disable cache for testing
                 )
 
                 assert isinstance(response, str)
@@ -127,7 +139,7 @@ class TestProvidersComplete:
             return {
                 "success": True,
                 "message": "Async Claude provider call_model verified",
-                "details": {"response_received": bool(response)}
+                "details": {"response_received": bool(response)},
             }
 
         except Exception as e:
@@ -142,7 +154,7 @@ class TestProvidersComplete:
             provider = AsyncClaudeCodeProvider(self.test_config)
 
             # Mock the CLI execution
-            with patch.object(provider, '_execute_claude_cli_async') as mock_execute:
+            with patch.object(provider, "_execute_claude_cli_async") as mock_execute:
                 mock_result = Mock()
                 mock_result.returncode = 0
                 mock_result.stdout = '{"text": "Batch response"}'
@@ -156,7 +168,7 @@ class TestProvidersComplete:
                         "model": "claude_sonnet_4",
                         "role": "Tester",
                         "operation": f"batch_test_{i}",
-                        "use_cache": False
+                        "use_cache": False,
                     }
                     for i in range(3)
                 ]
@@ -169,7 +181,7 @@ class TestProvidersComplete:
             return {
                 "success": True,
                 "message": "Async Claude provider batch calls verified",
-                "details": {"batch_size": len(responses)}
+                "details": {"batch_size": len(responses)},
             }
 
         except Exception as e:
@@ -197,25 +209,28 @@ class TestProvidersComplete:
             for input_model, expected in test_mappings:
                 try:
                     mapped = provider._map_model_to_cli(input_model)
-                    mapping_results.append({
-                        "input": input_model,
-                        "expected": expected,
-                        "actual": mapped,
-                        "correct": mapped == expected
-                    })
+                    mapping_results.append(
+                        {
+                            "input": input_model,
+                            "expected": expected,
+                            "actual": mapped,
+                            "correct": mapped == expected,
+                        }
+                    )
                 except Exception as e:
-                    mapping_results.append({
-                        "input": input_model,
-                        "error": str(e),
-                        "correct": False
-                    })
+                    mapping_results.append(
+                        {"input": input_model, "error": str(e), "correct": False}
+                    )
 
-            correct_mappings = sum(1 for r in mapping_results if r.get("correct", False))
+            correct_mappings = sum(
+                1 for r in mapping_results if r.get("correct", False)
+            )
 
             return {
-                "success": correct_mappings >= len(test_mappings) * 0.8,  # 80% success rate
+                "success": correct_mappings
+                >= len(test_mappings) * 0.8,  # 80% success rate
                 "message": f"Model mapping: {correct_mappings}/{len(test_mappings)} correct",
-                "details": {"mapping_results": mapping_results}
+                "details": {"mapping_results": mapping_results},
             }
 
         except Exception as e:
@@ -231,19 +246,19 @@ class TestProvidersComplete:
 
             # Test session creation (should not crash)
             try:
-                session_id = provider.create_session()
+                provider.create_session()
                 session_created = True
             except Exception:
                 session_created = False  # Expected if CLI not available
 
             # Test session management methods exist
-            assert hasattr(provider, 'create_session')
-            assert hasattr(provider, 'sessions')
+            assert hasattr(provider, "create_session")
+            assert hasattr(provider, "sessions")
 
             return {
                 "success": True,
                 "message": "Session management functionality verified",
-                "details": {"session_creation_works": session_created}
+                "details": {"session_creation_works": session_created},
             }
 
         except Exception as e:
@@ -258,7 +273,7 @@ class TestProvidersComplete:
             provider = ClaudeCodeProvider(self.test_config)
 
             # Mock CLI execution that fails
-            with patch('subprocess.run') as mock_run:
+            with patch("subprocess.run") as mock_run:
                 # Mock failed execution
                 mock_result = Mock()
                 mock_result.returncode = 1
@@ -268,11 +283,11 @@ class TestProvidersComplete:
 
                 # This should handle the error gracefully
                 try:
-                    result = provider.call_model(
+                    provider.call_model(
                         prompt="Test prompt",
                         model="claude_sonnet_4",
                         role="Tester",
-                        operation="error_test"
+                        operation="error_test",
                     )
                     error_handled = True
                 except Exception as e:
@@ -282,7 +297,7 @@ class TestProvidersComplete:
             return {
                 "success": True,
                 "message": "Error handling verified",
-                "details": {"graceful_error_handling": error_handled}
+                "details": {"graceful_error_handling": error_handled},
             }
 
         except Exception as e:
@@ -306,7 +321,7 @@ class TestProvidersComplete:
             return {
                 "success": True,
                 "message": "Async provider stats verified",
-                "details": {"stats_keys": list(stats.keys())}
+                "details": {"stats_keys": list(stats.keys())},
             }
 
         except Exception as e:
@@ -329,30 +344,42 @@ class TestProvidersComplete:
             results = []
             for config in config_scenarios:
                 try:
-                    provider = ClaudeCodeProvider(config)
+                    ClaudeCodeProvider(config)
                     results.append({"config": config, "success": True})
                 except Exception as e:
-                    results.append({"config": config, "success": False, "error": str(e)})
+                    results.append(
+                        {"config": config, "success": False, "error": str(e)}
+                    )
 
             success_count = sum(1 for r in results if r["success"])
 
             return {
-                "success": success_count >= len(config_scenarios) * 0.5,  # 50% should work
+                "success": success_count
+                >= len(config_scenarios) * 0.5,  # 50% should work
                 "message": f"Configuration validation: {success_count}/{len(config_scenarios)} passed",
-                "details": {"config_results": results}
+                "details": {"config_results": results},
             }
 
         except Exception as e:
-            return {"success": False, "message": f"Configuration validation failed: {e}"}
+            return {
+                "success": False,
+                "message": f"Configuration validation failed: {e}",
+            }
 
     @low_priority_test
     def test_provider_imports_and_exports(self):
         """Test provider module imports and exports."""
         try:
             # Test individual imports
-            from src.providers.claude_code_provider import ClaudeCodeProvider, get_claude_code_provider
+            from src.providers.async_claude_provider import (
+                AsyncClaudeCodeProvider,
+                get_async_claude_provider,
+            )
             from src.providers.auth_manager import AuthManager, get_auth_manager
-            from src.providers.async_claude_provider import AsyncClaudeCodeProvider, get_async_claude_provider
+            from src.providers.claude_code_provider import (
+                ClaudeCodeProvider,
+                get_claude_code_provider,
+            )
 
             # Test factory functions
             claude_provider = get_claude_code_provider(self.test_config)
@@ -363,10 +390,7 @@ class TestProvidersComplete:
             assert isinstance(auth_manager, AuthManager)
             assert isinstance(async_provider, AsyncClaudeCodeProvider)
 
-            return {
-                "success": True,
-                "message": "Provider imports and exports verified"
-            }
+            return {"success": True, "message": "Provider imports and exports verified"}
 
         except Exception as e:
             return {"success": False, "message": f"Import/export test failed: {e}"}
@@ -380,17 +404,17 @@ class TestProvidersComplete:
             provider = ClaudeCodeProvider({**self.test_config, "enable_fallback": True})
 
             # Test fallback behavior with unavailable CLI
-            with patch('subprocess.run') as mock_run:
+            with patch("subprocess.run") as mock_run:
                 # Mock CLI not found
                 mock_run.side_effect = FileNotFoundError("Claude CLI not found")
 
                 # Should handle gracefully and fall back
                 try:
-                    result = provider.call_model(
+                    provider.call_model(
                         prompt="Test",
                         model="claude_sonnet_4",
                         role="Tester",
-                        operation="fallback_test"
+                        operation="fallback_test",
                     )
                     fallback_works = True
                 except Exception as e:
@@ -400,7 +424,7 @@ class TestProvidersComplete:
             return {
                 "success": True,
                 "message": "Fallback mechanisms verified",
-                "details": {"fallback_handling": fallback_works}
+                "details": {"fallback_handling": fallback_works},
             }
 
         except Exception as e:
@@ -413,7 +437,7 @@ def get_providers_tests():
     test_methods = []
 
     for attr_name in dir(test_class):
-        if attr_name.startswith('test_') and callable(getattr(test_class, attr_name)):
+        if attr_name.startswith("test_") and callable(getattr(test_class, attr_name)):
             method = getattr(test_class, attr_name)
             test_methods.append(method)
 

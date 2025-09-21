@@ -8,17 +8,22 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
+
 def test_error_code_classification():
     """Test that error codes are properly classified."""
     print("Testing error code classification...")
 
     try:
-        from src.utils.errors import ErrorCode, ErrorCategory, ErrorSeverity, EnterpriseAgentError
+        from src.utils.errors import (
+            EnterpriseAgentError,
+            ErrorCategory,
+            ErrorCode,
+            ErrorSeverity,
+        )
 
         # Test orchestration error classification
         orch_error = EnterpriseAgentError(
-            ErrorCode.ORCHESTRATION_INIT_FAILED,
-            "Test orchestration error"
+            ErrorCode.ORCHESTRATION_INIT_FAILED, "Test orchestration error"
         )
 
         assert orch_error.details.category == ErrorCategory.ORCHESTRATION
@@ -27,8 +32,7 @@ def test_error_code_classification():
 
         # Test model error classification
         model_error = EnterpriseAgentError(
-            ErrorCode.MODEL_CALL_FAILED,
-            "Test model error"
+            ErrorCode.MODEL_CALL_FAILED, "Test model error"
         )
 
         assert model_error.details.category == ErrorCategory.MODEL_CALL
@@ -36,8 +40,7 @@ def test_error_code_classification():
 
         # Test validation error classification
         validation_error = EnterpriseAgentError(
-            ErrorCode.VALIDATION_FAILED,
-            "Test validation error"
+            ErrorCode.VALIDATION_FAILED, "Test validation error"
         )
 
         assert validation_error.details.category == ErrorCategory.VALIDATION
@@ -50,12 +53,13 @@ def test_error_code_classification():
         print(f"❌ Error code classification test failed: {e}")
         return False
 
+
 def test_error_handler():
     """Test the error handler functionality."""
     print("\nTesting error handler...")
 
     try:
-        from src.utils.errors import ErrorHandler, EnterpriseAgentError, ErrorCode
+        from src.utils.errors import EnterpriseAgentError, ErrorCode, ErrorHandler
 
         handler = ErrorHandler()
 
@@ -63,18 +67,18 @@ def test_error_handler():
         test_error1 = EnterpriseAgentError(
             ErrorCode.MODEL_CALL_FAILED,
             "Test model error",
-            context={"model": "claude-3", "role": "coder"}
+            context={"model": "claude-3", "role": "coder"},
         )
 
         test_error2 = EnterpriseAgentError(
             ErrorCode.VALIDATION_FAILED,
             "Test validation error",
-            context={"coverage": 0.5}
+            context={"coverage": 0.5},
         )
 
         # Handle errors
-        details1 = handler.handle_error(test_error1)
-        details2 = handler.handle_error(test_error2)
+        handler.handle_error(test_error1)
+        handler.handle_error(test_error2)
 
         # Check that errors are tracked
         assert len(handler.error_history) == 2
@@ -94,6 +98,7 @@ def test_error_handler():
         print(f"❌ Error handler test failed: {e}")
         return False
 
+
 def test_orchestrator_error_integration():
     """Test error handling integration with orchestrator."""
     print("\nTesting orchestrator error integration...")
@@ -106,7 +111,7 @@ invalid_yaml_structure:
   - this should cause: a configuration error
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(test_config)
             config_path = f.name
 
@@ -122,7 +127,7 @@ invalid_yaml_structure:
             assert e.details.code in [
                 ErrorCode.CONFIG_MISSING_REQUIRED_FIELD,
                 ErrorCode.CONFIG_VALIDATION_FAILED,
-                ErrorCode.CONFIG_FILE_NOT_FOUND
+                ErrorCode.CONFIG_FILE_NOT_FOUND,
             ]
             print(f"✅ Configuration error properly caught: {e.details.code.name}")
 
@@ -135,25 +140,26 @@ invalid_yaml_structure:
 
     finally:
         # Cleanup
-        if 'config_path' in locals():
+        if "config_path" in locals():
             try:
                 os.unlink(config_path)
-            except:
+            except OSError:
                 pass
+
 
 def test_error_recovery_suggestions():
     """Test that error recovery suggestions are properly provided."""
     print("\nTesting error recovery suggestions...")
 
     try:
-        from src.utils.errors import create_model_error, ErrorCode
+        from src.utils.errors import ErrorCode, create_model_error
 
         # Create model error with recovery suggestions
         model_error = create_model_error(
             "Rate limit exceeded",
             model="claude-3",
             error_code=ErrorCode.MODEL_RATE_LIMITED,
-            context={"requests_per_minute": 100}
+            context={"requests_per_minute": 100},
         )
 
         model_error.add_recovery_suggestion("Reduce request frequency")
@@ -175,6 +181,7 @@ def test_error_recovery_suggestions():
         print(f"❌ Error recovery suggestions test failed: {e}")
         return False
 
+
 def test_error_context_and_metadata():
     """Test error context and metadata handling."""
     print("\nTesting error context and metadata...")
@@ -190,13 +197,15 @@ def test_error_context_and_metadata():
                 "iteration": 3,
                 "confidence": 0.45,
                 "max_iterations": 5,
-                "stagnation_count": 3
-            }
+                "stagnation_count": 3,
+            },
         )
 
         error.add_context("domain", "web_development")
         error.add_context("task_complexity", "high")
-        error.set_user_message("The reflection process encountered issues. Please review the task requirements.")
+        error.set_user_message(
+            "The reflection process encountered issues. Please review the task requirements."
+        )
 
         # Verify context is properly stored
         assert error.details.context["iteration"] == 3
@@ -205,11 +214,16 @@ def test_error_context_and_metadata():
         assert error.details.context["task_complexity"] == "high"
 
         # Verify user message
-        assert "reflection process encountered issues" in error.details.user_message.lower()
+        assert (
+            "reflection process encountered issues"
+            in error.details.user_message.lower()
+        )
 
         # Verify metadata
         assert error.details.timestamp > 0
-        assert error.details.severity in [s.value for s in error.details.severity.__class__]
+        assert error.details.severity in [
+            s.value for s in error.details.severity.__class__
+        ]
 
         print("✅ Error context and metadata test passed")
         return True
@@ -217,6 +231,7 @@ def test_error_context_and_metadata():
     except Exception as e:
         print(f"❌ Error context and metadata test failed: {e}")
         return False
+
 
 def main():
     """Run all error handling tests."""
@@ -245,11 +260,14 @@ def main():
     print(f"Test Results: {tests_passed}/{total_tests} tests passed")
 
     if tests_passed == total_tests:
-        print("🎉 All error handling tests passed! Structured error handling is working correctly.")
+        print(
+            "🎉 All error handling tests passed! Structured error handling is working correctly."
+        )
         return 0
     else:
         print("❌ Some tests failed. Please check the error handling implementation.")
         return 1
+
 
 if __name__ == "__main__":
     exit_code = main()

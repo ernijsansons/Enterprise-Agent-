@@ -48,7 +48,8 @@ class Reflector(BaseRole):
             "",
             "## Current Output",
             "```",
-            current_output[:3000] + ("...\n[TRUNCATED]" if len(current_output) > 3000 else ""),
+            current_output[:3000]
+            + ("...\n[TRUNCATED]" if len(current_output) > 3000 else ""),
             "```",
             "",
             "## Fix Requirements",
@@ -60,28 +61,28 @@ class Reflector(BaseRole):
             "",
             "## Response Format",
             "Provide comprehensive reflection as JSON:",
-            '{',
+            "{",
             '  "root_cause_analysis": {',
             '    "primary_causes": ["most critical issues"],',
             '    "secondary_causes": ["minor issues"],',
             '    "failure_patterns": "recurring issues across iterations"',
-            '  },',
+            "  },",
             '  "fixes": [',
-            '    {',
+            "    {",
             '      "issue_type": "specific issue being addressed",',
             '      "description": "detailed fix description",',
             '      "implementation": "specific changes to make",',
             '      "risks": "potential negative effects",',
             '      "priority": "high|medium|low"',
-            '    }',
-            '  ],',
+            "    }",
+            "  ],",
             '  "selected_fix": 0,',
             '  "fix_reasoning": "why this fix was chosen",',
             '  "revised_output": "complete improved version",',
             '  "validation_expectations": "what should pass validation now",',
             '  "confidence": 0.0,',
             '  "confidence_reasoning": "detailed explanation of confidence level"',
-            '}',
+            "}",
             "",
             "## Confidence Scale",
             "- 0.9-1.0: Very confident - comprehensive fix, low risk",
@@ -119,7 +120,11 @@ class Reflector(BaseRole):
         # Check iteration limits with better error context
         max_iterations = 5  # This should be configurable
         if iterations >= max_iterations:
-            from src.utils.errors import handle_error, create_orchestration_error, ErrorCode
+            from src.utils.errors import (
+                ErrorCode,
+                create_orchestration_error,
+                handle_error,
+            )
 
             error = create_orchestration_error(
                 f"Reflection halted: maximum iterations ({max_iterations}) reached",
@@ -128,8 +133,8 @@ class Reflector(BaseRole):
                     "iterations": iterations,
                     "max_iterations": max_iterations,
                     "domain": domain,
-                    "validation_status": validation.get("passes", False)
-                }
+                    "validation_status": validation.get("passes", False),
+                },
             )
             handle_error(error)
 
@@ -139,17 +144,21 @@ class Reflector(BaseRole):
                 "iterations": iterations,
                 "confidence": 0.0,
                 "halt_reason": "max_iterations_reached",
-                "error_details": error.details.to_dict()
+                "error_details": error.details.to_dict(),
             }
 
         # Input validation
         if not isinstance(validation, dict):
-            from src.utils.errors import create_validation_error, ErrorCode
+            from src.utils.errors import ErrorCode, create_validation_error
+
             raise create_validation_error(
                 f"Validation must be a dictionary, got {type(validation).__name__}",
                 validation_type="validation_input",
                 error_code=ErrorCode.INVALID_PARAMETERS,
-                context={"validation_type": type(validation).__name__, "domain": domain}
+                context={
+                    "validation_type": type(validation).__name__,
+                    "domain": domain,
+                },
             )
 
         try:
@@ -164,24 +173,34 @@ class Reflector(BaseRole):
             try:
                 parsed = self.parse_json(response)
             except Exception as e:
-                from src.utils.errors import create_validation_error, ErrorCode
+                from src.utils.errors import ErrorCode, create_validation_error
+
                 # Log parsing failure but continue with fallback
                 error = create_validation_error(
                     f"Failed to parse reflection response: {str(e)}",
                     validation_type="json_parse",
                     error_code=ErrorCode.VALIDATION_PARSE_ERROR,
-                    context={"response_length": len(response), "domain": domain, "iterations": iterations},
-                    cause=e
+                    context={
+                        "response_length": len(response),
+                        "domain": domain,
+                        "iterations": iterations,
+                    },
+                    cause=e,
                 )
                 from src.utils.errors import handle_error
+
                 handle_error(error)
                 parsed = None
 
             # Process reflection results with enhanced validation
             if isinstance(parsed, dict) and parsed:
-                result = self._process_structured_reflection(parsed, current_output, iterations, model)
+                result = self._process_structured_reflection(
+                    parsed, current_output, iterations, model
+                )
             else:
-                result = self._process_fallback_reflection(response, current_output, iterations, model)
+                result = self._process_fallback_reflection(
+                    response, current_output, iterations, model
+                )
 
             # Add reflection metadata
             result["reflection_metadata"] = {
@@ -190,17 +209,20 @@ class Reflector(BaseRole):
                 "model_used": model,
                 "iterations": iterations,
                 "has_structured_analysis": isinstance(parsed, dict) and parsed,
-                "validation_issues_count": len(self._extract_validation_issues(validation))
+                "validation_issues_count": len(
+                    self._extract_validation_issues(validation)
+                ),
             }
 
             return result
 
         except Exception as e:
             # Handle reflection failures with structured errors
-            if hasattr(e, 'details'):
+            if hasattr(e, "details"):
                 raise  # Already a structured error
             else:
-                from src.utils.errors import create_orchestration_error, ErrorCode
+                from src.utils.errors import ErrorCode, create_orchestration_error
+
                 raise create_orchestration_error(
                     f"Reflection process failed: {str(e)}",
                     error_code=ErrorCode.REFLECTION_LOOP_FAILED,
@@ -208,9 +230,9 @@ class Reflector(BaseRole):
                         "domain": domain,
                         "iterations": iterations,
                         "output_length": len(current_output),
-                        "validation_passes": validation.get("passes", False)
+                        "validation_passes": validation.get("passes", False),
                     },
-                    cause=e
+                    cause=e,
                 )
 
     def _analyze_validation_issues(self, validation: Dict[str, Any]) -> str:
@@ -223,13 +245,17 @@ class Reflector(BaseRole):
 
         # Coding domain issues
         if not validation.get("tests_passed", True):
-            issues.append("🧪 **Tests failing** - Check pytest output for specific errors")
+            issues.append(
+                "🧪 **Tests failing** - Check pytest output for specific errors"
+            )
 
         coverage = validation.get("coverage", 1.0)
         threshold = validation.get("coverage_threshold", 0.97)
         if coverage < threshold:
             missing = (threshold - coverage) * 100
-            issues.append(f"📊 **Coverage insufficient** - Need {missing:.1f}% more test coverage")
+            issues.append(
+                f"📊 **Coverage insufficient** - Need {missing:.1f}% more test coverage"
+            )
 
         # LLM validation issues
         llm_insights = validation.get("llm_insights", {})
@@ -251,7 +277,11 @@ class Reflector(BaseRole):
             for action in immediate_actions[:2]:  # Top 2 immediate actions
                 issues.append(f"🚨 **Immediate Action**: {action}")
 
-        return "\n".join(issues) if issues else "✅ No specific issues identified in validation"
+        return (
+            "\n".join(issues)
+            if issues
+            else "✅ No specific issues identified in validation"
+        )
 
     def _extract_validation_issues(self, validation: Dict[str, Any]) -> List[str]:
         """Extract list of validation issues for metadata."""
@@ -282,12 +312,20 @@ class Reflector(BaseRole):
         required_fields = ["confidence", "revised_output"]
         missing_fields = [f for f in required_fields if f not in parsed]
         if missing_fields:
-            from src.utils.errors import handle_error, create_validation_error, ErrorCode
+            from src.utils.errors import (
+                ErrorCode,
+                create_validation_error,
+                handle_error,
+            )
+
             error = create_validation_error(
                 f"Missing required reflection fields: {missing_fields}",
                 validation_type="reflection_structure",
                 error_code=ErrorCode.VALIDATION_FAILED,
-                context={"missing_fields": missing_fields, "available_fields": list(parsed.keys())}
+                context={
+                    "missing_fields": missing_fields,
+                    "available_fields": list(parsed.keys()),
+                },
             )
             handle_error(error)
             # Set defaults for missing fields
@@ -325,7 +363,7 @@ class Reflector(BaseRole):
             "model": model,
             "confidence": confidence,
             "analysis": analysis,
-            "structured_reflection": True
+            "structured_reflection": True,
         }
 
     def _process_fallback_reflection(
@@ -348,7 +386,7 @@ class Reflector(BaseRole):
             "raw": response,
             "parsing_failed": True,
             "fallback_processing": True,
-            "confidence_heuristic": True
+            "confidence_heuristic": True,
         }
 
         return {
@@ -358,7 +396,7 @@ class Reflector(BaseRole):
             "model": model,
             "confidence": confidence,
             "analysis": analysis,
-            "structured_reflection": False
+            "structured_reflection": False,
         }
 
 

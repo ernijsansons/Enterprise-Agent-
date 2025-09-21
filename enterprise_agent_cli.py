@@ -25,61 +25,101 @@ class EnterpriseAgentCLI:
         "coding": {
             "description": "Software development, debugging, code review",
             "capabilities": ["code_generation", "debugging", "refactoring", "testing"],
-            "default_models": {"primary": "claude-3-5-sonnet-20241022", "fallback": "gpt-4o-mini"},
+            "default_models": {
+                "primary": "claude-3-5-sonnet-20241022",
+                "fallback": "gpt-4o-mini",
+            },
             "reflection_iterations": 5,
-            "confidence_threshold": 0.8
+            "confidence_threshold": 0.8,
         },
         "ui": {
             "description": "User interface design and development",
             "capabilities": ["component_design", "responsive_design", "accessibility"],
-            "default_models": {"primary": "claude-3-5-sonnet-20241022", "fallback": "gpt-4-vision-preview"},
+            "default_models": {
+                "primary": "claude-3-5-sonnet-20241022",
+                "fallback": "gpt-4-vision-preview",
+            },
             "reflection_iterations": 3,
-            "confidence_threshold": 0.75
+            "confidence_threshold": 0.75,
         },
         "social": {
             "description": "Social media content and strategy",
             "capabilities": ["content_creation", "strategy", "analytics"],
-            "default_models": {"primary": "claude-3-opus-20240229", "fallback": "gpt-4"},
+            "default_models": {
+                "primary": "claude-3-opus-20240229",
+                "fallback": "gpt-4",
+            },
             "reflection_iterations": 2,
-            "confidence_threshold": 0.7
+            "confidence_threshold": 0.7,
         },
         "content": {
             "description": "Content writing and documentation",
             "capabilities": ["writing", "editing", "documentation", "research"],
-            "default_models": {"primary": "claude-3-5-sonnet-20241022", "fallback": "gpt-4"},
+            "default_models": {
+                "primary": "claude-3-5-sonnet-20241022",
+                "fallback": "gpt-4",
+            },
             "reflection_iterations": 3,
-            "confidence_threshold": 0.8
+            "confidence_threshold": 0.8,
         },
         "trading": {
             "description": "Financial analysis and trading strategies",
-            "capabilities": ["market_analysis", "risk_assessment", "strategy_development"],
-            "default_models": {"primary": "claude-3-opus-20240229", "fallback": "gpt-4"},
+            "capabilities": [
+                "market_analysis",
+                "risk_assessment",
+                "strategy_development",
+            ],
+            "default_models": {
+                "primary": "claude-3-opus-20240229",
+                "fallback": "gpt-4",
+            },
             "reflection_iterations": 5,
             "confidence_threshold": 0.9,
-            "security_enhanced": True
+            "security_enhanced": True,
         },
         "real_estate": {
             "description": "Real estate analysis and investment",
-            "capabilities": ["property_analysis", "market_research", "investment_planning"],
-            "default_models": {"primary": "claude-3-5-sonnet-20241022", "fallback": "gpt-4"},
+            "capabilities": [
+                "property_analysis",
+                "market_research",
+                "investment_planning",
+            ],
+            "default_models": {
+                "primary": "claude-3-5-sonnet-20241022",
+                "fallback": "gpt-4",
+            },
             "reflection_iterations": 4,
-            "confidence_threshold": 0.8
+            "confidence_threshold": 0.8,
         },
         "research": {
             "description": "Research and data analysis",
-            "capabilities": ["data_analysis", "literature_review", "hypothesis_testing"],
-            "default_models": {"primary": "claude-3-opus-20240229", "fallback": "gpt-4"},
+            "capabilities": [
+                "data_analysis",
+                "literature_review",
+                "hypothesis_testing",
+            ],
+            "default_models": {
+                "primary": "claude-3-opus-20240229",
+                "fallback": "gpt-4",
+            },
             "reflection_iterations": 4,
-            "confidence_threshold": 0.85
+            "confidence_threshold": 0.85,
         },
         "security": {
             "description": "Security analysis and penetration testing",
-            "capabilities": ["vulnerability_assessment", "security_audit", "threat_modeling"],
-            "default_models": {"primary": "claude-3-opus-20240229", "fallback": "gpt-4"},
+            "capabilities": [
+                "vulnerability_assessment",
+                "security_audit",
+                "threat_modeling",
+            ],
+            "default_models": {
+                "primary": "claude-3-opus-20240229",
+                "fallback": "gpt-4",
+            },
             "reflection_iterations": 6,
             "confidence_threshold": 0.95,
-            "security_enhanced": True
-        }
+            "security_enhanced": True,
+        },
     }
 
     def __init__(self, verbose: bool = False, log_level: str = "INFO"):
@@ -111,11 +151,13 @@ class EnterpriseAgentCLI:
 
         logging.basicConfig(
             level=getattr(logging, log_level.upper()),
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             handlers=[
                 logging.FileHandler(log_file),
-                logging.StreamHandler(sys.stdout) if self.verbose else logging.NullHandler()
-            ]
+                logging.StreamHandler(sys.stdout)
+                if self.verbose
+                else logging.NullHandler(),
+            ],
         )
 
         self.logger = logging.getLogger(__name__)
@@ -139,7 +181,7 @@ class EnterpriseAgentCLI:
             print(f"{'':12}   Primary Model: {config['default_models']['primary']}")
             print(f"{'':12}   Reflection: {config['reflection_iterations']} iterations")
 
-            if config.get('security_enhanced'):
+            if config.get("security_enhanced"):
                 print(f"{'':12}   🔒 Security Enhanced Domain")
 
     def get_domain_config(self, domain: str) -> Dict[str, Any]:
@@ -155,7 +197,7 @@ class EnterpriseAgentCLI:
             ValueError: If domain is not supported
         """
         if domain not in self.DOMAIN_CONFIGS:
-            available = ', '.join(self.DOMAIN_CONFIGS.keys())
+            available = ", ".join(self.DOMAIN_CONFIGS.keys())
             raise ValueError(f"Unsupported domain '{domain}'. Available: {available}")
 
         return self.DOMAIN_CONFIGS[domain].copy()
@@ -280,16 +322,19 @@ Please review the following code for:
         try:
             # Validate domain
             if not self.validate_domain(domain):
-                available_domains = ', '.join(self.DOMAIN_CONFIGS.keys())
+                available_domains = ", ".join(self.DOMAIN_CONFIGS.keys())
                 raise EnterpriseAgentError(
                     ErrorCode.INVALID_DOMAIN,
                     f"Invalid domain '{domain}'. Available domains: {available_domains}",
-                    context={"requested_domain": domain, "available_domains": list(self.DOMAIN_CONFIGS.keys())},
+                    context={
+                        "requested_domain": domain,
+                        "available_domains": list(self.DOMAIN_CONFIGS.keys()),
+                    },
                     recovery_suggestions=[
                         "Use 'enterprise-agent domains' to list available domains",
                         f"Try one of: {available_domains}",
-                        "Check domain spelling"
-                    ]
+                        "Check domain spelling",
+                    ],
                 )
 
             # Get domain configuration
@@ -320,17 +365,21 @@ Please review the following code for:
                     recovery_suggestions=[
                         "Check configuration files",
                         "Verify dependencies are installed",
-                        "Check API key configuration"
+                        "Check API key configuration",
                     ],
-                    cause=e
+                    cause=e,
                 )
 
             if interactive:
                 return self._run_interactive(orchestrator, domain, domain_config)
             else:
                 return self._run_single_command(
-                    orchestrator, domain, input_text, project_dir,
-                    domain_config, profile
+                    orchestrator,
+                    domain,
+                    input_text,
+                    project_dir,
+                    domain_config,
+                    profile,
                 )
 
         except EnterpriseAgentError:
@@ -338,12 +387,14 @@ Please review the following code for:
             raise
         except Exception as e:
             self.errors_encountered += 1
-            error_details = handle_error(e, {"domain": domain, "project_dir": str(project_dir)})
+            handle_error(
+                e, {"domain": domain, "project_dir": str(project_dir)}
+            )
             raise EnterpriseAgentError(
                 ErrorCode.SYSTEM_ERROR,
                 f"Unexpected error during agent execution: {str(e)}",
                 context={"domain": domain, "project_dir": str(project_dir)},
-                cause=e
+                cause=e,
             )
         finally:
             os.chdir(original_dir)
@@ -351,18 +402,26 @@ Please review the following code for:
             self.commands_executed += 1
             self.logger.info(f"Command execution completed in {execution_time:.2f}s")
 
-    def _configure_domain_environment(self, domain: str, domain_config: Dict[str, Any]) -> None:
+    def _configure_domain_environment(
+        self, domain: str, domain_config: Dict[str, Any]
+    ) -> None:
         """Configure environment variables based on domain configuration."""
         # Set reflection parameters based on domain
-        os.environ["REFLECTION_MAX_ITERATIONS"] = str(domain_config["reflection_iterations"])
-        os.environ["REFLECTION_CONFIDENCE_THRESHOLD"] = str(domain_config["confidence_threshold"])
+        os.environ["REFLECTION_MAX_ITERATIONS"] = str(
+            domain_config["reflection_iterations"]
+        )
+        os.environ["REFLECTION_CONFIDENCE_THRESHOLD"] = str(
+            domain_config["confidence_threshold"]
+        )
 
         # Enable enhanced security for sensitive domains
         if domain_config.get("security_enhanced"):
             os.environ["SECURITY_ENHANCED"] = "true"
             self.logger.info(f"Enabled enhanced security for domain: {domain}")
 
-    def _load_configurations(self, project_dir: Path, config_file: Optional[Path]) -> None:
+    def _load_configurations(
+        self, project_dir: Path, config_file: Optional[Path]
+    ) -> None:
         """Load project and custom configurations."""
         # Load project-specific config if exists
         project_config = project_dir / ".enterprise-agent" / "config.yml"
@@ -375,7 +434,9 @@ Please review the following code for:
             self._load_project_config(config_file)
             self.logger.debug(f"Loaded custom config: {config_file}")
 
-    def _dry_run_preview(self, domain: str, input_text: str, domain_config: Dict[str, Any]) -> Dict[str, Any]:
+    def _dry_run_preview(
+        self, domain: str, input_text: str, domain_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Preview what would be executed without running the agent."""
         return {
             "dry_run": True,
@@ -387,8 +448,8 @@ Please review the following code for:
                 "confidence_threshold": domain_config["confidence_threshold"],
                 "primary_model": domain_config["default_models"]["primary"],
                 "fallback_model": domain_config["default_models"]["fallback"],
-                "security_enhanced": domain_config.get("security_enhanced", False)
-            }
+                "security_enhanced": domain_config.get("security_enhanced", False),
+            },
         }
 
     def _run_single_command(
@@ -398,7 +459,7 @@ Please review the following code for:
         input_text: str,
         project_dir: Path,
         domain_config: Dict[str, Any],
-        profile: bool
+        profile: bool,
     ) -> Any:
         """Run a single command with the agent."""
         print("🚀 Running Enterprise Agent")
@@ -408,8 +469,8 @@ Please review the following code for:
 
         if profile:
             import cProfile
-            import pstats
             import io
+            import pstats
 
             pr = cProfile.Profile()
             pr.enable()
@@ -420,7 +481,7 @@ Please review the following code for:
             if profile:
                 pr.disable()
                 s = io.StringIO()
-                ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
+                ps = pstats.Stats(pr, stream=s).sort_stats("cumulative")
                 ps.print_stats()
                 result["profile_data"] = s.getvalue()
 
@@ -432,7 +493,7 @@ Please review the following code for:
                 "domain": domain,
                 "domain_config": domain_config,
                 "timestamp": time.time(),
-                "project_dir": str(project_dir)
+                "project_dir": str(project_dir),
             }
 
             return result
@@ -447,14 +508,14 @@ Please review the following code for:
                 context={
                     "domain": domain,
                     "input_text": input_text[:200],
-                    "project_dir": str(project_dir)
+                    "project_dir": str(project_dir),
                 },
                 recovery_suggestions=[
                     "Check input format",
                     "Verify domain configuration",
-                    "Review error logs"
+                    "Review error logs",
                 ],
-                cause=e
+                cause=e,
             )
 
     def _run_interactive(self, orchestrator: AgentOrchestrator, domain: str) -> None:
@@ -672,13 +733,16 @@ models:
         # Check dependencies
         print("\nDependencies:")
         try:
-            import yaml
+            import yaml  # noqa: F401
+
             print("  ✅ PyYAML available")
         except ImportError:
             print("  ❌ PyYAML not available")
 
         try:
-            result = subprocess.run(["claude", "--version"], capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                ["claude", "--version"], capture_output=True, text=True, timeout=5
+            )
             if result.returncode == 0:
                 print(f"  ✅ Claude Code CLI: {result.stdout.strip()}")
             else:
@@ -689,7 +753,9 @@ models:
         # Domain count
         print(f"\nAvailable Domains: {len(self.DOMAIN_CONFIGS)}")
 
-    def show_history(self, limit: int = 10, domain_filter: Optional[str] = None) -> None:
+    def show_history(
+        self, limit: int = 10, domain_filter: Optional[str] = None
+    ) -> None:
         """Show command history.
 
         Args:
@@ -705,22 +771,25 @@ models:
         history_entries = []
 
         # Look for .enterprise-agent directories
-        for project_dir in Path.cwd().parent.rglob('.enterprise-agent'):
-            history_dir = project_dir / 'history'
+        for project_dir in Path.cwd().parent.rglob(".enterprise-agent"):
+            history_dir = project_dir / "history"
             if history_dir.exists():
-                for history_file in history_dir.glob('*.jsonl'):
+                for history_file in history_dir.glob("*.jsonl"):
                     try:
                         with history_file.open() as f:
                             for line in f:
                                 entry = json.loads(line.strip())
-                                if not domain_filter or entry.get('domain') == domain_filter:
-                                    entry['project'] = str(project_dir.parent.name)
+                                if (
+                                    not domain_filter
+                                    or entry.get("domain") == domain_filter
+                                ):
+                                    entry["project"] = str(project_dir.parent.name)
                                     history_entries.append(entry)
                     except Exception:
                         continue
 
         # Sort by timestamp and limit
-        history_entries.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        history_entries.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
         history_entries = history_entries[:limit]
 
         if not history_entries:
@@ -728,10 +797,10 @@ models:
             return
 
         for entry in history_entries:
-            timestamp = entry.get('timestamp', 'Unknown')
-            domain = entry.get('domain', 'Unknown')
-            project = entry.get('project', 'Unknown')
-            input_text = entry.get('input', '')
+            timestamp = entry.get("timestamp", "Unknown")
+            domain = entry.get("domain", "Unknown")
+            project = entry.get("project", "Unknown")
+            input_text = entry.get("input", "")
 
             print(f"\n[{timestamp}] {domain} @ {project}")
             print(f"  Input: {input_text[:80]}{'...' if len(input_text) > 80 else ''}")
@@ -757,19 +826,19 @@ models:
         print(f"\n📁 Project Analysis: {analysis['project_dir']}")
         print("=" * 50)
 
-        if analysis['tech_stack']:
+        if analysis["tech_stack"]:
             print("\n🔧 Technology Stack:")
-            for tech in analysis['tech_stack']:
+            for tech in analysis["tech_stack"]:
                 print(f"  • {tech}")
 
-        if analysis['files']:
+        if analysis["files"]:
             print("\n📄 File Count:")
-            for pattern, count in analysis['files'].items():
+            for pattern, count in analysis["files"].items():
                 print(f"  {pattern}: {count} files")
 
-        if analysis['suggestions']:
+        if analysis["suggestions"]:
             print("\n💡 Suggestions:")
-            for suggestion in analysis['suggestions']:
+            for suggestion in analysis["suggestions"]:
                 print(f"  • {suggestion}")
 
 
@@ -788,63 +857,81 @@ Examples:
   enterprise-agent setup                               # Setup Claude Code integration
 
 For more information, visit: https://github.com/enterprise-agent
-        """
+        """,
     )
 
     # Global options
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
-    parser.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-                       default="INFO", help="Set logging level")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
+    )
+    parser.add_argument(
+        "--log-level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        default="INFO",
+        help="Set logging level",
+    )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Domains command (NEW)
-    domains_parser = subparsers.add_parser("domains", help="List available domains")
+    subparsers.add_parser("domains", help="List available domains")
 
     # Init command
     init_parser = subparsers.add_parser("init", help="Initialize agent in project")
-    init_parser.add_argument("--dir", type=Path, help="Project directory (default: current)")
+    init_parser.add_argument(
+        "--dir", type=Path, help="Project directory (default: current)"
+    )
 
     # Run command (ENHANCED)
     run_parser = subparsers.add_parser("run", help="Run agent")
     run_parser.add_argument(
-        "--domain", "-d",
+        "--domain",
+        "-d",
         default="coding",
-        help="Domain to use (use 'domains' command to list available)"
+        help="Domain to use (use 'domains' command to list available)",
     )
     run_parser.add_argument("--input", "-i", required=True, help="Input prompt")
     run_parser.add_argument("--project-dir", type=Path, help="Project directory")
     run_parser.add_argument("--config", "-c", type=Path, help="Custom config file")
-    run_parser.add_argument("--dry-run", action="store_true",
-                           help="Preview actions without execution")
-    run_parser.add_argument("--profile", action="store_true",
-                           help="Enable performance profiling")
+    run_parser.add_argument(
+        "--dry-run", action="store_true", help="Preview actions without execution"
+    )
+    run_parser.add_argument(
+        "--profile", action="store_true", help="Enable performance profiling"
+    )
 
     # Interactive command (ENHANCED)
-    interactive_parser = subparsers.add_parser("interactive", help="Run in interactive mode")
-    interactive_parser.add_argument("--domain", "-d", default="coding",
-                                   help="Initial domain")
+    interactive_parser = subparsers.add_parser(
+        "interactive", help="Run in interactive mode"
+    )
+    interactive_parser.add_argument(
+        "--domain", "-d", default="coding", help="Initial domain"
+    )
 
     # Analyze command (ENHANCED)
     analyze_parser = subparsers.add_parser("analyze", help="Analyze project")
     analyze_parser.add_argument("--dir", type=Path, help="Project directory")
-    analyze_parser.add_argument("--output", "-o", choices=["json", "text"], default="json",
-                               help="Output format")
+    analyze_parser.add_argument(
+        "--output", "-o", choices=["json", "text"], default="json", help="Output format"
+    )
 
     # Setup command
-    setup_parser = subparsers.add_parser("setup", help="Setup Claude Code integration")
+    subparsers.add_parser("setup", help="Setup Claude Code integration")
 
     # Status command (NEW)
-    status_parser = subparsers.add_parser("status", help="Show agent status and configuration")
+    subparsers.add_parser(
+        "status", help="Show agent status and configuration"
+    )
 
     # History command (NEW)
     history_parser = subparsers.add_parser("history", help="Show command history")
-    history_parser.add_argument("--limit", "-n", type=int, default=10,
-                               help="Number of recent entries to show")
+    history_parser.add_argument(
+        "--limit", "-n", type=int, default=10, help="Number of recent entries to show"
+    )
     history_parser.add_argument("--domain", help="Filter by domain")
 
     # Version command
-    version_parser = subparsers.add_parser("version", help="Show version information")
+    subparsers.add_parser("version", help="Show version information")
 
     args = parser.parse_args()
 
@@ -867,7 +954,7 @@ For more information, visit: https://github.com/enterprise-agent
                 project_dir=args.project_dir,
                 config_file=args.config,
                 dry_run=args.dry_run,
-                profile=args.profile
+                profile=args.profile,
             )
             if args.dry_run:
                 print("\n🔍 Dry Run Preview:")
@@ -914,6 +1001,7 @@ For more information, visit: https://github.com/enterprise-agent
         print(f"❌ Unexpected error: {e}")
         if args.verbose:
             import traceback
+
             traceback.print_exc()
         return 1
 

@@ -133,11 +133,11 @@ def test_env_vars():
     from src.agent_orchestrator import AgentOrchestrator
 
     orch = AgentOrchestrator()
-    assert orch._use_claude_code == True
+    assert orch._use_claude_code is True
 
     os.environ["USE_CLAUDE_CODE"] = "false"
     orch = AgentOrchestrator()
-    assert orch._use_claude_code == False
+    assert orch._use_claude_code is False
 
 
 @test_with_status("Claude CLI wrapper")
@@ -195,7 +195,7 @@ def test_validation():
     result = ValidationResult(
         is_valid=True, message="Valid input", sanitized_value="test"
     )
-    assert result.is_valid == True
+    assert result.is_valid is True
 
 
 @test_with_status("HITL Orchestrator")

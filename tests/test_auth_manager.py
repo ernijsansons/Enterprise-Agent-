@@ -54,7 +54,10 @@ OTHER_VAR=value
         result = self.auth_manager._comment_out_api_key(content)
 
         # Verify the API key line was commented out
-        self.assertIn("# ANTHROPIC_API_KEY=sk-ant-456  # Disabled for Claude Code subscription mode", result)
+        self.assertIn(
+            "# ANTHROPIC_API_KEY=sk-ant-456  # Disabled for Claude Code subscription mode",
+            result,
+        )
         self.assertIn("OPENAI_API_KEY=sk-openai-123", result)
         self.assertIn("OTHER_VAR=value", result)
         self.assertNotIn("\nANTHROPIC_API_KEY=sk-ant-456\n", result)

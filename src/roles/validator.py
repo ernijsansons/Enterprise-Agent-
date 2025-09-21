@@ -31,21 +31,23 @@ class Validator(BaseRole):
         """
         # Input validation
         if not isinstance(output, str):
-            from src.utils.errors import create_validation_error, ErrorCode
+            from src.utils.errors import ErrorCode, create_validation_error
+
             raise create_validation_error(
                 f"Output must be a string, got {type(output).__name__}",
                 validation_type="output_type",
                 error_code=ErrorCode.INVALID_PARAMETERS,
-                context={"output_type": type(output).__name__, "domain": domain}
+                context={"output_type": type(output).__name__, "domain": domain},
             )
 
         if not output.strip():
-            from src.utils.errors import create_validation_error, ErrorCode
+            from src.utils.errors import ErrorCode, create_validation_error
+
             raise create_validation_error(
                 "Output cannot be empty",
                 validation_type="output_content",
                 error_code=ErrorCode.INVALID_PARAMETERS,
-                context={"output_length": len(output), "domain": domain}
+                context={"output_length": len(output), "domain": domain},
             )
 
         try:
@@ -75,26 +77,28 @@ class Validator(BaseRole):
 
             validator_fn = domain_validators.get(domain)
             if not validator_fn:
-                from src.utils.errors import create_validation_error, ErrorCode
+                from src.utils.errors import ErrorCode, create_validation_error
+
                 available_domains = list(domain_validators.keys())
                 raise create_validation_error(
                     f"No validator available for domain '{domain}'. Available: {available_domains}",
                     validation_type="domain_validator",
                     error_code=ErrorCode.VALIDATION_FAILED,
-                    context={"domain": domain, "available_domains": available_domains}
+                    context={"domain": domain, "available_domains": available_domains},
                 )
 
             # Execute domain-specific validation with error handling
             try:
                 parsed = validator_fn(payload)
             except Exception as e:
-                from src.utils.errors import create_validation_error, ErrorCode
+                from src.utils.errors import ErrorCode, create_validation_error
+
                 raise create_validation_error(
                     f"Domain validation failed for '{domain}': {str(e)}",
                     validation_type="domain_execution",
                     error_code=ErrorCode.VALIDATION_FAILED,
                     context={"domain": domain, "error": str(e)},
-                    cause=e
+                    cause=e,
                 )
 
             model = self.route_to_model(output, domain)
@@ -112,16 +116,17 @@ class Validator(BaseRole):
 
         except Exception as e:
             # Ensure all validation errors are properly structured
-            if hasattr(e, 'details'):
+            if hasattr(e, "details"):
                 raise  # Already a structured error
             else:
-                from src.utils.errors import create_validation_error, ErrorCode
+                from src.utils.errors import ErrorCode, create_validation_error
+
                 raise create_validation_error(
                     f"Validation process failed: {str(e)}",
                     validation_type="validation_process",
                     error_code=ErrorCode.VALIDATION_FAILED,
                     context={"domain": domain, "output_length": len(output)},
-                    cause=e
+                    cause=e,
                 )
 
     def _perform_llm_validation(
@@ -143,7 +148,9 @@ class Validator(BaseRole):
                 required_fields = ["passed", "score"]
                 missing_fields = [f for f in required_fields if f not in parsed_result]
                 if missing_fields:
-                    parsed_result["validation_warnings"] = f"Missing fields: {missing_fields}"
+                    parsed_result[
+                        "validation_warnings"
+                    ] = f"Missing fields: {missing_fields}"
                     # Set defaults for missing fields
                     if "passed" not in parsed_result:
                         parsed_result["passed"] = False
@@ -152,22 +159,30 @@ class Validator(BaseRole):
 
                 return parsed_result
             else:
-                return {"insights": validation_result, "validation_warnings": "Non-structured response"}
+                return {
+                    "insights": validation_result,
+                    "validation_warnings": "Non-structured response",
+                }
 
         except Exception as e:
-            from src.utils.errors import handle_error, create_validation_error, ErrorCode
+            from src.utils.errors import (
+                ErrorCode,
+                create_validation_error,
+                handle_error,
+            )
+
             error = create_validation_error(
                 f"LLM validation failed: {str(e)}",
                 validation_type="llm_validation",
                 error_code=ErrorCode.VALIDATION_FAILED,
                 context={"domain": domain, "output_length": len(output)},
-                cause=e
+                cause=e,
             )
             handle_error(error)
             return {
                 "error": f"LLM validation failed: {str(e)}",
                 "fallback_used": True,
-                "error_details": error.details.to_dict()
+                "error_details": error.details.to_dict(),
             }
 
     def _build_validation_prompt(
@@ -196,28 +211,35 @@ class Validator(BaseRole):
             "",
             "## Output to Validate",
             "```",
-            output[:5000] + ("...\n[TRUNCATED]" if len(output) > 5000 else ""),  # Prevent token overflow
+            output[:5000]
+            + (
+                "...\n[TRUNCATED]" if len(output) > 5000 else ""
+            ),  # Prevent token overflow
             "```",
             "",
             "## Response Format",
             "Provide validation results as JSON with actionable feedback:",
-            '{',
+            "{",
             '  "passed": boolean,',
             '  "score": float (0.0-1.0),',
             '  "issues": [',
             '    {"type": "error|warning|style", "description": "specific issue", "line": number_or_null, "fix": "how to fix this"}',
-            '  ],',
+            "  ],",
             '  "recommendations": [',
             '    {"category": "performance|security|maintainability|correctness", "description": "specific recommendation", "priority": "high|medium|low"}',
-            '  ],',
+            "  ],",
             '  "summary": "brief overall assessment"',
-            '}',
+            "}",
         ]
 
         return "\n".join(prompt_parts)
 
     def _build_enhanced_result(
-        self, parsed: Dict[str, Any], llm_validation: Dict[str, Any], model: str, domain: str
+        self,
+        parsed: Dict[str, Any],
+        llm_validation: Dict[str, Any],
+        model: str,
+        domain: str,
     ) -> Dict[str, Any]:
         """Build enhanced validation result with comprehensive feedback."""
         result = {"raw": parsed, "parsed": parsed, "model": model, "domain": domain}
@@ -237,7 +259,7 @@ class Validator(BaseRole):
             "domain": domain,
             "model_used": model,
             "has_llm_validation": bool(llm_validation),
-            "validation_type": "enhanced"
+            "validation_type": "enhanced",
         }
 
         return result
@@ -260,17 +282,19 @@ class Validator(BaseRole):
             "immediate_actions": [],
             "improvement_suggestions": [],
             "domain_specific_guidance": [],
-            "priority_fixes": []
+            "priority_fixes": [],
         }
 
         # Domain-specific actionable feedback
         if domain == "coding":
-            feedback["domain_specific_guidance"].extend([
-                "Run tests locally before validation",
-                "Check code formatting with linter",
-                "Ensure all imports are correct",
-                "Verify function signatures match requirements"
-            ])
+            feedback["domain_specific_guidance"].extend(
+                [
+                    "Run tests locally before validation",
+                    "Check code formatting with linter",
+                    "Ensure all imports are correct",
+                    "Verify function signatures match requirements",
+                ]
+            )
 
             if not validation_result.get("tests_passed", True):
                 feedback["immediate_actions"].append(
@@ -309,12 +333,14 @@ class Validator(BaseRole):
                 )
 
         # Add generic improvement suggestions
-        feedback["improvement_suggestions"].extend([
-            "Review domain-specific requirements carefully",
-            "Consider edge cases and error handling",
-            "Validate outputs against expected formats",
-            "Test with different input scenarios"
-        ])
+        feedback["improvement_suggestions"].extend(
+            [
+                "Review domain-specific requirements carefully",
+                "Consider edge cases and error handling",
+                "Validate outputs against expected formats",
+                "Test with different input scenarios",
+            ]
+        )
 
         return feedback
 

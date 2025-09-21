@@ -8,13 +8,14 @@ from __future__ import annotations
 import json
 import logging
 import time
+from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
-from dataclasses import dataclass, asdict
 
 
 class ErrorSeverity(Enum):
     """Error severity levels."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -24,6 +25,7 @@ class ErrorSeverity(Enum):
 
 class ErrorCategory(Enum):
     """Error categories for classification."""
+
     ORCHESTRATION = "orchestration"
     MODEL_CALL = "model_call"
     VALIDATION = "validation"
@@ -147,6 +149,7 @@ class ErrorCode(Enum):
 @dataclass
 class ErrorDetails:
     """Detailed error information."""
+
     code: ErrorCode
     message: str
     category: ErrorCategory
@@ -171,9 +174,9 @@ class ErrorDetails:
         """Convert to JSON string."""
         data = self.to_dict()
         # Convert enums to values for JSON serialization
-        data['code'] = self.code.value
-        data['category'] = self.category.value
-        data['severity'] = self.severity.value
+        data["code"] = self.code.value
+        data["category"] = self.category.value
+        data["severity"] = self.severity.value
         return json.dumps(data, indent=2)
 
 
@@ -189,7 +192,7 @@ class EnterpriseAgentError(Exception):
         context: Optional[Dict[str, Any]] = None,
         recovery_suggestions: Optional[List[str]] = None,
         user_message: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(message)
 
@@ -208,7 +211,7 @@ class EnterpriseAgentError(Exception):
             context=context or {},
             stack_trace=self._get_stack_trace(),
             recovery_suggestions=recovery_suggestions or [],
-            user_message=user_message
+            user_message=user_message,
         )
         self.cause = cause
 
@@ -257,7 +260,7 @@ class EnterpriseAgentError(Exception):
             ErrorCode.CONFIG_FILE_NOT_FOUND,
             ErrorCode.MEMORY_ALLOCATION_FAILED,
             ErrorCode.SECURITY_COMMAND_INJECTION,
-            ErrorCode.SYSTEM_ERROR
+            ErrorCode.SYSTEM_ERROR,
         }
 
         # High severity errors that significantly impact functionality
@@ -268,14 +271,14 @@ class EnterpriseAgentError(Exception):
             ErrorCode.PROVIDER_INIT_FAILED,
             ErrorCode.GOVERNANCE_POLICY_VIOLATION,
             ErrorCode.SECURITY_VALIDATION_FAILED,
-            ErrorCode.RESOURCE_EXHAUSTED
+            ErrorCode.RESOURCE_EXHAUSTED,
         }
 
         # Low severity errors that are mostly informational
         low_severity_codes = {
             ErrorCode.REFLECTION_EARLY_TERMINATION,
             ErrorCode.AUTH_LOGIN_REQUIRED,
-            ErrorCode.CACHE_OPERATION_FAILED
+            ErrorCode.CACHE_OPERATION_FAILED,
         }
 
         if error_code in critical_codes:
@@ -290,6 +293,7 @@ class EnterpriseAgentError(Exception):
     def _get_stack_trace(self) -> Optional[str]:
         """Get current stack trace."""
         import traceback
+
         return traceback.format_exc()
 
     def add_context(self, key: str, value: Any) -> None:
@@ -317,7 +321,7 @@ class ErrorHandler:
         self,
         error: Union[Exception, EnterpriseAgentError],
         context: Optional[Dict[str, Any]] = None,
-        log_level: Optional[int] = None
+        log_level: Optional[int] = None,
     ) -> ErrorDetails:
         """Handle an error with structured logging and tracking."""
 
@@ -334,7 +338,7 @@ class ErrorHandler:
                 severity=ErrorSeverity.MEDIUM,
                 timestamp=time.time(),
                 context=context or {},
-                stack_trace=self._format_exception(error)
+                stack_trace=self._format_exception(error),
             )
 
         # Track error
@@ -354,7 +358,9 @@ class ErrorHandler:
         if len(self.error_history) > 1000:
             self.error_history = self.error_history[-500:]
 
-    def _log_error(self, details: ErrorDetails, log_level: Optional[int] = None) -> None:
+    def _log_error(
+        self, details: ErrorDetails, log_level: Optional[int] = None
+    ) -> None:
         """Log error with appropriate level."""
         if log_level is None:
             log_level = self._severity_to_log_level(details.severity)
@@ -374,8 +380,13 @@ class ErrorHandler:
         self.logger.log(log_level, log_message)
 
         # Log stack trace for critical/high severity errors
-        if details.severity in (ErrorSeverity.CRITICAL, ErrorSeverity.HIGH) and details.stack_trace:
-            self.logger.debug(f"Stack trace for {details.code.name}:\n{details.stack_trace}")
+        if (
+            details.severity in (ErrorSeverity.CRITICAL, ErrorSeverity.HIGH)
+            and details.stack_trace
+        ):
+            self.logger.debug(
+                f"Stack trace for {details.code.name}:\n{details.stack_trace}"
+            )
 
     def _severity_to_log_level(self, severity: ErrorSeverity) -> int:
         """Convert error severity to logging level."""
@@ -384,13 +395,14 @@ class ErrorHandler:
             ErrorSeverity.HIGH: logging.ERROR,
             ErrorSeverity.MEDIUM: logging.WARNING,
             ErrorSeverity.LOW: logging.INFO,
-            ErrorSeverity.INFO: logging.INFO
+            ErrorSeverity.INFO: logging.INFO,
         }
         return severity_map.get(severity, logging.WARNING)
 
     def _format_exception(self, error: Exception) -> str:
         """Format exception for logging."""
         import traceback
+
         return traceback.format_exc()
 
     def get_error_summary(self) -> Dict[str, Any]:
@@ -404,26 +416,34 @@ class ErrorHandler:
         severity_counts = {}
 
         for error in self.error_history:
-            category_counts[error.category.value] = category_counts.get(error.category.value, 0) + 1
-            severity_counts[error.severity.value] = severity_counts.get(error.severity.value, 0) + 1
+            category_counts[error.category.value] = (
+                category_counts.get(error.category.value, 0) + 1
+            )
+            severity_counts[error.severity.value] = (
+                severity_counts.get(error.severity.value, 0) + 1
+            )
 
         # Recent errors (last 10)
         recent_errors = []
         for error in self.error_history[-10:]:
-            recent_errors.append({
-                "code": error.code.name,
-                "message": error.message,
-                "category": error.category.value,
-                "severity": error.severity.value,
-                "timestamp": error.timestamp
-            })
+            recent_errors.append(
+                {
+                    "code": error.code.name,
+                    "message": error.message,
+                    "category": error.category.value,
+                    "severity": error.severity.value,
+                    "timestamp": error.timestamp,
+                }
+            )
 
         return {
             "total_errors": total_errors,
             "category_breakdown": category_counts,
             "severity_breakdown": severity_counts,
-            "most_common_errors": dict(sorted(self.error_counts.items(), key=lambda x: x[1], reverse=True)[:5]),
-            "recent_errors": recent_errors
+            "most_common_errors": dict(
+                sorted(self.error_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+            ),
+            "recent_errors": recent_errors,
         }
 
 
@@ -441,7 +461,7 @@ def get_error_handler() -> ErrorHandler:
 
 def handle_error(
     error: Union[Exception, EnterpriseAgentError],
-    context: Optional[Dict[str, Any]] = None
+    context: Optional[Dict[str, Any]] = None,
 ) -> ErrorDetails:
     """Convenience function to handle errors using the global handler."""
     return get_error_handler().handle_error(error, context)
@@ -452,14 +472,11 @@ def create_orchestration_error(
     message: str,
     error_code: ErrorCode = ErrorCode.ORCHESTRATION_PIPELINE_FAILED,
     context: Optional[Dict[str, Any]] = None,
-    cause: Optional[Exception] = None
+    cause: Optional[Exception] = None,
 ) -> EnterpriseAgentError:
     """Create an orchestration error."""
     return EnterpriseAgentError(
-        error_code=error_code,
-        message=message,
-        context=context,
-        cause=cause
+        error_code=error_code, message=message, context=context, cause=cause
     )
 
 
@@ -468,7 +485,7 @@ def create_model_error(
     model: Optional[str] = None,
     error_code: ErrorCode = ErrorCode.MODEL_CALL_FAILED,
     context: Optional[Dict[str, Any]] = None,
-    cause: Optional[Exception] = None
+    cause: Optional[Exception] = None,
 ) -> EnterpriseAgentError:
     """Create a model call error."""
     if context is None:
@@ -477,10 +494,7 @@ def create_model_error(
         context["model"] = model
 
     return EnterpriseAgentError(
-        error_code=error_code,
-        message=message,
-        context=context,
-        cause=cause
+        error_code=error_code, message=message, context=context, cause=cause
     )
 
 
@@ -489,7 +503,7 @@ def create_validation_error(
     validation_type: Optional[str] = None,
     error_code: ErrorCode = ErrorCode.VALIDATION_FAILED,
     context: Optional[Dict[str, Any]] = None,
-    cause: Optional[Exception] = None
+    cause: Optional[Exception] = None,
 ) -> EnterpriseAgentError:
     """Create a validation error."""
     if context is None:
@@ -498,10 +512,7 @@ def create_validation_error(
         context["validation_type"] = validation_type
 
     return EnterpriseAgentError(
-        error_code=error_code,
-        message=message,
-        context=context,
-        cause=cause
+        error_code=error_code, message=message, context=context, cause=cause
     )
 
 
@@ -510,7 +521,7 @@ def create_config_error(
     config_path: Optional[str] = None,
     error_code: ErrorCode = ErrorCode.CONFIG_VALIDATION_FAILED,
     context: Optional[Dict[str, Any]] = None,
-    cause: Optional[Exception] = None
+    cause: Optional[Exception] = None,
 ) -> EnterpriseAgentError:
     """Create a configuration error."""
     if context is None:
@@ -519,8 +530,5 @@ def create_config_error(
         context["config_path"] = config_path
 
     return EnterpriseAgentError(
-        error_code=error_code,
-        message=message,
-        context=context,
-        cause=cause
+        error_code=error_code, message=message, context=context, cause=cause
     )

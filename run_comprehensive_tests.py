@@ -21,29 +21,25 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # Configure logging
 logging.basicConfig(
-    level=logging.WARNING,  # Reduce noise
-    format='%(levelname)s - %(message)s'
+    level=logging.WARNING, format="%(levelname)s - %(message)s"  # Reduce noise
 )
+
 
 def parse_args():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description="Run Enterprise Agent comprehensive tests")
+    parser = argparse.ArgumentParser(
+        description="Run Enterprise Agent comprehensive tests"
+    )
     parser.add_argument(
         "--layer",
         type=int,
         choices=[1, 2, 3, 4, 5, 6, 7],
-        help="Run specific test layer only"
+        help="Run specific test layer only",
     )
     parser.add_argument(
-        "--quick",
-        action="store_true",
-        help="Run quick subset of tests"
+        "--quick", action="store_true", help="Run quick subset of tests"
     )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     return parser.parse_args()
 
 
@@ -54,9 +50,17 @@ async def run_quick_tests():
 
     # Import here to avoid issues if modules missing
     try:
-        from tests.comprehensive.test_framework import TestFramework, TestLayer, TestSuite
-        from tests.comprehensive.layer1_unit.test_orchestrator_complete import TestOrchestratorComplete
-        from tests.comprehensive.layer1_unit.test_async_complete import TestAsyncComplete
+        from tests.comprehensive.layer1_unit.test_async_complete import (
+            TestAsyncComplete,
+        )
+        from tests.comprehensive.layer1_unit.test_orchestrator_complete import (
+            TestOrchestratorComplete,
+        )
+        from tests.comprehensive.test_framework import (
+            TestFramework,
+            TestLayer,
+            TestSuite,
+        )
     except ImportError as e:
         print(f"❌ Failed to import test modules: {e}")
         print("Make sure you're running from the project root directory")
@@ -68,7 +72,7 @@ async def run_quick_tests():
     quick_layer = TestLayer(
         name="Quick Validation Tests",
         description="Essential functionality validation",
-        enabled=True
+        enabled=True,
     )
 
     # Add orchestrator tests
@@ -82,7 +86,7 @@ async def run_quick_tests():
             orch_test_class.test_call_model_functionality,
         ],
         setup=orch_test_class.setup_method,
-        teardown=orch_test_class.teardown_method
+        teardown=orch_test_class.teardown_method,
     )
     quick_layer.suites.append(orch_suite)
 
@@ -95,7 +99,7 @@ async def run_quick_tests():
             async_test_class.test_async_cache_functionality,
             async_test_class.test_async_memory_store_functionality,
         ],
-        setup=async_test_class.setup_method
+        setup=async_test_class.setup_method,
     )
     quick_layer.suites.append(async_suite)
 
@@ -116,18 +120,20 @@ async def run_quick_tests():
 
         summary = report.get("summary", {})
         print(f"Status: {summary.get('overall_status', 'UNKNOWN')}")
-        print(f"Tests: {summary.get('passed', 0)}/{summary.get('total_tests', 0)} passed")
+        print(
+            f"Tests: {summary.get('passed', 0)}/{summary.get('total_tests', 0)} passed"
+        )
         print(f"Duration: {duration:.2f} seconds")
 
-        if summary.get('critical_failures', 0) > 0:
+        if summary.get("critical_failures", 0) > 0:
             print(f"🔴 Critical failures: {summary['critical_failures']}")
 
-        if summary.get('failed', 0) > 0:
+        if summary.get("failed", 0) > 0:
             print("\nFailures:")
             for failure in report.get("failures", [])[:3]:
                 print(f"  - {failure['name']}: {failure['message']}")
 
-        success = summary.get('overall_status') == 'PASSED'
+        success = summary.get("overall_status") == "PASSED"
         if success:
             print("\n✅ Quick tests PASSED - Core functionality verified!")
         else:
@@ -146,7 +152,9 @@ async def run_full_tests(layer_filter=None):
     print("=" * 55)
 
     try:
-        from tests.comprehensive.test_complete_functionality import ComprehensiveTestRunner
+        from tests.comprehensive.test_complete_functionality import (
+            ComprehensiveTestRunner,
+        )
     except ImportError as e:
         print(f"❌ Failed to import comprehensive tests: {e}")
         return False
@@ -163,8 +171,10 @@ async def run_full_tests(layer_filter=None):
         report = await runner.run_comprehensive_tests()
 
         summary = report.get("summary", {})
-        success = (summary.get('overall_status') == 'PASSED' and
-                  summary.get('critical_failures', 0) == 0)
+        success = (
+            summary.get("overall_status") == "PASSED"
+            and summary.get("critical_failures", 0) == 0
+        )
 
         return success
 

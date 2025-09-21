@@ -4,12 +4,12 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import time
+import logging
 import threading
+import time
 from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set, Tuple
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CacheEntry:
     """Cache entry with metadata."""
+
     value: Any
     timestamp: float
     ttl: float
@@ -201,23 +202,20 @@ class AsyncLRUCache:
 
     async def _evict_to_fit(self, needed_bytes: int) -> None:
         """Evict entries to make room for new entry."""
-        while (
-            self._cache
-            and self._total_memory + needed_bytes > self.max_memory_bytes
-        ):
+        while self._cache and self._total_memory + needed_bytes > self.max_memory_bytes:
             await self._evict_lru()
 
     def _estimate_size(self, value: Any) -> int:
         """Estimate memory size of value."""
         try:
             if isinstance(value, str):
-                return len(value.encode('utf-8'))
+                return len(value.encode("utf-8"))
             elif isinstance(value, (dict, list)):
-                return len(json.dumps(value).encode('utf-8'))
+                return len(json.dumps(value).encode("utf-8"))
             elif isinstance(value, bytes):
                 return len(value)
             else:
-                return len(str(value).encode('utf-8'))
+                return len(str(value).encode("utf-8"))
         except Exception:
             return 1024  # Default estimate
 
@@ -241,7 +239,9 @@ class AsyncLRUCache:
                 "hit_rate": round(hit_rate, 3),
                 "evictions": self._evictions,
                 "popular_keys": list(
-                    sorted(self._popular_keys.items(), key=lambda x: x[1], reverse=True)[:10]
+                    sorted(
+                        self._popular_keys.items(), key=lambda x: x[1], reverse=True
+                    )[:10]
                 ),
             }
 
@@ -263,8 +263,7 @@ class AsyncLRUCache:
 
         # Create warming tasks
         tasks = [
-            asyncio.create_task(warm_key(key, gen))
-            for key, gen in keys_and_generators
+            asyncio.create_task(warm_key(key, gen)) for key, gen in keys_and_generators
         ]
 
         # Track tasks for cleanup
@@ -290,11 +289,9 @@ class AsyncLRUCache:
             List of (key, access_count) tuples
         """
         with self._thread_lock:
-            return sorted(
-                self._popular_keys.items(),
-                key=lambda x: x[1],
-                reverse=True
-            )[:limit]
+            return sorted(self._popular_keys.items(), key=lambda x: x[1], reverse=True)[
+                :limit
+            ]
 
     # Sync methods for compatibility
     def get_sync(self, key: str) -> Optional[Any]:
@@ -365,7 +362,7 @@ class ModelResponseCache:
             Cache key string
         """
         # Create stable hash of prompt content
-        prompt_hash = hashlib.sha256(prompt.encode('utf-8')).hexdigest()[:16]
+        prompt_hash = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16]
 
         # Include role in key for context-specific caching
         key_parts = [model, prompt_hash, str(max_tokens)]

@@ -2,14 +2,15 @@
 """Production readiness test suite for Enterprise Agent v3.4."""
 
 import os
+import subprocess
 import sys
 import tempfile
-import subprocess
 import time
 from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
+
 
 def test_installation_readiness():
     """Test that installation requirements are met."""
@@ -20,15 +21,27 @@ def test_installation_readiness():
         print("  Checking Python version...")
         version_info = sys.version_info
         if version_info < (3, 9):
-            print(f"  FAIL: Python {version_info.major}.{version_info.minor} is too old. Need 3.9+")
+            print(
+                f"  FAIL: Python {version_info.major}.{version_info.minor} is too old. Need 3.9+"
+            )
             return False
-        print(f"  PASS: Python {version_info.major}.{version_info.minor}.{version_info.micro}")
+        print(
+            f"  PASS: Python {version_info.major}.{version_info.minor}.{version_info.micro}"
+        )
 
         # Test 2: Check required modules
         print("  Checking required modules...")
         required_modules = [
-            'json', 'os', 'sys', 'pathlib', 'datetime', 'logging',
-            'threading', 'subprocess', 'tempfile', 'concurrent.futures'
+            "json",
+            "os",
+            "sys",
+            "pathlib",
+            "datetime",
+            "logging",
+            "threading",
+            "subprocess",
+            "tempfile",
+            "concurrent.futures",
         ]
 
         for module in required_modules:
@@ -53,6 +66,7 @@ def test_installation_readiness():
             print("  PASS: File system access works")
         finally:
             import shutil
+
             shutil.rmtree(test_dir, ignore_errors=True)
 
         # Test 4: Check environment setup
@@ -99,7 +113,7 @@ def test_configuration_readiness():
                 [sys.executable, "validate_config.py", config_file],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
             )
 
             if result.returncode != 0:
@@ -117,7 +131,7 @@ def test_configuration_readiness():
         test_env_vars = {
             "CACHE_ENABLED": "true",
             "METRICS_ENABLED": "true",
-            "REFLECTION_MAX_ITERATIONS": "5"
+            "REFLECTION_MAX_ITERATIONS": "5",
         }
 
         original_values = {}
@@ -130,7 +144,9 @@ def test_configuration_readiness():
             for key, expected_value in test_env_vars.items():
                 actual_value = os.environ.get(key)
                 if actual_value != expected_value:
-                    print(f"  FAIL: Environment variable {key} = {actual_value}, expected {expected_value}")
+                    print(
+                        f"  FAIL: Environment variable {key} = {actual_value}, expected {expected_value}"
+                    )
                     return False
 
             print("  PASS: Environment variable handling works")
@@ -164,7 +180,7 @@ def test_security_readiness():
                 [sys.executable, "-m", "bandit", "-r", "src/", "-f", "json"],
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
             )
 
             if result.returncode == 0:
@@ -174,7 +190,9 @@ def test_security_readiness():
                 if "No issues identified" in result.stdout:
                     print("  PASS: No security issues identified")
                 else:
-                    print(f"  WARN: Security scan found issues: {result.stdout[:200]}...")
+                    print(
+                        f"  WARN: Security scan found issues: {result.stdout[:200]}..."
+                    )
 
         except subprocess.TimeoutExpired:
             print("  WARN: Security scan timed out")
@@ -184,13 +202,7 @@ def test_security_readiness():
         # Test 2: Check for hardcoded secrets
         print("  Checking for hardcoded secrets...")
 
-        secret_patterns = [
-            "sk-ant-api",
-            "sk-",
-            "password",
-            "secret",
-            "token"
-        ]
+        secret_patterns = ["sk-ant-api", "sk-", "password", "secret", "token"]
 
         found_secrets = []
         src_dir = Path("src")
@@ -200,11 +212,17 @@ def test_security_readiness():
                 try:
                     content = py_file.read_text()
                     for pattern in secret_patterns:
-                        if pattern in content.lower() and "example" not in content.lower():
+                        if (
+                            pattern in content.lower()
+                            and "example" not in content.lower()
+                        ):
                             # Check if it's in a comment or string literal
-                            lines = content.split('\n')
+                            lines = content.split("\n")
                             for i, line in enumerate(lines):
-                                if pattern in line.lower() and not line.strip().startswith('#'):
+                                if (
+                                    pattern in line.lower()
+                                    and not line.strip().startswith("#")
+                                ):
                                     found_secrets.append(f"{py_file}:{i+1}")
 
                 except Exception:
@@ -230,7 +248,7 @@ def test_security_readiness():
             if path.exists():
                 stat = path.stat()
                 # Check if file is readable by others (basic check)
-                if hasattr(stat, 'st_mode'):
+                if hasattr(stat, "st_mode"):
                     print(f"  PASS: {file_path} permissions checked")
 
         print("SUCCESS: Security readiness test passed")
@@ -257,7 +275,7 @@ def test_performance_readiness():
             "src.utils.metrics",
             "src.utils.validation",
             "src.utils.errors",
-            "src.utils.telemetry"
+            "src.utils.telemetry",
         ]
 
         for module in import_tests:
@@ -278,6 +296,7 @@ def test_performance_readiness():
 
         try:
             import psutil
+
             process = psutil.Process()
             memory_mb = process.memory_info().rss / 1024 / 1024
 
@@ -295,7 +314,7 @@ def test_performance_readiness():
         # Test cache operations
         start_time = time.time()
         try:
-            from src.utils.cache import TTLCache, CacheConfig
+            from src.utils.cache import CacheConfig, TTLCache
 
             config = CacheConfig(max_size=100, default_ttl=60)
             cache = TTLCache(config)
@@ -330,7 +349,7 @@ def test_performance_readiness():
                     futures.append(future)
 
                 # Wait for completion
-                results = [f.result(timeout=5) for f in futures]
+                [f.result(timeout=5) for f in futures]
 
             concurrent_time = time.time() - start_time
 
@@ -381,29 +400,29 @@ def test_operational_readiness():
         if len(log_output) >= 3:
             print("  PASS: Logging system works")
         else:
-            print(f"  FAIL: Logging system not working properly ({len(log_output)} messages)")
+            print(
+                f"  FAIL: Logging system not working properly ({len(log_output)} messages)"
+            )
             return False
 
         # Test 2: Error handling
         print("  Testing error handling system...")
 
         try:
-            from src.utils.errors import ErrorHandler, ErrorCode, EnterpriseAgentError
+            from src.utils.errors import EnterpriseAgentError, ErrorCode, ErrorHandler
 
             handler = ErrorHandler()
 
             # Test error creation and handling
             try:
                 raise EnterpriseAgentError(
-                    ErrorCode.SYSTEM_ERROR,
-                    "Test error message",
-                    context={"test": True}
+                    ErrorCode.SYSTEM_ERROR, "Test error message", context={"test": True}
                 )
             except EnterpriseAgentError as e:
                 handler.handle_error(e.details.code, context=e.details.context)
 
             stats = handler.get_error_statistics()
-            if stats['total_errors'] >= 1:
+            if stats["total_errors"] >= 1:
                 print("  PASS: Error handling system works")
             else:
                 print("  FAIL: Error handling system not recording errors")
@@ -441,7 +460,8 @@ def test_operational_readiness():
         if Path(config_file).exists():
             try:
                 import yaml
-                with open(config_file, 'r') as f:
+
+                with open(config_file, "r") as f:
                     config = yaml.safe_load(f)
 
                 if config and isinstance(config, dict):
@@ -477,7 +497,7 @@ def test_deployment_readiness():
             "install.sh",
             "configs/agent_config_v3.4.yaml",
             "src/agent_orchestrator.py",
-            "enterprise_agent_cli.py"
+            "enterprise_agent_cli.py",
         ]
 
         missing_files = []
@@ -502,7 +522,7 @@ def test_deployment_readiness():
                     [sys.executable, str(cli_file), "--help"],
                     capture_output=True,
                     text=True,
-                    timeout=10
+                    timeout=10,
                 )
 
                 if result.returncode == 0 or "usage" in result.stdout.lower():
@@ -521,7 +541,7 @@ def test_deployment_readiness():
 
         dependencies_ok = True
         try:
-            import yaml
+            import yaml  # noqa: F401
         except ImportError:
             print("  WARN: PyYAML not available")
             dependencies_ok = False
@@ -535,7 +555,7 @@ def test_deployment_readiness():
         if Path("Makefile").exists():
             try:
                 # Test make target validation
-                with open("Makefile", 'r') as f:
+                with open("Makefile", "r") as f:
                     makefile_content = f.read()
 
                 required_targets = ["quality", "test", "security"]
@@ -567,7 +587,6 @@ def main():
     print("=" * 65)
 
     tests_passed = 0
-    total_tests = 5
 
     # Run all readiness tests
     test_functions = [
@@ -587,7 +606,9 @@ def main():
             print(f"FAILED: Test {test_func.__name__} failed with exception: {e}")
 
     print("\n" + "=" * 65)
-    print(f"Production Readiness Results: {tests_passed}/{len(test_functions)} tests passed")
+    print(
+        f"Production Readiness Results: {tests_passed}/{len(test_functions)} tests passed"
+    )
 
     if tests_passed == len(test_functions):
         print("SUCCESS: System is ready for production deployment!")
@@ -599,7 +620,9 @@ def main():
         return 0
     else:
         print("FAILED: System requires fixes before production deployment.")
-        print(f"\nAddress the {len(test_functions) - tests_passed} failing test(s) before proceeding.")
+        print(
+            f"\nAddress the {len(test_functions) - tests_passed} failing test(s) before proceeding."
+        )
         return 1
 
 

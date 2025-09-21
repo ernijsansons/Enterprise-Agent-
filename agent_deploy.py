@@ -84,12 +84,16 @@ class AgentDeployer:
         python_version = sys.version_info
         required_version = (3, 9)
         if python_version[:2] < required_version:
-            logger.error(f"Python {required_version[0]}.{required_version[1]}+ required, got {python_version.major}.{python_version.minor}")
+            logger.error(
+                f"Python {required_version[0]}.{required_version[1]}+ required, got {python_version.major}.{python_version.minor}"
+            )
             return False
 
         # Check Node.js
         try:
-            result = subprocess.run(["node", "--version"], capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                ["node", "--version"], capture_output=True, text=True, check=True
+            )
             node_version = result.stdout.strip()
             logger.info(f"Node.js version: {node_version}")
         except (subprocess.CalledProcessError, FileNotFoundError):
@@ -98,14 +102,18 @@ class AgentDeployer:
 
         # Check npm
         try:
-            subprocess.run(["npm", "--version"], capture_output=True, text=True, check=True)
+            subprocess.run(
+                ["npm", "--version"], capture_output=True, text=True, check=True
+            )
         except (subprocess.CalledProcessError, FileNotFoundError):
             logger.error("npm not found or not working")
             return False
 
         # Check Poetry
         try:
-            subprocess.run(["poetry", "--version"], capture_output=True, text=True, check=True)
+            subprocess.run(
+                ["poetry", "--version"], capture_output=True, text=True, check=True
+            )
         except (subprocess.CalledProcessError, FileNotFoundError):
             logger.warning("Poetry not found, will use pip")
 
@@ -123,7 +131,10 @@ class AgentDeployer:
         # Install Python dependencies
         if Path("requirements.txt").exists():
             try:
-                subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True)
+                subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
+                    check=True,
+                )
                 logger.info("Python dependencies installed")
             except subprocess.CalledProcessError as e:
                 logger.error(f"Failed to install Python dependencies: {e}")
@@ -199,7 +210,9 @@ ENABLE_PII_SCRUBBING=true
         try:
             # Run Python tests
             if Path("tests").exists():
-                subprocess.run([sys.executable, "-m", "pytest", "tests/", "-v"], check=True)
+                subprocess.run(
+                    [sys.executable, "-m", "pytest", "tests/", "-v"], check=True
+                )
                 logger.info("Python tests passed")
             else:
                 logger.warning("No tests directory found")
@@ -236,14 +249,17 @@ ENABLE_PII_SCRUBBING=true
                 src = Path(file_path)
                 if src.exists():
                     if src.is_dir():
-                        subprocess.run(["cp", "-r", str(src), str(deploy_dir)], check=True)
+                        subprocess.run(
+                            ["cp", "-r", str(src), str(deploy_dir)], check=True
+                        )
                     else:
                         subprocess.run(["cp", str(src), str(deploy_dir)], check=True)
 
             # Create deployment script
             deploy_script = deploy_dir / "deploy.sh"
             with open(deploy_script, "w", encoding="utf-8") as f:
-                f.write("""#!/bin/bash
+                f.write(
+                    """#!/bin/bash
 # Enterprise Agent Deployment Script
 
 set -e
@@ -263,7 +279,8 @@ fi
 python -m pytest tests/ -v
 
 echo "Deployment complete!"
-""")
+"""
+                )
             deploy_script.chmod(0o755)
 
             logger.info(f"Deployment package built in {deploy_dir}")
@@ -311,6 +328,7 @@ echo "Deployment complete!"
         deploy_dir = Path(self.config["deployment"]["output_dir"])
         if deploy_dir.exists():
             import shutil
+
             shutil.rmtree(deploy_dir)
             logger.info("Cleaned up deployment directory")
 
@@ -319,9 +337,15 @@ def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Deploy Enterprise Agent")
     parser.add_argument("--config", type=Path, help="Path to deployment configuration")
-    parser.add_argument("--cleanup", action="store_true", help="Clean up after deployment")
+    parser.add_argument(
+        "--cleanup", action="store_true", help="Clean up after deployment"
+    )
     parser.add_argument("--skip-tests", action="store_true", help="Skip running tests")
-    parser.add_argument("--environment", choices=["development", "staging", "production"], help="Deployment environment")
+    parser.add_argument(
+        "--environment",
+        choices=["development", "staging", "production"],
+        help="Deployment environment",
+    )
 
     args = parser.parse_args()
 

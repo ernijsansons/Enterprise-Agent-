@@ -1,12 +1,12 @@
 """Circuit breaker pattern implementation for resilient service calls."""
 from __future__ import annotations
 
-import time
+import logging
 import threading
+import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Dict, Optional, TypeVar
-import logging
 
 logger = logging.getLogger(__name__)
 

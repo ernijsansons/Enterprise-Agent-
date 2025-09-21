@@ -13,15 +13,17 @@ logger = logging.getLogger(__name__)
 
 # Privacy-sensitive patterns that should be redacted
 SENSITIVE_PATTERNS = {
-    'email': re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'),
-    'ip_address': re.compile(r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'),
-    'phone': re.compile(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b'),
-    'ssn': re.compile(r'\b\d{3}-?\d{2}-?\d{4}\b'),
-    'credit_card': re.compile(r'\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b'),
-    'api_key': re.compile(r'\b[A-Za-z0-9]{20,}\b'),
-    'token': re.compile(r'\b[A-Za-z0-9_-]{32,}\b'),
-    'secret': re.compile(r'(?i)(secret|password|token|key)["\']?\s*[:=]\s*["\']?([A-Za-z0-9_-]+)["\']?'),
-    'path': re.compile(r'/[A-Za-z0-9_\-./]+|[A-Z]:\\[A-Za-z0-9_\-\\\.]+'),
+    "email": re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"),
+    "ip_address": re.compile(r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b"),
+    "phone": re.compile(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b"),
+    "ssn": re.compile(r"\b\d{3}-?\d{2}-?\d{4}\b"),
+    "credit_card": re.compile(r"\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b"),
+    "api_key": re.compile(r"\b[A-Za-z0-9]{20,}\b"),
+    "token": re.compile(r"\b[A-Za-z0-9_-]{32,}\b"),
+    "secret": re.compile(
+        r'(?i)(secret|password|token|key)["\']?\s*[:=]\s*["\']?([A-Za-z0-9_-]+)["\']?'
+    ),
+    "path": re.compile(r"/[A-Za-z0-9_\-./]+|[A-Z]:\\[A-Za-z0-9_\-\\\.]+"),
 }
 
 
@@ -31,15 +33,15 @@ def _sanitize_data(data: Any) -> Any:
         # Apply all sensitive patterns
         sanitized = data
         for pattern_name, pattern in SENSITIVE_PATTERNS.items():
-            if pattern_name == 'secret':
+            if pattern_name == "secret":
                 # Special handling for secret patterns
-                sanitized = pattern.sub(r'\1: [REDACTED]', sanitized)
-            elif pattern_name == 'path':
+                sanitized = pattern.sub(r"\1: [REDACTED]", sanitized)
+            elif pattern_name == "path":
                 # Redact paths but keep structure
-                sanitized = pattern.sub('[PATH_REDACTED]', sanitized)
+                sanitized = pattern.sub("[PATH_REDACTED]", sanitized)
             else:
                 # Generic redaction
-                sanitized = pattern.sub(f'[{pattern_name.upper()}_REDACTED]', sanitized)
+                sanitized = pattern.sub(f"[{pattern_name.upper()}_REDACTED]", sanitized)
         return sanitized
     elif isinstance(data, dict):
         return {key: _sanitize_data(value) for key, value in data.items()}
@@ -202,8 +204,13 @@ def get_telemetry_status() -> Dict[str, Any]:
             "ccpa_compliant": True,
             "data_minimization": True,
             "user_control": True,
-        }
+        },
     }
 
 
-__all__ = ["record_event", "record_metric", "set_telemetry_consent", "get_telemetry_status"]
+__all__ = [
+    "record_event",
+    "record_metric",
+    "set_telemetry_consent",
+    "get_telemetry_status",
+]

@@ -11,8 +11,11 @@ try:
 except ImportError:
     print("Installing required dependency: PyYAML...")
     import subprocess
+
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyyaml", "--quiet"])
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "pyyaml", "--quiet"]
+        )
         import yaml
     except Exception as e:
         print(f"ERROR: Failed to install PyYAML: {e}")
@@ -27,14 +30,20 @@ class ConfigValidator:
         self.errors: List[str] = []
         self.warnings: List[str] = []
 
-    def validate_range(self, value: Any, min_val: float, max_val: float, name: str) -> bool:
+    def validate_range(
+        self, value: Any, min_val: float, max_val: float, name: str
+    ) -> bool:
         """Validate that a value is within a specified range."""
         if not isinstance(value, (int, float)):
-            self.errors.append(f"{name}: Expected numeric value, got {type(value).__name__}")
+            self.errors.append(
+                f"{name}: Expected numeric value, got {type(value).__name__}"
+            )
             return False
 
         if not (min_val <= value <= max_val):
-            self.errors.append(f"{name}: Value {value} not in range [{min_val}, {max_val}]")
+            self.errors.append(
+                f"{name}: Value {value} not in range [{min_val}, {max_val}]"
+            )
             return False
 
         return True
@@ -42,14 +51,18 @@ class ConfigValidator:
     def validate_enum(self, value: Any, allowed_values: List[str], name: str) -> bool:
         """Validate that a value is in a list of allowed values."""
         if value not in allowed_values:
-            self.errors.append(f"{name}: Value '{value}' not in allowed values {allowed_values}")
+            self.errors.append(
+                f"{name}: Value '{value}' not in allowed values {allowed_values}"
+            )
             return False
         return True
 
     def validate_path(self, value: str, name: str, must_exist: bool = False) -> bool:
         """Validate that a path is valid."""
         if not isinstance(value, str):
-            self.errors.append(f"{name}: Expected string path, got {type(value).__name__}")
+            self.errors.append(
+                f"{name}: Expected string path, got {type(value).__name__}"
+            )
             return False
 
         try:
@@ -83,22 +96,45 @@ class ConfigValidator:
             self.validate_range(config["max_size"], 100, 100000, "caching.max_size")
 
         if "cleanup_interval" in config:
-            self.validate_range(config["cleanup_interval"], 10, 3600, "caching.cleanup_interval")
+            self.validate_range(
+                config["cleanup_interval"], 10, 3600, "caching.cleanup_interval"
+            )
 
         if "quality_threshold" in config:
-            self.validate_range(config["quality_threshold"], 0.0, 1.0, "caching.quality_threshold")
+            self.validate_range(
+                config["quality_threshold"], 0.0, 1.0, "caching.quality_threshold"
+            )
 
         if "high_quality_ttl_multiplier" in config:
-            self.validate_range(config["high_quality_ttl_multiplier"], 1.0, 10.0, "caching.high_quality_ttl_multiplier")
+            self.validate_range(
+                config["high_quality_ttl_multiplier"],
+                1.0,
+                10.0,
+                "caching.high_quality_ttl_multiplier",
+            )
 
         if "low_quality_ttl_multiplier" in config:
-            self.validate_range(config["low_quality_ttl_multiplier"], 0.1, 1.0, "caching.low_quality_ttl_multiplier")
+            self.validate_range(
+                config["low_quality_ttl_multiplier"],
+                0.1,
+                1.0,
+                "caching.low_quality_ttl_multiplier",
+            )
 
         if "compression_threshold" in config:
-            self.validate_range(config["compression_threshold"], 512, 10485760, "caching.compression_threshold")
+            self.validate_range(
+                config["compression_threshold"],
+                512,
+                10485760,
+                "caching.compression_threshold",
+            )
 
         if "eviction_policy" in config:
-            self.validate_enum(config["eviction_policy"], ["lru", "lfu", "ttl"], "caching.eviction_policy")
+            self.validate_enum(
+                config["eviction_policy"],
+                ["lru", "lfu", "ttl"],
+                "caching.eviction_policy",
+            )
 
         if "persistence_path" in config:
             self.validate_path(config["persistence_path"], "caching.persistence_path")
@@ -106,40 +142,68 @@ class ConfigValidator:
     def validate_metrics_config(self, config: Dict[str, Any]) -> None:
         """Validate metrics configuration section."""
         if "buffer_size" in config:
-            self.validate_range(config["buffer_size"], 100, 100000, "metrics.buffer_size")
+            self.validate_range(
+                config["buffer_size"], 100, 100000, "metrics.buffer_size"
+            )
 
         if "flush_interval" in config:
-            self.validate_range(config["flush_interval"], 1.0, 3600.0, "metrics.flush_interval")
+            self.validate_range(
+                config["flush_interval"], 1.0, 3600.0, "metrics.flush_interval"
+            )
 
         if "export_path" in config:
             self.validate_path(config["export_path"], "metrics.export_path")
 
         if "retention_hours" in config:
-            self.validate_range(config["retention_hours"], 1, 8760, "metrics.retention_hours")  # Max 1 year
+            self.validate_range(
+                config["retention_hours"], 1, 8760, "metrics.retention_hours"
+            )  # Max 1 year
 
     def validate_reflection_config(self, config: Dict[str, Any]) -> None:
         """Validate reflection configuration section."""
         if "max_iterations" in config:
-            self.validate_range(config["max_iterations"], 1, 20, "reflection.max_iterations")
+            self.validate_range(
+                config["max_iterations"], 1, 20, "reflection.max_iterations"
+            )
 
         if "confidence_threshold" in config:
-            self.validate_range(config["confidence_threshold"], 0.0, 1.0, "reflection.confidence_threshold")
+            self.validate_range(
+                config["confidence_threshold"],
+                0.0,
+                1.0,
+                "reflection.confidence_threshold",
+            )
 
         if "early_termination" in config:
             et_config = config["early_termination"]
             if "stagnation_threshold" in et_config:
-                self.validate_range(et_config["stagnation_threshold"], 1, 10, "reflection.early_termination.stagnation_threshold")
+                self.validate_range(
+                    et_config["stagnation_threshold"],
+                    1,
+                    10,
+                    "reflection.early_termination.stagnation_threshold",
+                )
 
             if "min_iterations" in et_config:
-                self.validate_range(et_config["min_iterations"], 0, 10, "reflection.early_termination.min_iterations")
+                self.validate_range(
+                    et_config["min_iterations"],
+                    0,
+                    10,
+                    "reflection.early_termination.min_iterations",
+                )
 
             if "progress_threshold" in et_config:
-                self.validate_range(et_config["progress_threshold"], 0.0, 1.0, "reflection.early_termination.progress_threshold")
+                self.validate_range(
+                    et_config["progress_threshold"],
+                    0.0,
+                    1.0,
+                    "reflection.early_termination.progress_threshold",
+                )
 
     def validate_config(self, config_path: str) -> bool:
         """Validate the complete configuration file."""
         try:
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(config_path, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
         except FileNotFoundError:
             self.errors.append(f"Configuration file not found: {config_path}")
@@ -152,14 +216,20 @@ class ConfigValidator:
             return False
 
         # Validate required top-level sections
-        required_sections = ["default_model_config", "components", "enterprise_coding_agent"]
+        required_sections = [
+            "default_model_config",
+            "components",
+            "enterprise_coding_agent",
+        ]
         for section in required_sections:
             if section not in config:
                 self.errors.append(f"Missing required section: {section}")
 
         # Validate default model config
         if "default_model_config" in config:
-            self.validate_model_config(config["default_model_config"], "default_model_config.")
+            self.validate_model_config(
+                config["default_model_config"], "default_model_config."
+            )
 
         # Validate enterprise coding agent config
         if "enterprise_coding_agent" in config:
@@ -178,7 +248,10 @@ class ConfigValidator:
                 self.validate_caching_config(agent_config["caching"])
 
             # Validate metrics config
-            if "observability" in agent_config and "metrics" in agent_config["observability"]:
+            if (
+                "observability" in agent_config
+                and "metrics" in agent_config["observability"]
+            ):
                 self.validate_metrics_config(agent_config["observability"]["metrics"])
 
             # Validate reflection config
