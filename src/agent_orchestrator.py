@@ -1,6 +1,7 @@
 """Enterprise agent orchestrator coordinating multi-role workflows."""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -14,6 +15,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from src.orchestration import build_graph
+from src.orchestration.async_orchestrator import get_async_orchestrator
 from src.providers.auth_manager import get_auth_manager
 from src.providers.claude_code_provider import get_claude_code_provider
 from src.roles import Coder, Planner, Reflector, Reviewer, Validator
@@ -192,6 +194,17 @@ class AgentOrchestrator:
         self._claude_code_provider = None
         if self._use_claude_code:
             self._init_claude_code_provider()
+
+        # Initialize async orchestrator for performance improvements
+        self._async_enabled = os.getenv("ENABLE_ASYNC", "true").lower() == "true"
+        self._async_orchestrator = None
+        if self._async_enabled:
+            try:
+                self._async_orchestrator = get_async_orchestrator(self._build_async_config())
+                logger.info("Async orchestrator initialized for performance improvements")
+            except Exception as e:
+                logger.warning(f"Failed to initialize async orchestrator: {e}")
+                self._async_enabled = False
         try:
             self.secrets = load_secrets()
         except Exception as exc:  # pragma: no cover - secrets should not block boot
@@ -416,6 +429,20 @@ class AgentOrchestrator:
         ]
 
         return context
+
+    def _build_async_config(self) -> Dict[str, Any]:
+        """Build configuration for async orchestrator."""
+        return {
+            "memory": self.agent_cfg.get("memory", {}),
+            "costs": self.orchestration_cfg.get("runtime_optimizer", {}),
+            "governance": self.agent_cfg.get("governance", {}),
+            "use_claude_code": self._use_claude_code,
+            "claude_code": {
+                "timeout": 60,
+                "enable_fallback": True,
+                "working_directory": os.getcwd(),
+            },
+        }
 
     def _enrich_state_with_context(self, state: AgentState) -> AgentState:
         """Enrich state with project context for enhanced Claude reasoning."""
@@ -898,6 +925,59 @@ class AgentOrchestrator:
             logger.error("Model call failed for %s/%s: %s", role, operation, exc)
             raise
 
+    async def _call_model_async(
+        self,
+        model: str,
+        prompt: str,
+        role: str,
+        operation: str,
+        max_tokens: int = 8192,
+        use_cache: bool = True,
+        project_context: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> str:
+        """Async version of _call_model for improved performance.
+
+        Args:
+            model: Model name
+            prompt: Input prompt
+            role: Role context
+            operation: Operation context
+            max_tokens: Maximum tokens
+            use_cache: Whether to use cache
+            project_context: Optional project context
+            **kwargs: Additional arguments
+
+        Returns:
+            Model response
+        """
+        if self._async_orchestrator:
+            try:
+                return await self._async_orchestrator.call_model(
+                    model=model,
+                    prompt=prompt,
+                    role=role,
+                    operation=operation,
+                    max_tokens=max_tokens,
+                    use_cache=use_cache,
+                    project_context=project_context or self._build_project_context(),
+                    **kwargs,
+                )
+            except Exception as e:
+                logger.warning(f"Async call failed, falling back to sync: {e}")
+
+        # Fallback to sync version
+        return self._call_model(
+            model=model,
+            prompt=prompt,
+            role=role,
+            operation=operation,
+            max_tokens=max_tokens,
+            use_cache=use_cache,
+            project_context=project_context,
+            **kwargs,
+        )
+
     def _invoke_codex_cli(self, task_type: str, params: List[str], domain: str) -> str:
         enhanced_params = self._enhance_cli_params(params, "Coder")
         return invoke_codex_cli(task_type, enhanced_params, domain)
@@ -1237,6 +1317,124 @@ class AgentOrchestrator:
         except Exception as e:
             logger.error(f"Critical error in run_mode: {e}")
             raise RuntimeError(f"Agent execution failed: {e}") from e
+
+    async def run_mode_async(
+        self, domain: str, task: str, vuln_flag: bool = False
+    ) -> Dict[str, Any]:
+        """Async version of run_mode for improved performance.
+
+        Args:
+            domain: The domain for the task (e.g., 'coding', 'content')
+            task: The task description
+            vuln_flag: Whether to enable vulnerability scanning
+
+        Returns:
+            Dictionary containing the execution results
+
+        Raises:
+            ValueError: If domain or task is invalid
+            RuntimeError: If execution fails critically
+        """
+        # Input validation
+        if not domain or not isinstance(domain, str):
+            raise ValueError("Domain must be a non-empty string")
+        if not task or not isinstance(task, str):
+            raise ValueError("Task must be a non-empty string")
+
+        try:
+            if self._async_orchestrator:
+                logger.info("Using async orchestrator for enhanced performance")
+
+                # Use async orchestrator's batch processing capabilities
+                requests = [
+                    {
+                        "role": "Planner",
+                        "operation": "decompose",
+                        "prompt": f"Plan for task: {task} in domain: {domain}",
+                        "model": self.route_to_model(task, domain, vuln_flag),
+                    }
+                ]
+
+                # Execute planning asynchronously
+                results = await self._async_orchestrator.batch_call_models(requests)
+
+                if results and not results[0].startswith("Error:"):
+                    # Build initial state with planning result
+                    initial = AgentState({
+                        "task": task,
+                        "domain": domain,
+                        "iterations": 0,
+                        "confidence": 0.0,
+                        "vuln_flag": vuln_flag,
+                        "plan": results[0],
+                    })
+                else:
+                    # Fallback to sync planning
+                    initial = AgentState({
+                        "task": task,
+                        "domain": domain,
+                        "iterations": 0,
+                        "confidence": 0.0,
+                        "vuln_flag": vuln_flag,
+                    })
+            else:
+                initial = AgentState({
+                    "task": task,
+                    "domain": domain,
+                    "iterations": 0,
+                    "confidence": 0.0,
+                    "vuln_flag": vuln_flag,
+                })
+
+            # Execute pipeline (mix of async and sync based on capabilities)
+            result = await self._execute_pipeline_async(initial)
+
+            # Post-process results
+            result = self._post_process_results(result, domain)
+
+            # Record completion event
+            self._record_completion_event(result, domain)
+
+            # Cleanup
+            self.memory.prune()
+
+            return dict(result)
+
+        except Exception as e:
+            logger.error(f"Critical error in async run_mode: {e}")
+            raise RuntimeError(f"Async agent execution failed: {e}") from e
+
+    async def _execute_pipeline_async(self, initial: AgentState) -> AgentState:
+        """Execute pipeline with async optimizations where possible.
+
+        Args:
+            initial: Initial agent state
+
+        Returns:
+            Final agent state
+        """
+        if self._async_orchestrator and self._async_enabled:
+            try:
+                # Use async orchestrator for parallel role execution
+                if not initial.get("plan"):
+                    # Execute planning with async orchestrator
+                    plan_result = await self._async_orchestrator.call_model(
+                        model=self.route_to_model(initial["task"], initial["domain"], initial.get("vuln_flag", False)),
+                        prompt=f"Create a detailed plan for: {initial['task']} in domain: {initial['domain']}",
+                        role="Planner",
+                        operation="decompose",
+                        project_context=self._build_project_context(),
+                    )
+                    initial["plan"] = plan_result
+
+                # Continue with sync pipeline for complex workflow
+                return self._run_offline_pipeline(initial)
+
+            except Exception as e:
+                logger.warning(f"Async pipeline failed, falling back to sync: {e}")
+                return self._run_offline_pipeline(initial)
+        else:
+            return self._execute_pipeline(initial)
 
     def _execute_pipeline(self, initial: AgentState) -> AgentState:
         """Execute the appropriate pipeline based on available clients.

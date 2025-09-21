@@ -10,6 +10,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class RateLimitExceeded(Exception):
+    """Exception raised when rate limit is exceeded."""
+
+    def __init__(self, message: str, retry_after: float = 0.0, key: str = ""):
+        """Initialize rate limit exception.
+
+        Args:
+            message: Error message
+            retry_after: Time to wait before retrying
+            key: Rate limit key that was exceeded
+        """
+        super().__init__(message)
+        self.retry_after = retry_after
+        self.key = key
+
+
 @dataclass
 class RateLimitConfig:
     """Configuration for rate limiting."""
