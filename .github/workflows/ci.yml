@@ -12,7 +12,7 @@ on:
   workflow_dispatch:  # Manual trigger
 
 env:
-  PYTHON_VERSION: '3.10'
+  PYTHON_VERSION: '3.12'
   CACHE_ENABLED: true
   METRICS_ENABLED: true
   REFLECTION_MAX_ITERATIONS: 3
@@ -49,7 +49,7 @@ jobs:
       - name: Import Sort Check
         run: poetry run isort --check-only . || (echo "::error::Import sorting issues detected. Run 'isort .' locally." && exit 1)
       - name: Lint Check
-        run: poetry run ruff check . --ignore F401,F841,E402,E712 --format github
+        run: poetry run ruff check . --ignore F401,F841,E402,E712 --output-format github
       - name: Type Check
         run: poetry run mypy src/ --ignore-missing-imports --no-strict-optional --show-error-codes
 
@@ -111,14 +111,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12']
         os: [ubuntu-latest, windows-latest, macos-latest]
         exclude:
           # Exclude some combinations to save CI time
           - os: windows-latest
-            python-version: '3.9'
+            python-version: '3.10'
           - os: macos-latest
-            python-version: '3.9'
+            python-version: '3.10'
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python ${{ matrix.python-version }}
@@ -131,10 +131,10 @@ jobs:
           pip install poetry==${{ env.POETRY_VERSION }}
           poetry config virtualenvs.in-project true
       - name: Adjust dependencies for Python version
-        if: matrix.python-version == '3.9'
+        if: matrix.python-version == '3.10'
         run: |
-          # Adjust pyproject.toml for Python 3.9 compatibility
-          python -c "import re; content = open('pyproject.toml').read(); content = re.sub(r'python = \"\^3\.10\"', 'python = \"^3.9\"', content); open('pyproject.toml', 'w').write(content)"
+          # Adjust pyproject.toml for Python 3.10 compatibility
+          python -c "import re; content = open('pyproject.toml').read(); content = re.sub(r'python = \"\^3\.10\"', 'python = \"^3.10\"', content); open('pyproject.toml', 'w').write(content)"
       - name: Install dependencies
         run: |
           poetry install --with dev --no-interaction --no-ansi
@@ -166,20 +166,21 @@ jobs:
           name: coverage-${{ matrix.python-version }}
           path: htmlcov/
       - name: Check Coverage Threshold
-        if: matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest'
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
         run: |
           coverage_percent=$(poetry run coverage report --skip-covered | grep TOTAL | awk '{print $4}' | sed 's/%//')
           if [ "${coverage_percent%.*}" -lt 80 ]; then
             echo "::warning::Code coverage ${coverage_percent}% is below 80% threshold"
           fi
       - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v4
-        if: matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v5
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
         with:
           file: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   config-validation:
     name: Configuration Validation
@@ -459,7 +460,7 @@ jobs:
           echo "All production tests passed"
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: dist/*
           generate_release_notes: true

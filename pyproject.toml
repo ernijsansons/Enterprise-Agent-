@@ -8,19 +8,20 @@ readme = "README.md"
 packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
-langgraph = "0.0.28"  # Pinned for stable graph workflows
+python = "^3.10,<3.14"
+langgraph = "^0.6.7"  # Updated for improved workflow features
 openai = "1.2.0"  # Pinned for GPT-5-Codex support
 anthropic = "0.20.0"  # Pinned for Claude backups
-google-generativeai = "0.7.0"  # Pinned for Gemini
+google-generativeai = "0.8.5"  # Updated for latest features
 pyyaml = "6.0.1"  # Pinned for YAML loading
-pinecone-client = "3.2.2"  # Pinned for vector memory
+pinecone-client = "^5.0.0"  # Updated for improved vector operations
 networkx = "3.3"  # Pinned for graphs
 requests = "2.31.0"  # Pinned for API calls
 python-dotenv = "1.0.1"  # For .env loading
 docker = "7.1.0"  # Pinned for containerization
 "ruamel.yaml" = "0.18.6"  # Pinned for advanced YAML
-pytest-cov = "4.1.0"  # For test coverage
+pytest-cov = "^6.0.0"  # Updated for better coverage reporting
+coverage = "^7.4.0"  # Required for pytest-cov 6.0+
 mypy = "1.8.0"  # For type checking
 
 [build-system]
@@ -31,10 +32,10 @@ build-backend = "poetry.core.masonry.api"
 pytest = "7.4.4"
 black = "23.12.1"
 isort = "5.13.2"
-ruff = "0.1.15"
+ruff = "0.8.0"
 bandit = "1.7.5"
 pbr = "6.0.0"
-pytest-cov = "4.1.0"
+pytest-cov = "^6.0.0"
 mypy = "1.8.0"
 
 [tool.pytest.ini_options]

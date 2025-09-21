@@ -2,7 +2,7 @@
 # Multi-stage build for minimal image size
 
 # Stage 1: Builder
-FROM python:3.10-slim as builder
+FROM python:3.12-slim as builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -31,7 +31,7 @@ RUN pip install --upgrade pip && \
 RUN npm install -g @anthropic-ai/claude-code || true
 
 # Stage 2: Runtime
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -48,7 +48,7 @@ RUN useradd -m -s /bin/bash agent
 WORKDIR /agent
 
 # Copy from builder
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /usr/lib/node_modules /usr/lib/node_modules
 

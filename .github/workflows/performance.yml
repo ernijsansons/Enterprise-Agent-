@@ -21,7 +21,7 @@ on:
         default: 10
 
 env:
-  PYTHON_VERSION: '3.10'
+  PYTHON_VERSION: '3.12'
   BENCHMARK_ITERATIONS: ${{ github.event.inputs.iterations || 10 }}
 
 jobs:
@@ -235,7 +235,7 @@ jobs:
 
       - name: Comment on PR (if applicable)
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
