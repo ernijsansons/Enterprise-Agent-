@@ -1,0 +1,17 @@
+ENTERPRISE AGENT COMPREHENSIVE TEST REPORT
+==================================================
+
+Overall Status: FAILED
+Test Results: 3/4 passed (75.0% success rate)
+Critical Failures: 0
+High Priority Failures: 0
+
+Layer Results:
+--------------------
+Demo Layer: 3/4 (75.0%)
+
+Execution Time: 0.11 seconds
+
+Failures:
+--------------------
+[MEDIUM] Demo Test Suite.test_intentional_failure: Intentional failure for demonstration

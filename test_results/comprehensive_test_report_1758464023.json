@@ -1,0 +1,65 @@
+{
+  "summary": {
+    "total_tests": 4,
+    "passed": 3,
+    "failed": 1,
+    "errors": 0,
+    "skipped": 0,
+    "success_rate": 0.75,
+    "critical_failures": 0,
+    "high_failures": 0,
+    "overall_status": "FAILED"
+  },
+  "performance": {
+    "total_duration": 0.10855507850646973,
+    "avg_test_duration": 0.026885807514190674,
+    "slowest_tests": [
+      {
+        "name": "Demo Test Suite.test_async_functionality",
+        "duration": 0.1075432300567627
+      },
+      {
+        "name": "Demo Test Suite.test_basic_functionality",
+        "duration": 0.0
+      },
+      {
+        "name": "Demo Test Suite.test_error_handling",
+        "duration": 0.0
+      },
+      {
+        "name": "Demo Test Suite.test_intentional_failure",
+        "duration": 0.0
+      }
+    ]
+  },
+  "layer_breakdown": {
+    "Demo Layer": {
+      "total": 4,
+      "passed": 3,
+      "failed": 1,
+      "success_rate": 0.75
+    }
+  },
+  "failures": [
+    {
+      "name": "Demo Test Suite.test_intentional_failure",
+      "severity": "medium",
+      "message": "Intentional failure for demonstration",
+      "duration": 0.0
+    }
+  ],
+  "timestamp": "2025-09-21 09:13:43",
+  "config": {
+    "timeout_per_test": 300,
+    "max_retries": 2,
+    "parallel_execution": true,
+    "stop_on_critical": true,
+    "generate_report": true,
+    "coverage_threshold": 0.95,
+    "performance_baselines": {
+      "max_startup_time": 10.0,
+      "max_response_time": 30.0,
+      "max_memory_mb": 1000
+    }
+  }
+}
